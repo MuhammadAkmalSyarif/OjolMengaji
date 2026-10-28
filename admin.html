@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Admin DPW - Ojol Mengaji | DPW Hidayatullah DKI Jakarta</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+              950: '#022c22'
+            },
+            amber: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            arabic: ['"Amiri"', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-900 text-slate-800 antialiased min-h-screen selection:bg-emerald-200">
+
+  <!-- ========================================================
+       SECTION 1: ADMIN LOGIN (Jika belum login admin)
+       ======================================================== -->
+  <section id="adminLoginSection" class="min-h-screen flex items-center justify-center p-4 w-full">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-fade-in">
+      <!-- Header Banner -->
+      <div class="bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white p-7 text-center relative overflow-hidden">
+        <div class="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mx-auto mb-3 shadow-lg">
+          <i class="fas fa-shield-halved text-3xl text-amber-400"></i>
+        </div>
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-300 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+          DPW Hidayatullah DKI Jakarta
+        </span>
+        <h1 class="text-xl font-black tracking-wide text-white mt-2">PORTAL ADMIN DPW</h1>
+        <p class="text-xs text-emerald-200/90 mt-1">Sistem Manajemen Halaqah & Presensi Ojol Mengaji</p>
+      </div>
+
+      <!-- Login Form -->
+      <div class="p-6">
+        <form onsubmit="adminApp.handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">No. HP / Email Admin DPW</label>
+            <div class="relative">
+              <i class="fas fa-envelope absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+              <input type="text" id="adminLoginId" required value="admin@ojolmengaji.id" class="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition bg-white" placeholder="admin@ojolmengaji.id">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Kata Sandi</label>
+            <div class="relative">
+              <i class="fas fa-lock absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+              <input type="password" id="adminLoginPassword" required value="admin123" class="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition bg-white" placeholder="••••••••">
+              <button type="button" onclick="adminApp.togglePasswordVisibility('adminLoginPassword', this)" class="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 text-sm">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="btnAdminLogin" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/30 flex justify-center items-center gap-2 text-sm mt-3">
+            <i class="fas fa-arrow-right-to-bracket"></i>
+            <span>Masuk Sebagai Pengurus</span>
+          </button>
+        </form>
+
+        <div class="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+          <a href="index.html" class="inline-flex items-center gap-1.5 text-slate-500 hover:text-emerald-700 font-bold transition">
+            <i class="fas fa-arrow-left"></i>
+            <span>Halaman Santri Driver</span>
+          </a>
+          <span class="text-slate-400 text-[11px]">v1.0.0 DPW</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SECTION 2: ADMIN DASHBOARD (Tampil saat status session admin)
+       ======================================================== -->
+  <section id="adminDashboardSection" class="hidden min-h-screen flex flex-col w-full bg-slate-100">
+    
+    <!-- Top Executive Header -->
+    <header class="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white sticky top-0 z-30 shadow-md border-b border-emerald-800/40">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+        
+        <!-- Brand & Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-400 border border-white/15 text-lg shadow">
+            <i class="fas fa-shield-halved"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white leading-none">OJOL MENGAJI</h1>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wider">
+                Admin DPW
+              </span>
+            </div>
+            <p class="text-[11px] text-emerald-200 mt-0.5 truncate max-w-[200px] sm:max-w-none" id="adminNameDisplay">
+              Dewan Pengurus DPW DKI Jakarta
+            </p>
+          </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <a href="index.html" target="_blank" class="text-xs bg-white/10 hover:bg-white/20 text-emerald-100 px-3 py-2 rounded-xl border border-white/15 transition flex items-center gap-1.5 font-semibold" title="Buka Aplikasi Santri">
+            <i class="fas fa-mobile-screen"></i>
+            <span class="hidden sm:inline">Aplikasi Santri</span>
+          </a>
+          <button onclick="adminApp.logout()" class="text-xs bg-rose-600/90 hover:bg-rose-700 text-white font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow" title="Keluar dari Portal Admin">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Keluar</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+
+      <!-- Metrics / Counter Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        
+        <!-- Card 1: Shelter -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex items-center gap-3.5 hover:border-emerald-300 transition">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl shrink-0 border border-emerald-100">
+            <i class="fas fa-mosque"></i>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500">Titik Shelter</div>
+            <div class="text-2xl font-black text-slate-800" id="statShelterCount">0</div>
+          </div>
+        </div>
+
+        <!-- Card 2: Guru -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex items-center gap-3.5 hover:border-teal-300 transition">
+          <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center text-xl shrink-0 border border-teal-100">
+            <i class="fas fa-chalkboard-user"></i>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500">Guru Mengaji</div>
+            <div class="text-2xl font-black text-slate-800" id="statTeacherCount">0</div>
+          </div>
+        </div>
+
+        <!-- Card 3: Driver Aktif -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex items-center gap-3.5 hover:border-blue-300 transition">
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl shrink-0 border border-blue-100">
+            <i class="fas fa-motorcycle"></i>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500">Santri Driver</div>
+            <div class="text-2xl font-black text-slate-800" id="statDriverCount">0</div>
+          </div>
+        </div>
+
+        <!-- Card 4: Antrean Pending -->
+        <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 shadow-sm flex items-center gap-3.5 hover:border-amber-400 transition">
+          <div class="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl shrink-0 shadow-md shadow-amber-500/20">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-amber-900">Perlu Verifikasi</div>
+            <div class="text-2xl font-black text-amber-700" id="statPendingCount">0</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Navigation Tabs Container -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        
+        <!-- Tabs Header -->
+        <div class="flex border-b border-slate-200 bg-slate-50/70 p-1.5 gap-1.5 overflow-x-auto hide-scroll">
+          <button onclick="adminApp.switchTab('shelters')" id="admin-tab-shelters" class="admin-tab-btn flex-1 min-w-[130px] py-2.5 px-4 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 flex items-center justify-center gap-2 transition">
+            <i class="fas fa-location-dot"></i>
+            <span>Titik Shelter & GPS</span>
+          </button>
+          
+          <button onclick="adminApp.switchTab('teachers')" id="admin-tab-teachers" class="admin-tab-btn flex-1 min-w-[130px] py-2.5 px-4 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition">
+            <i class="fas fa-chalkboard-user"></i>
+            <span>Guru Mengaji (Asatidz)</span>
+          </button>
+          
+          <button onclick="adminApp.switchTab('participants')" id="admin-tab-participants" class="admin-tab-btn flex-1 min-w-[130px] py-2.5 px-4 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition relative">
+            <i class="fas fa-users"></i>
+            <span>Santri Driver Ojol</span>
+            <span id="tabPendingBadge" class="hidden px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-extrabold"></span>
+          </button>
+        </div>
+
+        <!-- Tab Body Content -->
+        <div class="p-4 sm:p-6">
+
+          <!-- TAB 1: SHELTERS -->
+          <div id="admin-content-shelters" class="admin-tab-content space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <i class="fas fa-mosque text-emerald-600"></i>
+                  <span>Daftar Titik Halaqah & Geofence GPS</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">Lokasi pangkalan & masjid tempat pengemudi ojol melakukan presensi kehadiran.</p>
+              </div>
+              <button onclick="adminApp.showModal('modalAddShelter')" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition">
+                <i class="fas fa-plus"></i>
+                <span>Tambah Titik Shelter</span>
+              </button>
+            </div>
+
+            <!-- Shelter Grid List -->
+            <div id="adminShelterList" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- TAB 2: TEACHERS -->
+          <div id="admin-content-teachers" class="admin-tab-content hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <i class="fas fa-chalkboard-user text-teal-600"></i>
+                  <span>Dewan Asatidz & Pembina Halaqah</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">Guru Al-Qur'an yang ditugaskan membina santri driver pada shelter tertentu.</p>
+              </div>
+              <button onclick="adminApp.openAddTeacherModal()" class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-teal-600/20 transition">
+                <i class="fas fa-user-plus"></i>
+                <span>Buat Akun Guru Baru</span>
+              </button>
+            </div>
+
+            <!-- Teacher Grid List -->
+            <div id="adminTeacherList" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- TAB 3: PARTICIPANTS -->
+          <div id="admin-content-participants" class="admin-tab-content hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <i class="fas fa-motorcycle text-emerald-600"></i>
+                  <span>Data Santri Pengemudi Ojek Online</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">Kelola verifikasi pendaftar baru, lihat shelter, dan hubungi driver.</p>
+              </div>
+
+              <!-- Filter Selector -->
+              <div class="flex gap-1.5 bg-slate-100 p-1 rounded-xl text-xs w-full sm:w-auto">
+                <button onclick="adminApp.filterParticipants('all')" id="btnFilterAll" class="part-filter-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-bold bg-emerald-600 text-white shadow-sm transition">
+                  Semua
+                </button>
+                <button onclick="adminApp.filterParticipants('pending')" id="btnFilterPending" class="part-filter-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-bold bg-white text-slate-600 hover:bg-slate-50 transition">
+                  Menunggu Verifikasi
+                </button>
+                <button onclick="adminApp.filterParticipants('verified')" id="btnFilterVerified" class="part-filter-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-bold bg-white text-slate-600 hover:bg-slate-50 transition">
+                  Terverifikasi
+                </button>
+              </div>
+            </div>
+
+            <!-- Participant Grid List -->
+            <div id="adminParticipantList" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+      <p>OJOL MENGAJI &bull; Inisiasi Dakwah DPW Hidayatullah DKI Jakarta bersama Komunitas Driver Ojol</p>
+    </footer>
+
+  </section>
+
+  <!-- ========================================================
+       MODAL 1: Tambah Titik Shelter Baru
+       ======================================================== -->
+  <div id="modalAddShelter" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4 transition-all">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 max-h-[90vh] overflow-y-auto animate-fade-in shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+        <h3 class="font-extrabold text-base text-slate-800 flex items-center gap-2">
+          <i class="fas fa-map-location-dot text-emerald-600"></i>
+          <span>Tambah Shelter Titik Kumpul</span>
+        </h3>
+        <button onclick="adminApp.closeModal('modalAddShelter')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </div>
+
+      <form onsubmit="adminApp.handleAddShelter(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nama Shelter / Masjid *</label>
+          <input type="text" id="addShelterName" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Contoh: Shelter Al-Ikhlas Gambir">
+        </div>
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Wilayah Operasional *</label>
+          <input type="text" id="addShelterRegion" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Contoh: Jakarta Pusat">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap</label>
+          <input type="text" id="addShelterAddress" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Contoh: Jl. Medan Merdeka Timur No. 16, Gambir">
+        </div>
+
+        <div class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-100 space-y-2.5">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-emerald-900">Koordinat Satelit Geofence GPS</span>
+            <button type="button" onclick="adminApp.getCurrentGpsForShelter()" class="text-xs bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5 shadow">
+              <i class="fas fa-location-crosshairs text-[10px]"></i> Ambil GPS Saya Sekarang
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Latitude *</label>
+              <input type="text" id="addShelterLat" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-white" placeholder="-6.1764">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Longitude *</label>
+              <input type="text" id="addShelterLng" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-white" placeholder="106.8306">
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Radius Presensi Geofencing (Meter) *</label>
+            <input type="number" id="addShelterRadius" value="100" min="20" max="500" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-semibold">
+            <span class="text-[10px] text-slate-400 mt-0.5 block">Jarak maksimal driver dari titik koordinat untuk presensi. Standar: 100m</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Jadwal Halaqah</label>
+          <input type="text" id="addShelterSchedule" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Contoh: Senin & Kamis (13.00 - 14.30 WIB)">
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 mt-3">
+          <i class="fas fa-save"></i>
+          <span>Simpan Titik Shelter</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL 2: Tambah Guru / Akun Ustadz
+       ======================================================== -->
+  <div id="modalAddTeacher" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4 transition-all">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 max-h-[90vh] overflow-y-auto animate-fade-in shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+        <h3 class="font-extrabold text-base text-slate-800 flex items-center gap-2">
+          <i class="fas fa-chalkboard-user text-teal-600"></i>
+          <span>Buat Akun Guru Mengaji (Asatidz)</span>
+        </h3>
+        <button onclick="adminApp.closeModal('modalAddTeacher')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </div>
+
+      <form onsubmit="adminApp.handleAddTeacher(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nama Ustadz / Ustadzah *</label>
+          <input type="text" id="addTeacherName" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Contoh: Ustadz Ahmad Fauzi, Lc">
+        </div>
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nomor WhatsApp Aktif *</label>
+          <input type="tel" id="addTeacherPhone" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="081299990001">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Kata Sandi Akun</label>
+          <input type="text" id="addTeacherPassword" value="guru123" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Penugasan Titik Shelter (Pilih satu atau lebih) *</label>
+          <div id="addTeacherShelterCheckboxes" class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-2.5 space-y-1.5 bg-slate-50">
+            <!-- Dynamic checkboxes injected -->
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl transition text-xs shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2 mt-3">
+          <i class="fas fa-user-check"></i>
+          <span>Simpan Akun Guru</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

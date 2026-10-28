@@ -1,0 +1,18 @@
+{
+  "name": "ojol-mengaji",
+  "version": "1.0.0",
+  "description": "Aplikasi Halaqah Al-Qur'an dan Pembinaan Spiritual Driver Ojek Online oleh DPW Hidayatullah DKI Jakarta",
+  "scripts": {
+    "start": "npx -y serve . -l 8080",
+    "dev": "powershell -ExecutionPolicy Bypass -File ./server.ps1"
+  },
+  "keywords": [
+    "ojol",
+    "mengaji",
+    "hidayatullah",
+    "quran",
+    "halaqah"
+  ],
+  "author": "DPW Hidayatullah DKI Jakarta",
+  "license": "ISC"
+}

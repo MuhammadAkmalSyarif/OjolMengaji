@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ojol Mengaji - Teman Belajar Al-Qur'an di Tengah Kesibukan</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            950: '#052e16'
+                        },
+                        amber: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        sand: {
+                            50: '#fdfbf7',
+                            100: '#f7f4ed',
+                            200: '#e8e2d5',
+                            300: '#d5ccbe'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom responsive chart container styling as required */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 280px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 340px;
+            }
+        }
+        /* Custom tab animation & touch target optimizations */
+        .touch-btn {
+            min-height: 48px;
+            user-select: none;
+        }
+        .animate-pulse-slow {
+            animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<!-- Chosen Palette: Warm Emerald & Islamic Sand Neutral -->
+<!-- Application Structure Plan: 
+     The SPA is structured around 4 interactive user role views (Peserta Ojol, Guru Mengaji, Admin Shelter, Program Manager) combined with a live Assessment & Profiling Engine and a 20-Minute Learning Session Tool. 
+     This multi-view architecture allows stakeholders, program managers, and users to explore the whole ecosystem in one page. 
+     - Peserta (Ojol): Focuses on quick action buttons (One-Hand Operation), level badge, streak count, 20-min learning session, voice recording submission, QR check-in, and capability radar chart.
+     - Guru: Focused on action items (Setoran queue, Early Warning alerts for inactive students with WhatsApp CTAs, level upgrade validator).
+     - Admin Shelter: Manages 1 of 9 shelters, logistics, presence log, and local schedule.
+     - Program Manager: High-level executive dashboard across 9 Jakarta shelters, tracking 300 target drivers, retention status colors (🟢 🟡 🔴 🔵), pre-vs-post capability impact charts.
+-->
+<!-- Visualization & Content Choices: 
+     1. Capability Assessment Radar Chart (Chart.js): Visualizes 8 Quranic skills (Huruf, Harakat, Sambung, Kelancaran, Makhraj, Mad, Qalqalah, Waqaf) to clearly present student strengths and weaknesses instead of simple Pass/Fail.
+     2. Level Distribution Donut Chart (Chart.js): Displays participant spread across Level 0 to 4 in Program Manager view.
+     3. Pre vs Post Skill Improvement Bar Chart (Chart.js): Demonstrates tangible donor metrics comparing Initial Test vs Month 3 vs Final Review.
+     4. Interactive Diagnostic Test Simulator: HTML step-by-step UI allowing users to test profiling logic.
+     5. NO SVG used: All visual indicators, icons, and badges use clean HTML/CSS text formatting and Unicode symbols.
+     6. NO Mermaid JS used.
+-->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<body class="bg-sand-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar & Global Role Switcher -->
+    <header class="bg-emerald-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <!-- Brand Title & Tagline -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-amber-500 text-emerald-950 font-black text-2xl w-10 h-10 rounded-xl flex items-center justify-center shadow">
+                        🕋
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            OJOL MENGAJI
+                            <span class="bg-amber-500 text-emerald-950 text-xs px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">MVP 1.0</span>
+                        </h1>
+                        <p class="text-xs text-emerald-200">Teman Belajar Al-Qur'an di Tengah Kesibukan</p>
+                    </div>
+                </div>
+
+                <!-- Role Switcher Control -->
+                <div class="bg-emerald-800/80 p-1.5 rounded-xl border border-emerald-700/60 flex flex-wrap gap-1 items-center justify-start md:justify-end">
+                    <span class="text-xs text-emerald-200 font-medium px-2 hidden sm:inline">Peran View:</span>
+                    <button onclick="switchRole('ojol')" id="role-btn-ojol" class="role-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-amber-500 text-emerald-950 shadow">
+                        <span>🛵</span> Peserta (Ojol)
+                    </button>
+                    <button onclick="switchRole('guru')" id="role-btn-guru" class="role-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-emerald-100 hover:bg-emerald-700">
+                        <span>👳‍♂️</span> Guru Mengaji
+                    </button>
+                    <button onclick="switchRole('admin')" id="role-btn-admin" class="role-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-emerald-100 hover:bg-emerald-700">
+                        <span>🏢</span> Admin Shelter
+                    </button>
+                    <button onclick="switchRole('manager')" id="role-btn-manager" class="role-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-emerald-100 hover:bg-emerald-700">
+                        <span>📊</span> Program Manager
+                    </button>
+                    <a href="/admin.html" class="text-xs font-bold bg-emerald-950/80 hover:bg-emerald-950 text-emerald-300 px-3 py-1.5 rounded-lg border border-emerald-700 transition flex items-center gap-1">
+                        <span>⚙️</span> Portal Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+
+        <!-- Intro Banner (Contextual Explanation) -->
+        <div id="section-intro" class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-md">Prinsip Utama Program</span>
+                        <span class="text-xs text-slate-500">Human-in-the-Loop Validation</span>
+                    </div>
+                    <h2 class="text-lg font-bold text-slate-900" id="role-title-text">Dashboard Peserta: Pembelajaran Terukur & Fleksibel</h2>
+                    <p class="text-sm text-slate-600 max-w-3xl" id="role-desc-text">
+                        Aplikasi ini bukan sekadar alat presensi, melainkan sistem pengukuran kemampuan membaca Al-Qur'an secara terukur dari Level 0 hingga Level 4 dengan validasi langsung oleh Guru Mengaji.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="openDiagnosticModal()" class="touch-btn bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                        <span>📝</span> Simulasi Tes Kemampuan Awal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 1: PESERTA (OJOL) VIEW                                        -->
+        <!-- ================================================================= -->
+        <div id="view-ojol" class="space-y-6">
+            <!-- Top Dashboard Card -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <!-- Profile & Current Level Badge -->
+                <div class="bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-5 rounded-2xl shadow-md flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-medium text-emerald-200">Assalamu'alaikum, Pak!</span>
+                            <span class="bg-amber-500 text-emerald-950 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                🔥 5 Hari Streak
+                            </span>
+                        </div>
+                        <h3 class="text-xl font-extrabold mb-1">Pak Budi Santoso</h3>
+                        <p class="text-xs text-emerald-200">Mitra Ojol • Shelter Cipayung (Jaktim)</p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-emerald-700/60">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs text-emerald-200">Status Level Saat Ini</span>
+                            <span class="text-xs font-bold text-amber-400">Target: Level 3</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-500 text-emerald-950 font-black text-lg flex items-center justify-center shadow">
+                                L2
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm text-white">🟡 LEVEL 2 - Belajar Lancar</h4>
+                                <p class="text-xs text-emerald-200">Bisa membaca, meningkatkan kelancaran</p>
+                            </div>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div class="mt-3">
+                            <div class="flex justify-between text-xs text-emerald-200 mb-1">
+                                <span>Progres Level 2</span>
+                                <span class="font-bold text-amber-300">68%</span>
+                            </div>
+                            <div class="w-full bg-emerald-950/60 rounded-full h-2.5 overflow-hidden">
+                                <div class="bg-amber-400 h-2.5 rounded-full transition-all duration-500" style="width: 68%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Hub (One-Handed Operation optimized for drivers) -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2 flex flex-col justify-between space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <span>⚡</span> Akses Cepat Lapangan (One-Touch)
+                        </h3>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">Desain Ringan & Hemat Kuota</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button onclick="start20MinSession()" class="touch-btn bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl p-3 flex flex-col items-center justify-center text-center transition group">
+                            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">⏱️</span>
+                            <span class="font-bold text-xs">Belajar 20 Menit</span>
+                            <span class="text-[10px] text-emerald-600 mt-0.5">Sesi Luang Ringkas</span>
+                        </button>
+
+                        <button onclick="scrollToSection('setor-bacaan-section')" class="touch-btn bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl p-3 flex flex-col items-center justify-center text-center transition group">
+                            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🎙️</span>
+                            <span class="font-bold text-xs">Setor Bacaan</span>
+                            <span class="text-[10px] text-amber-700 mt-0.5">Rekam & Kirim Audio</span>
+                        </button>
+
+                        <button onclick="scrollToSection('shelter-section')" class="touch-btn bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-xl p-3 flex flex-col items-center justify-center text-center transition group">
+                            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📍</span>
+                            <span class="font-bold text-xs">Check-in Shelter</span>
+                            <span class="text-[10px] text-blue-600 mt-0.5">Scan QR Singgah</span>
+                        </button>
+
+                        <button onclick="openDiagnosticModal()" class="touch-btn bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-xl p-3 flex flex-col items-center justify-center text-center transition group">
+                            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🎯</span>
+                            <span class="font-bold text-xs">Tes Kemampuan</span>
+                            <span class="text-[10px] text-purple-600 mt-0.5">Evaluasi Guru</span>
+                        </button>
+                    </div>
+
+                    <!-- Target & Guru Contact Card -->
+                    <div class="bg-sand-100 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between text-xs gap-2 border border-sand-200">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">🎯</span>
+                            <div>
+                                <span class="font-semibold text-slate-700">Target Minggu Ini:</span>
+                                <span class="text-slate-600 ml-1">Latihan Kelancaran Surah Al-Fatihah & Ayat Pendek</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-slate-500">Guru Pembimbing:</span>
+                            <span class="font-bold text-emerald-800 bg-white px-2 py-1 rounded border border-slate-200">Ustadz Ahmad Fauzan</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Curriculum Tabs & Learning Modules (Filterable) -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <span>📚</span> Modul Kurikulum Al-Qur'an (Level 0 - Level 4)
+                        </h3>
+                        <p class="text-xs text-slate-500">Materi dipersonalisasi sesuai hasil asesmen guru. Anda berada di Level 2.</p>
+                    </div>
+                    <!-- Level Filter Pills -->
+                    <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                        <button onclick="filterCurriculum('all')" id="filter-all" class="curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-emerald-700 text-white">Semua</button>
+                        <button onclick="filterCurriculum('0')" id="filter-0" class="curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">🔴 L0</button>
+                        <button onclick="filterCurriculum('1')" id="filter-1" class="curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">🟠 L1</button>
+                        <button onclick="filterCurriculum('2')" id="filter-2" class="curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">🟡 L2 (Aktif)</button>
+                        <button onclick="filterCurriculum('3')" id="filter-3" class="curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">🟢 L3</button>
+                        <button onclick="filterCurriculum('4')" id="filter-4" class="curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">🔵 L4</button>
+                    </div>
+                </div>
+
+                <!-- Cards Grid for Modules A - L -->
+                <div id="curriculum-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic rendering via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Setor Bacaan & Interactive Capability Radar Chart Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Interactive Setor Bacaan Studio -->
+                <div id="setor-bacaan-section" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                                <span>🎙️</span> Fitur Setor Bacaan (Asynchronous Learning)
+                            </h3>
+                            <span class="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Asistensi Guru</span>
+                        </div>
+                        <p class="text-xs text-slate-600">
+                            Rekam suara bacaan Anda kapan saja saat waktu istirahat Narik. Guru akan mendengarkan dan memberikan koreksi spesifik.
+                        </p>
+                    </div>
+
+                    <!-- Recording Box Simulation -->
+                    <div class="bg-sand-100 border border-sand-200 rounded-xl p-4 text-center space-y-3">
+                        <div class="text-xs font-semibold text-slate-700">Materi Pilihan: <span class="text-emerald-800 font-bold">Surah Al-Fatihah (Ayat 1-7)</span></div>
+                        
+                        <!-- Visual Waveform Simulator -->
+                        <div id="audio-wave-container" class="h-12 bg-white rounded-lg border border-slate-200 flex items-center justify-center gap-1 px-4 hidden">
+                            <div class="w-1 h-4 bg-emerald-600 rounded animate-pulse"></div>
+                            <div class="w-1 h-8 bg-emerald-600 rounded animate-pulse"></div>
+                            <div class="w-1 h-10 bg-emerald-600 rounded animate-pulse"></div>
+                            <div class="w-1 h-5 bg-emerald-600 rounded animate-pulse"></div>
+                            <div class="w-1 h-9 bg-emerald-600 rounded animate-pulse"></div>
+                            <div class="w-1 h-3 bg-emerald-600 rounded animate-pulse"></div>
+                            <div class="w-1 h-7 bg-emerald-600 rounded animate-pulse"></div>
+                            <span class="text-xs font-mono font-bold text-emerald-800 ml-2" id="record-timer">00:18</span>
+                        </div>
+
+                        <div class="flex justify-center gap-2">
+                            <button id="btn-record" onclick="toggleRecording()" class="touch-btn bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                                <span>🔴</span> <span id="record-btn-text">Mulai Rekam Suara</span>
+                            </button>
+                            <button id="btn-send-audio" onclick="submitRecording()" class="touch-btn bg-amber-500 hover:bg-amber-600 text-emerald-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow hidden flex items-center gap-1.5">
+                                <span>📤</span> Kirim ke Ustadz
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-500" id="record-hint">Tekan tombol di atas untuk merekam pelafalan ayat.</p>
+                    </div>
+
+                    <!-- Recent Feedback Note from Guru -->
+                    <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 text-xs space-y-1">
+                        <div class="flex items-center justify-between font-bold text-emerald-900">
+                            <span>Koreksi Terakhir dari Ustadz Ahmad:</span>
+                            <span class="text-[10px] text-emerald-700 font-normal">Kemarin, 16:45 WIB</span>
+                        </div>
+                        <p class="text-slate-700 italic">
+                            "Alhamdulillah tajwid huruf 'Ain dan Ha sudah membaik. Tinggal perhatikan panjang mad thabi'i 2 harakat di kalimat 'iyyaka na'budu'."
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Capability Radar Chart (Chart.js) -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                                <span>🎯</span> Peta Radar Kemampuan Qur'ani
+                            </h3>
+                            <p class="text-xs text-slate-500">Evaluasi 8 domain kompetensi membaca Al-Qur'an.</p>
+                        </div>
+                        <span class="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Skor Rata-rata: 72%</span>
+                    </div>
+
+                    <!-- Radar Canvas -->
+                    <div class="chart-container">
+                        <canvas id="ojolRadarChart"></canvas>
+                    </div>
+
+                    <div class="flex justify-between items-center text-[11px] text-slate-500 border-t border-slate-100 pt-2">
+                        <span>🟢 Area Hijau: Capaian Saat Ini</span>
+                        <span>🟡 Target Berikutnya (Level 3)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shelter Presence / QR Check-in Section -->
+            <div id="shelter-section" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <span>📍</span> Presensi GPS & QR Code Shelter
+                        </h3>
+                        <p class="text-xs text-slate-500">Lakukan check-in saat singgah istirahat di shelter resmi Hidayatullah.</p>
+                    </div>
+                    <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full self-start sm:self-auto">
+                        Shelter Cipayung (Radius 75m)
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="p-4 bg-sand-50 rounded-xl border border-sand-200 space-y-2">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>📡</span> Status Geofence GPS
+                        </div>
+                        <p class="text-slate-600">Jarak Anda saat ini: <b class="text-emerald-700">~18 meter</b> dari shelter.</p>
+                        <span class="inline-block text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                            ✓ Di Dalam Radius Valid
+                        </span>
+                    </div>
+
+                    <div class="p-4 bg-sand-50 rounded-xl border border-sand-200 space-y-2">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>📷</span> Scan Token QR
+                        </div>
+                        <p class="text-slate-600">Arahkan kamera ke layar Guru atau masukkan kode sesi aktif.</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="ojol-qr-input" placeholder="OM-SDR-XXXX" class="flex-1 p-2 border border-slate-300 rounded-lg text-xs font-mono uppercase">
+                            <button onclick="handleQuickCheckin()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-2 rounded-lg text-xs">
+                                Check-in
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-emerald-900 text-white rounded-xl space-y-2 flex flex-col justify-between">
+                        <div>
+                            <div class="font-bold text-amber-300 flex items-center gap-1.5">
+                                <span>☕</span> Fasilitas Istirahat Ojol
+                            </div>
+                            <p class="text-[11px] text-emerald-100 mt-1">Tersedia kopi/teh gratis, colokan charger, dan mushaf Al-Qur'an.</p>
+                        </div>
+                        <span class="text-[10px] text-emerald-200">Ustadz siap membimbing di lokasi.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 2: GURU MENGAJI VIEW                                          -->
+        <!-- ================================================================= -->
+        <div id="view-guru" class="space-y-6 hidden">
+            <!-- Guru Control Bar -->
+            <div class="bg-emerald-900 text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <span class="text-xs bg-emerald-800 text-emerald-200 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        Portal Asatidz Pembina
+                    </span>
+                    <h3 class="text-xl font-extrabold mt-1">Ustadz Ahmad Fauzan, S.Pd.I</h3>
+                    <p class="text-xs text-emerald-200">Pembimbing Shelter Sudirman & Cipayung • 42 Santri Binaan</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="openGuruQrModal()" class="touch-btn bg-amber-500 hover:bg-amber-600 text-emerald-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <span>📲</span> Buka Sesi Mengaji (QR Code)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Setoran Queue & Early Warning Alerts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Action Queue: Setoran Audio Menunggu Koreksi -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <span>📥</span> Antrean Setoran Suara
+                        </h3>
+                        <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">3 Perlu Dinilai</span>
+                    </div>
+
+                    <div class="space-y-3" id="guru-setoran-list">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Early Warning System: Santri Inaktif & WhatsApp CTA -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                                <span>⚠️</span> Peringatan Dini Keaktifan (Nudge WA)
+                            </h3>
+                            <p class="text-xs text-slate-500">Santri yang tidak hadir > 3 hari. Segera sapa secara kekeluargaan.</p>
+                        </div>
+                        <span class="text-xs bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded">2 Santri Kritis</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                            <div>
+                                <p class="font-bold text-slate-800">Pak Hendra (Maxim)</p>
+                                <p class="text-red-700 text-[11px]">🔴 Tidak hadir 8 hari berturut-turut</p>
+                                <p class="text-slate-500 text-[10px]">Level 2 • Shelter Sudirman</p>
+                            </div>
+                            <a href="https://wa.me/628123456789?text=Assalamu%27alaikum%20Pak%20Hendra%2C%20gimana%20kabarnya%3F%20Kangen%20ngaji%20bareng%20di%20shelter.%20Semoga%20sehat%20selalu%20ya%20pak." target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shrink-0 transition">
+                                <span>💬</span> Sapa via WA
+                            </a>
+                        </div>
+
+                        <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                            <div>
+                                <p class="font-bold text-slate-800">Pak Rudi Hartono (Grab)</p>
+                                <p class="text-amber-800 text-[11px]">🟡 Tidak hadir 4 hari</p>
+                                <p class="text-slate-500 text-[10px]">Level 0 • Shelter Cipayung</p>
+                            </div>
+                            <a href="https://wa.me/628139876543?text=Assalamu%27alaikum%20Pak%20Rudi%2C%20semangat%20nariknya%20hari%20ini.%20Kalau%20sempat%20mampir%20ke%20shelter%20ya%2C%20kita%20lanjut%20Iqro%20lagi." target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shrink-0 transition">
+                                <span>💬</span> Sapa via WA
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Santri Level Upgrade Validator -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                            <span>🏆</span> Validasi Kenaikan Level (Human-in-the-Loop)
+                        </h3>
+                        <p class="text-xs text-slate-500">Kenaikan level hanya sah setelah disetujui Guru melalui pengujian langsung.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 uppercase text-[10px]">
+                                <th class="pb-2">Nama Santri</th>
+                                <th class="pb-2">Level Sekarang</th>
+                                <th class="pb-2">Rekomendasi</th>
+                                <th class="pb-2">Skor Rubrik</th>
+                                <th class="pb-2 text-right">Aksi Guru</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <tr>
+                                <td class="py-3 font-bold text-slate-800">Pak Joko Waluyo (Gojek)</td>
+                                <td class="py-3"><span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Level 1</span></td>
+                                <td class="py-3 font-bold text-emerald-700">Naik ke Level 2 (Kalimat)</td>
+                                <td class="py-3">Makhraj: 3.5 • Kelancaran: 3.0</td>
+                                <td class="py-3 text-right">
+                                    <button onclick="approveLevelUpgrade('Pak Joko Waluyo', 2)" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs">
+                                        ✓ Sahkan Kenaikan
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 font-bold text-slate-800">Pak Budi Santoso (Grab)</td>
+                                <td class="py-3"><span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Level 2</span></td>
+                                <td class="py-3 font-bold text-emerald-700">Naik ke Level 3 (Tajwid)</td>
+                                <td class="py-3">Makhraj: 3.8 • Kelancaran: 3.6</td>
+                                <td class="py-3 text-right">
+                                    <button onclick="approveLevelUpgrade('Pak Budi Santoso', 3)" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs">
+                                        ✓ Sahkan Kenaikan
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 3: ADMIN SHELTER VIEW                                         -->
+        <!-- ================================================================= -->
+        <div id="view-admin" class="space-y-6 hidden">
+            <!-- Shelter Header & Switcher -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded font-semibold">Posko Lapangan</span>
+                    <h3 class="text-lg font-bold text-slate-900 mt-1">Admin Shelter Sudirman (Kav. 45 Jakarta)</h3>
+                    <p class="text-xs text-slate-500">Penanggung Jawab Logistik & Kehadiran Fisik</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-slate-500 font-medium">Pilih Shelter:</label>
+                    <select id="shelter-selector" onchange="changeShelter(this.value)" class="text-xs p-2 border border-slate-300 rounded-lg bg-white font-semibold">
+                        <option value="1">Shelter Sudirman (Posko Ojol)</option>
+                        <option value="2">Shelter Cipayung (Jakarta Timur)</option>
+                        <option value="3">Shelter Senen (Jakarta Pusat)</option>
+                        <option value="4">Shelter Tebet (Jakarta Selatan)</option>
+                        <option value="5">Shelter Kebayoran (Jakarta Selatan)</option>
+                        <option value="6">Shelter Grogol (Jakarta Barat)</option>
+                        <option value="7">Shelter Rawamangun (Jakarta Timur)</option>
+                        <option value="8">Shelter Cilandak (Jakarta Selatan)</option>
+                        <option value="9">Shelter Tj. Priok (Jakarta Utara)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Logistics Inventory & Daily Schedule -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <h4 class="font-bold text-xs text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                        <span>📦</span> Logistik Pembinaan
+                    </h4>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between py-1.5 border-b border-slate-100">
+                            <span class="text-slate-600">Buku Iqro 1 - 6</span>
+                            <span class="font-bold text-emerald-800">28 Eksemplar</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 border-b border-slate-100">
+                            <span class="text-slate-600">Mushaf Al-Qur'an</span>
+                            <span class="font-bold text-emerald-800">15 Buah</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 border-b border-slate-100">
+                            <span class="text-slate-600">Kopi & Teh Mitra</span>
+                            <span class="font-bold text-amber-600">Cukup (3 Hari)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 md:col-span-2">
+                    <h4 class="font-bold text-xs text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                        <span>📅</span> Jadwal Halaqah Shelter Hari Ini
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                            <span class="font-bold text-emerald-900 block">Sesi Dzuhur (12:30 - 13:30 WIB)</span>
+                            <p class="text-slate-600 text-[11px] mt-0.5">Ust. Fauzi • Target Level 0 & 1</p>
+                            <span class="text-[10px] text-emerald-700 font-bold mt-1 inline-block">✓ Selesai (14 Santri Hadir)</span>
+                        </div>
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                            <span class="font-bold text-amber-900 block">Sesi Ashar (16:00 - 17:30 WIB)</span>
+                            <p class="text-slate-600 text-[11px] mt-0.5">Ust. Ahmad • Target Level 2 & 3</p>
+                            <span class="text-[10px] text-amber-800 font-bold mt-1 inline-block">⏳ Sesi Aktif</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Presence Roster Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                        <span>📋</span> Presensi Lapangan Hari Ini
+                    </h3>
+                    <button onclick="addManualPresence()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200">
+                        + Input Presensi Manual (HP Lowbat)
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 uppercase text-[10px]">
+                                <th class="pb-2">Waktu</th>
+                                <th class="pb-2">Nama Pengemudi</th>
+                                <th class="pb-2">Aplikasi</th>
+                                <th class="pb-2">Metode Check-in</th>
+                                <th class="pb-2">Status GPS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <tr>
+                                <td class="py-2.5 text-slate-500">16:15 WIB</td>
+                                <td class="py-2.5 font-bold text-slate-800">Pak Joko Waluyo</td>
+                                <td class="py-2.5 text-emerald-700 font-bold">Gojek</td>
+                                <td class="py-2.5">Scan QR Token</td>
+                                <td class="py-2.5"><span class="text-emerald-700 font-bold">~18m (Valid)</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-slate-500">16:22 WIB</td>
+                                <td class="py-2.5 font-bold text-slate-800">Pak Rudi Hartono</td>
+                                <td class="py-2.5 text-green-700 font-bold">Grab</td>
+                                <td class="py-2.5">Input Manual Shelter</td>
+                                <td class="py-2.5"><span class="text-blue-700 font-bold">Diverifikasi Admin</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 4: PROGRAM MANAGER VIEW                                       -->
+        <!-- ================================================================= -->
+        <div id="view-manager" class="space-y-6 hidden">
+            <!-- Executive Metrics Row (Target 300 Drivers) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <span class="text-3xl font-black text-emerald-800">248</span>
+                    <span class="block text-xs font-bold text-slate-700 mt-1">Mitra Ojol Aktif</span>
+                    <span class="text-[10px] text-slate-400">Target Pilot: 300 Pengemudi</span>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <span class="text-3xl font-black text-amber-600">84%</span>
+                    <span class="block text-xs font-bold text-slate-700 mt-1">Tingkat Retensi (Bulan 3)</span>
+                    <span class="text-[10px] text-emerald-600 font-semibold">🟢 Sangat Baik</span>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <span class="text-3xl font-black text-blue-600">9</span>
+                    <span class="block text-xs font-bold text-slate-700 mt-1">Shelter Aktif</span>
+                    <span class="text-[10px] text-slate-400">Jakarta Pusat s/d Timur</span>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <span class="text-3xl font-black text-purple-600">42</span>
+                    <span class="block text-xs font-bold text-slate-700 mt-1">Lulus Level 4 (Tartil)</span>
+                    <span class="text-[10px] text-purple-700 font-semibold">Siap Jadi Mentor Sebaya</span>
+                </div>
+            </div>
+
+            <!-- Charts Row (Donut Level Distribution & Pre vs Post Bar Chart) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Level Distribution Donut Chart -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-sm text-slate-900">Distribusi Kemampuan Santri (Level 0 - 4)</h4>
+                        <span class="text-xs text-slate-500 font-medium">N = 248 Peserta</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="managerDonutChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Pre vs Post Impact Bar Chart -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-sm text-slate-900">Dampak Pembelajaran: Pre-test vs Post-test</h4>
+                        <span class="text-xs text-emerald-700 font-bold">Peningkatan 46%</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="managerBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shelter Matrix Performance Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+                <h4 class="font-bold text-sm text-slate-900">Matriks Kinerja 9 Shelter Pilot Se-Jakarta</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 uppercase text-[10px]">
+                                <th class="pb-2">Lokasi Shelter</th>
+                                <th class="pb-2">Mitra Terdaftar</th>
+                                <th class="pb-2">Hadir Mingguan</th>
+                                <th class="pb-2">Setoran Suara</th>
+                                <th class="pb-2">Status Retensi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <tr>
+                                <td class="py-2.5 font-bold text-slate-800">Shelter Sudirman (Posko Ojol)</td>
+                                <td class="py-2.5">48 Pengemudi</td>
+                                <td class="py-2.5 font-bold text-emerald-800">92%</td>
+                                <td class="py-2.5">142 rekaman</td>
+                                <td class="py-2.5"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">🟢 Prima</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 font-bold text-slate-800">Shelter Cipayung (Jakarta Timur)</td>
+                                <td class="py-2.5">36 Pengemudi</td>
+                                <td class="py-2.5 font-bold text-emerald-800">88%</td>
+                                <td class="py-2.5">98 rekaman</td>
+                                <td class="py-2.5"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">🟢 Prima</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 font-bold text-slate-800">Shelter Senen (Jakarta Pusat)</td>
+                                <td class="py-2.5">32 Pengemudi</td>
+                                <td class="py-2.5 font-bold text-amber-700">74%</td>
+                                <td class="py-2.5">64 rekaman</td>
+                                <td class="py-2.5"><span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">🟡 Cukup</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-emerald-950 text-emerald-200 text-xs py-6 border-t border-emerald-900 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
+            <p class="font-bold text-white text-sm">Ojol Mengaji - Inisiatif Pembinaan Al-Qur'an Sahabat Ojol Hidayatullah</p>
+            <p class="text-emerald-400">Desain Multi-Peran Terpadu: Peserta, Guru, Admin Shelter & Program Manager</p>
+        </div>
+    </footer>
+
+    <!-- ================================================================= -->
+    <!-- MODALS & OVERLAYS                                                 -->
+    <!-- ================================================================= -->
+
+    <!-- Modal 1: Diagnostic Assessment Test Simulator -->
+    <div id="modal-diagnostic" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📝</span>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">Simulasi Uji Kemampuan Awal</h3>
+                        <p class="text-xs text-slate-500">Penentuan Level Standar (Level 0 - Level 4)</p>
+                    </div>
+                </div>
+                <button onclick="closeDiagnosticModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+
+            <div id="diag-question-box" class="space-y-4 text-xs">
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">1. Pengenalan Huruf Hijaiyah Tunggal:</label>
+                    <select id="diag-q1" class="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50">
+                        <option value="1">Belum hafal seluruh huruf (Kurang dari 15 huruf)</option>
+                        <option value="2">Hafal sebagian huruf (15-25 huruf)</option>
+                        <option value="3" selected>Hafal seluruh 28 huruf hijaiyah tunggal</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">2. Kemampuan Membaca Huruf Sambung & Harakat:</label>
+                    <select id="diag-q2" class="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50">
+                        <option value="1">Belum bisa merangkai huruf sambung</option>
+                        <option value="2" selected>Bisa merangkai 2-3 huruf sambung, masih terbata-bata</option>
+                        <option value="3">Bisa membaca kalimat pendek lancar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">3. Penerapan Tajwid & Mad:</label>
+                    <select id="diag-q3" class="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50">
+                        <option value="1" selected>Belum mengenal hukum tajwid</option>
+                        <option value="2">Mengenal mad thabi'i 2 harakat dasar</option>
+                        <option value="3">Menguasai hukum nun mati & makhraj dengan baik</option>
+                    </select>
+                </div>
+
+                <button onclick="calculateDiagnosticResult()" class="touch-btn bg-emerald-700 hover:bg-emerald-800 text-white font-bold w-full py-3 rounded-xl transition shadow text-xs">
+                    Hitung & Simpulkan Level
+                </button>
+            </div>
+
+            <!-- Result Box -->
+            <div id="diag-result-box" class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2 hidden">
+                <span class="text-3xl">🎉</span>
+                <h4 class="font-bold text-emerald-900 text-sm" id="diag-result-title">Hasil: LEVEL 2 (Belajar Lancar)</h4>
+                <p class="text-xs text-slate-600" id="diag-result-desc">
+                    Rekomendasi kurikulum: Modul F & G (Kelancaran membaca rangkaian kata dan pengenalan waqaf).
+                </p>
+                <button onclick="closeDiagnosticModal()" class="bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs mt-2">
+                    Terapkan ke Profil
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: 20-Minute Learning Session Tool -->
+    <div id="modal-20min" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 text-center">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <span>⏱️</span> Sesi Belajar Ringkas 20 Menit
+                </span>
+                <button onclick="close20MinSession()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+
+            <div class="py-4 space-y-2">
+                <span class="text-5xl font-mono font-black text-emerald-800" id="session-timer">20:00</span>
+                <p class="text-xs text-slate-500">Waktu jeda nunggu orderan? Manfaatkan 20 menit berkah.</p>
+            </div>
+
+            <!-- Session Step Guide -->
+            <div class="text-left bg-sand-50 p-3 rounded-xl border border-sand-200 text-xs space-y-2">
+                <div class="flex items-center gap-2 font-bold text-emerald-900">
+                    <span class="bg-emerald-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
+                    <span>5 Menit: Mengulang Huruf / Ayat Sebelumnya</span>
+                </div>
+                <div class="flex items-center gap-2 font-bold text-emerald-900">
+                    <span class="bg-emerald-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+                    <span>10 Menit: Membaca Materi Baru Bersama Ustadz</span>
+                </div>
+                <div class="flex items-center gap-2 font-bold text-emerald-900">
+                    <span class="bg-emerald-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">3</span>
+                    <span>5 Menit: Setoran Bacaan Ringkas & Doa</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button id="btn-timer-toggle" onclick="toggleTimer()" class="touch-btn bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex-1 py-2.5 rounded-xl text-xs transition">
+                    Mulai Timer
+                </button>
+                <button onclick="close20MinSession()" class="touch-btn bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs transition">
+                    Selesai
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Guru QR Generator Modal -->
+    <div id="modal-guru-qr" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-100 text-center">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 class="font-bold text-slate-900 text-sm">Sesi Mengaji Shelter Aktif</h3>
+                <button onclick="closeGuruQrModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+
+            <p class="text-xs text-slate-600">Tunjukkan kode QR ini kepada peserta ojol yang hadir di shelter.</p>
+
+            <div class="p-4 bg-sand-100 rounded-2xl border border-sand-200 inline-block mx-auto">
+                <div class="text-4xl tracking-widest font-mono font-bold text-emerald-900 py-3 bg-white rounded-xl shadow-inner px-4">
+                    OM-SDR-8F2A
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400">Token otomatis kedaluwarsa setelah sesi ditutup.</p>
+
+            <button onclick="closeGuruQrModal()" class="bg-emerald-700 text-white font-bold w-full py-2.5 rounded-xl text-xs">
+                Tutup Jendela
+            </button>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- JAVASCRIPT LOGIC & CHART.JS INTEGRATION                           -->
+    <!-- ================================================================= -->
+    <script>
+        // --- 1. CURRICULUM MODULES DATA (A - L) ---
+        const curriculumData = [
+            { id: 'A', level: 0, title: 'Modul A: 28 Huruf Hijaiyah Tunggal', desc: 'Pengenalan bentuk asli huruf dari Alif sampai Ya.', status: 'completed' },
+            { id: 'B', level: 0, title: 'Modul B: Harakat Fathah, Kasrah, Dhammah', desc: 'Pelafalan vokal a, i, u dasar tanpa panjang.', status: 'completed' },
+            { id: 'C', level: 1, title: 'Modul C: Harakat Tanwin & Sukun', desc: 'Mengenal bunyi -an, -in, -un dan huruf mati.', status: 'completed' },
+            { id: 'D', level: 1, title: 'Modul D: Huruf Sambung Awal & Tengah', desc: 'Bentuk perubahan huruf saat dirangkai.', status: 'completed' },
+            { id: 'E', level: 1, title: 'Modul E: Mad Thabi\'i (2 Harakat)', desc: 'Panjang 2 ketukan pada alif, waw sukun, ya sukun.', status: 'completed' },
+            { id: 'F', level: 2, title: 'Modul F: Kelancaran Kalimat Pendek', desc: 'Membaca kalimat 2-3 kata tanpa terbata-bata.', status: 'active' },
+            { id: 'G', level: 2, title: 'Modul G: Tanda Waqaf & Berhenti', desc: 'Adab berhenti di akhir ayat dan tanda waqaf lazim.', status: 'locked' },
+            { id: 'H', level: 2, title: 'Modul H: Huruf Bertasydid', desc: 'Penekanan bunyi pada huruf ganda bersyaddah.', status: 'locked' },
+            { id: 'I', level: 3, title: 'Modul I: Hukum Nun Mati & Tanwin', desc: 'Penerapan Idzhar, Idgham, Ikhfa, dan Iqlab.', status: 'locked' },
+            { id: 'J', level: 3, title: 'Modul J: Hukum Mim Mati & Qalqalah', desc: 'Ikhfa syafawi, idgham mitslain, pantulan huruf.', status: 'locked' },
+            { id: 'K', level: 3, title: 'Modul K: Tartil Surah Juz \'Amma', desc: 'Praktik membaca surah pendek dengan tajwid.', status: 'locked' },
+            { id: 'L', level: 4, title: 'Modul L: Tilawah 30 Juz Konsisten', desc: 'Kemampuan membaca mandiri secara fasih dan tartil.', status: 'locked' }
+        ];
+
+        // --- 2. SETORAN QUEUE DATA FOR GURU ---
+        const setoranQueue = [
+            { id: 1, name: 'Pak Joko Waluyo', surah: 'QS. Al-Falaq (1-5)', duration: '00:24', status: 'pending' },
+            { id: 2, name: 'Pak Rudi Hartono', surah: 'Iqro 3 Hal. 12', duration: '00:35', status: 'pending' },
+            { id: 3, name: 'Pak Hendra Gunawan', surah: 'QS. An-Nas (1-6)', duration: '00:19', status: 'pending' }
+        ];
+
+        // Chart instances holder to prevent canvas re-use errors
+        let radarChart = null;
+        let donutChart = null;
+        let barChart = null;
+
+        // --- 3. ROLE SWITCHER FUNCTION ---
+        function switchRole(role) {
+            // Hide all views
+            document.getElementById('view-ojol').classList.add('hidden');
+            document.getElementById('view-guru').classList.add('hidden');
+            document.getElementById('view-admin').classList.add('hidden');
+            document.getElementById('view-manager').classList.add('hidden');
+
+            // Reset role button styles
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.className = "role-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-emerald-100 hover:bg-emerald-700";
+            });
+
+            // Activate chosen view and button
+            document.getElementById('view-' + role).classList.remove('hidden');
+            document.getElementById('role-btn-' + role).className = "role-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-amber-500 text-emerald-950 shadow";
+
+            // Update intro banner texts
+            const titleEl = document.getElementById('role-title-text');
+            const descEl = document.getElementById('role-desc-text');
+
+            if (role === 'ojol') {
+                titleEl.textContent = "Dashboard Peserta: Pembelajaran Terukur & Fleksibel";
+                descEl.textContent = "Aplikasi ini memandu mitra pengemudi membaca Al-Qur'an secara terukur dari Level 0 hingga Level 4, dilengkapi rekaman suara dan presensi shelter.";
+                setTimeout(initOjolRadarChart, 50);
+            } else if (role === 'guru') {
+                titleEl.textContent = "Portal Guru: Human-in-the-Loop Validation";
+                descEl.textContent = "Mendengarkan setoran audio santri, memberikan koreksi makhraj, dan menyapa santri inaktif melalui tombol WhatsApp langsung.";
+                renderGuruQueue();
+            } else if (role === 'admin') {
+                titleEl.textContent = "Portal Admin Shelter: Manajemen Logistik & Check-in";
+                descEl.textContent = "Memantau kehadiran fisik harian pengemudi ojol di shelter, jadwal ustadz, dan ketersediaan logistik buku Iqro.";
+            } else if (role === 'manager') {
+                titleEl.textContent = "Executive Dashboard: Evaluasi & Dampak Program";
+                descEl.textContent = "Memantau metrik donor dan perkembangan 300 pengemudi ojol di 9 shelter Jakarta dengan visualisasi Chart.js.";
+                setTimeout(() => {
+                    initManagerDonutChart();
+                    initManagerBarChart();
+                }, 50);
+            }
+        }
+
+        // --- 4. RENDER CURRICULUM GRID ---
+        function renderCurriculum(filter = 'all') {
+            const grid = document.getElementById('curriculum-grid');
+            grid.innerHTML = '';
+
+            const filtered = filter === 'all' 
+                ? curriculumData 
+                : curriculumData.filter(c => c.level.toString() === filter);
+
+            filtered.forEach(item => {
+                let badgeColor = 'bg-slate-100 text-slate-700';
+                if (item.status === 'completed') badgeColor = 'bg-emerald-100 text-emerald-800 font-bold';
+                if (item.status === 'active') badgeColor = 'bg-amber-100 text-amber-800 font-bold animate-pulse';
+
+                const card = document.createElement('div');
+                card.className = "p-4 rounded-xl border border-slate-200 bg-sand-50/60 hover:bg-white transition flex flex-col justify-between space-y-2";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Level ${item.level}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded ${badgeColor}">
+                                ${item.status === 'completed' ? '✓ Tuntas' : item.status === 'active' ? '🟡 Sedang Dipelajari' : '🔒 Belum Terbuka'}
+                            </span>
+                        </div>
+                        <h4 class="font-bold text-xs text-slate-900">${item.title}</h4>
+                        <p class="text-[11px] text-slate-500 mt-1">${item.desc}</p>
+                    </div>
+                    <button onclick="alert('Membuka materi: ${item.title}')" class="text-xs bg-white hover:bg-emerald-50 text-emerald-800 font-semibold py-1.5 px-3 rounded-lg border border-slate-200 transition text-center mt-2">
+                        Buka Lembar Latihan
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterCurriculum(level) {
+            document.querySelectorAll('.curric-tab').forEach(b => {
+                b.className = "curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200";
+            });
+            const activeBtn = document.getElementById('filter-' + level);
+            if (activeBtn) activeBtn.className = "curric-tab text-xs px-3 py-1.5 rounded-lg font-medium transition bg-emerald-700 text-white";
+            renderCurriculum(level);
+        }
+
+        // --- 5. CHART.JS INITIALIZATIONS ---
+        function initOjolRadarChart() {
+            const ctx = document.getElementById('ojolRadarChart');
+            if (!ctx) return;
+            if (radarChart) radarChart.destroy();
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Huruf', 'Harakat', 'Sambung', 'Kelancaran', 'Makhraj', 'Hukum Mad', 'Qalqalah', 'Waqaf'],
+                    datasets: [
+                        {
+                            label: 'Capaian Pak Budi',
+                            data: [90, 85, 75, 70, 65, 60, 55, 50],
+                            backgroundColor: 'rgba(22, 163, 74, 0.25)',
+                            borderColor: 'rgba(22, 163, 74, 0.9)',
+                            pointBackgroundColor: '#15803d',
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Target Level 3',
+                            data: [95, 90, 85, 85, 80, 80, 75, 75],
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderColor: 'rgba(245, 158, 11, 0.8)',
+                            borderDash: [4, 4],
+                            borderWidth: 1.5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            ticks: { display: false, stepSize: 20 },
+                            pointLabels: { font: { size: 10, weight: '600' } }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function initManagerDonutChart() {
+            const ctx = document.getElementById('managerDonutChart');
+            if (!ctx) return;
+            if (donutChart) donutChart.destroy();
+
+            donutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Level 0 (Dasar)', 'Level 1 (Sambung)', 'Level 2 (Lancar)', 'Level 3 (Tajwid)', 'Level 4 (Tartil)'],
+                    datasets: [{
+                        data: [42, 68, 76, 42, 20],
+                        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function initManagerBarChart() {
+            const ctx = document.getElementById('managerBarChart');
+            if (!ctx) return;
+            if (barChart) barChart.destroy();
+
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Makhraj', 'Harakat', 'Kelancaran', 'Hukum Mad', 'Waqaf'],
+                    datasets: [
+                        {
+                            label: 'Pre-Test (Awal)',
+                            data: [35, 45, 30, 25, 20],
+                            backgroundColor: '#94a3b8'
+                        },
+                        {
+                            label: 'Post-Test (Bulan 3)',
+                            data: [72, 85, 76, 68, 62],
+                            backgroundColor: '#16a34a'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { font: { size: 10 } } },
+                        x: { ticks: { font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // --- 6. SETOR BACAAN RECORDING SIMULATOR ---
+        let isRecording = false;
+        let recordInterval = null;
+        let recordSeconds = 0;
+
+        function toggleRecording() {
+            const wave = document.getElementById('audio-wave-container');
+            const btnText = document.getElementById('record-btn-text');
+            const sendBtn = document.getElementById('btn-send-audio');
+            const hint = document.getElementById('record-hint');
+
+            if (!isRecording) {
+                isRecording = true;
+                wave.classList.remove('hidden');
+                btnText.textContent = "Berhenti Rekam";
+                sendBtn.classList.add('hidden');
+                hint.textContent = "Sedang merekam suara... Silakan membaca ayat.";
+                recordSeconds = 0;
+                recordInterval = setInterval(() => {
+                    recordSeconds++;
+                    const m = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
+                    const s = String(recordSeconds % 60).padStart(2, '0');
+                    document.getElementById('record-timer').textContent = `${m}:${s}`;
+                }, 1000);
+            } else {
+                isRecording = false;
+                clearInterval(recordInterval);
+                btnText.textContent = "Rekam Ulang";
+                sendBtn.classList.remove('hidden');
+                hint.textContent = "Rekaman selesai. Silakan kirimkan ke Ustadz Ahmad.";
+            }
+        }
+
+        function submitRecording() {
+            alert('Alhamdulillah! Rekaman suara Anda berhasil dikirim ke Ustadz Ahmad Fauzan untuk dievaluasi.');
+            document.getElementById('audio-wave-container').classList.add('hidden');
+            document.getElementById('btn-send-audio').classList.add('hidden');
+            document.getElementById('record-btn-text').textContent = "Mulai Rekam Suara";
+            document.getElementById('record-hint').textContent = "Tekan tombol di atas untuk merekam pelafalan ayat.";
+        }
+
+        // --- 7. GURU QUEUE RENDERER ---
+        function renderGuruQueue() {
+            const list = document.getElementById('guru-setoran-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            setoranQueue.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "p-3 bg-sand-50 border border-sand-200 rounded-xl flex items-center justify-between text-xs";
+                el.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-800">${item.name}</p>
+                        <p class="text-emerald-800 font-semibold text-[11px]">${item.surah} • Durasi ${item.duration}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="alert('Memutar audio: ${item.name}')" class="bg-white border border-slate-300 text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 font-bold">
+                            ▶️ Putar
+                        </button>
+                        <button onclick="scoreSetoran('${item.name}')" class="bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg hover:bg-emerald-800 font-bold">
+                            Beri Nilai
+                        </button>
+                    </div>
+                `;
+                list.appendChild(el);
+            });
+        }
+
+        function scoreSetoran(name) {
+            const score = prompt(`Beri catatan koreksi untuk ${name}:`, "Makhraj huruf 'Ain perlu ditekan sedikit lebih lembut. Tajwid baik.");
+            if (score) {
+                alert(`Koreksi tersimpan dan otomatis dikirimkan ke WhatsApp & Akun ${name}.`);
+            }
+        }
+
+        function approveLevelUpgrade(name, targetLevel) {
+            alert(`Selamat! Kenaikan level ${name} menjadi Level ${targetLevel} telah resmi disahkan oleh Guru.`);
+        }
+
+        // --- 8. 20-MIN SESSION TIMER SIMULATOR ---
+        let timerInterval = null;
+        let timerSeconds = 1200; // 20 mins
+        let isTimerRunning = false;
+
+        function start20MinSession() {
+            document.getElementById('modal-20min').classList.remove('hidden');
+        }
+
+        function close20MinSession() {
+            document.getElementById('modal-20min').classList.add('hidden');
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            document.getElementById('btn-timer-toggle').textContent = "Mulai Timer";
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('btn-timer-toggle');
+            if (!isTimerRunning) {
+                isTimerRunning = true;
+                btn.textContent = "Jeda (Pause)";
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                        const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+                        const s = String(timerSeconds % 60).padStart(2, '0');
+                        document.getElementById('session-timer').textContent = `${m}:${s}`;
+                    } else {
+                        clearInterval(timerInterval);
+                        alert('Waktu 20 Menit Selesai! Alhamdulillah, semoga menjadi amal jariyah.');
+                    }
+                }, 1000);
+            } else {
+                isTimerRunning = false;
+                clearInterval(timerInterval);
+                btn.textContent = "Lanjutkan Timer";
+            }
+        }
+
+        // --- 9. DIAGNOSTIC ASSESSMENT MODAL ---
+        function openDiagnosticModal() {
+            document.getElementById('modal-diagnostic').classList.remove('hidden');
+            document.getElementById('diag-question-box').classList.remove('hidden');
+            document.getElementById('diag-result-box').classList.add('hidden');
+        }
+
+        function closeDiagnosticModal() {
+            document.getElementById('modal-diagnostic').classList.add('hidden');
+        }
+
+        function calculateDiagnosticResult() {
+            const q1 = parseInt(document.getElementById('diag-q1').value);
+            const q2 = parseInt(document.getElementById('diag-q2').value);
+            const q3 = parseInt(document.getElementById('diag-q3').value);
+
+            let score = q1 + q2 + q3;
+            let level = 1;
+            let title = "LEVEL 1 - Huruf Sambung & Harakat";
+            let desc = "Rekomendasi kurikulum: Modul C & D (Latihan membaca tanwin dan merangkai 2 huruf sambung).";
+
+            if (score <= 4) {
+                level = 0;
+                title = "LEVEL 0 - Pengenalan Dasar (Iqro 1-2)";
+                desc = "Rekomendasi kurikulum: Modul A & B (Fokus pada penguasaan 28 bentuk huruf hijaiyah tunggal).";
+            } else if (score >= 8) {
+                level = 3;
+                title = "LEVEL 3 - Tajwid & Tartil Dasar";
+                desc = "Rekomendasi kurikulum: Modul I & J (Penerapan hukum nun mati dan kelancaran surah pendek).";
+            } else if (score >= 6) {
+                level = 2;
+                title = "LEVEL 2 - Belajar Lancar (Iqro 5-6)";
+                desc = "Rekomendasi kurikulum: Modul F & G (Kelancaran membaca rangkaian kata dan pengenalan waqaf).";
+            }
+
+            document.getElementById('diag-result-title').textContent = `Hasil: ${title}`;
+            document.getElementById('diag-result-desc').textContent = desc;
+
+            document.getElementById('diag-question-box').classList.add('hidden');
+            document.getElementById('diag-result-box').classList.remove('hidden');
+        }
+
+        // --- 10. GURU QR MODAL ---
+        function openGuruQrModal() {
+            document.getElementById('modal-guru-qr').classList.remove('hidden');
+        }
+        function closeGuruQrModal() {
+            document.getElementById('modal-guru-qr').classList.add('hidden');
+        }
+
+        // --- 11. QUICK CHECK-IN & SHELTER HELPERS ---
+        function handleQuickCheckin() {
+            const code = document.getElementById('ojol-qr-input').value.trim();
+            if (!code) {
+                alert('Silakan masukkan kode token sesi mengaji atau scan QR.');
+                return;
+            }
+            alert(`Presensi Berhasil!\nKode: ${code.toUpperCase()}\nLokasi: Terverifikasi di Shelter Cipayung (Jarak: 18m).`);
+            document.getElementById('ojol-qr-input').value = '';
+        }
+
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function changeShelter(val) {
+            alert('Menampilkan data logistik & presensi untuk Shelter ' + val);
+        }
+
+        function addManualPresence() {
+            const name = prompt("Nama Pengemudi Ojol:", "Pak Joko");
+            if (name) {
+                alert(`Presensi manual untuk ${name} berhasil dicatat.`);
+            }
+        }
+
+        // --- INITIAL RUN ---
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCurriculum('all');
+            initOjolRadarChart();
+        });
+    </script>
+</body>
+</html>
