@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Ojol Mengaji - PWA & Localhost Server</title>
+    
+    <!-- PWA Manifest & Icons -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="apple-touch-icon" href="assets/logo.jpg">
+
+    <!-- CSS Framework & Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- HTML5 QR Camera Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #0f172a; 
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-container { 
+            max-width: 480px; 
+            margin: 0 auto; 
+            min-height: 100vh; 
+            background-color: #f8fafc; 
+            position: relative; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .tab-active { color: #059669; border-bottom: 2px solid #059669; }
+        .animate-fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // Base API configuration (auto-detect localhost or fallback)
+        const API_BASE = window.location.origin.includes('http') ? window.location.origin : 'http://localhost:3000';
+
+        const LEVEL_NAMES = [
+            "Level 0 - Pengenalan Dasar (Iqro 1-2)",
+            "Level 1 - Mulai Membaca Huruf Sambung (Iqro 3-4)",
+            "Level 2 - Membaca Kalimat Belum Lancar (Iqro 5-6)",
+            "Level 3 - Cukup Lancar & Tajwid Dasar (Juz 'Amma)",
+            "Level 4 - Baik, Tartil & Konsisten (Al-Qur'an 30 Juz)"
+        ];
+
+        const LEVEL_BADGES = [
+            { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' },
+            { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
+            { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
+            { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
+            { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' }
+        ];
+
+        // --- HAVERSINE GPS DISTANCE FORMULA (Client Fallback) ---
+        const calculateDistance = (lat1, lon1, lat2, lon2) => {
+            const R = 6371e3; // metres
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        };
+
+        // --- SVG ICONS ---
+        const IconHome = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+        const IconScan = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>;
+        const IconBook = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2h0Z"/></svg>;
+        const IconUser = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+        const IconMapPin = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const IconAward = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>;
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            const [db, setDb] = useState({
+                users: [],
+                shelters: [],
+                sessions: [],
+                attendances: [],
+                assessments: []
+            });
+            const [serverOnline, setServerOnline] = useState(false);
+            const [authUser, setAuthUser] = useState(() => {
+                const saved = localStorage.getItem('om_user_auth');
+                return saved ? JSON.parse(saved) : null;
+            });
+            const [currentView, setCurrentView] = useState('home');
+            const [toast, setToast] = useState({ show: false, msg: '', type: 'info' });
+
+            const showToast = (msg, type = 'info') => {
+                setToast({ show: true, msg, type });
+                setTimeout(() => setToast({ show: false, msg: '', type: 'info' }), 3500);
+            };
+
+            // Fetch live state from backend server (REST API)
+            const syncWithServer = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/bootstrap`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.success && json.data) {
+                            setDb(json.data);
+                            setServerOnline(true);
+                            // Refresh current authUser profile if level changed
+                            if (authUser) {
+                                const currentInDb = json.data.users.find(u => u.id === authUser.id);
+                                if (currentInDb && currentInDb.level !== authUser.level) {
+                                    const updated = { ...authUser, level: currentInDb.level };
+                                    setAuthUser(updated);
+                                    localStorage.setItem('om_user_auth', JSON.stringify(updated));
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    setServerOnline(false);
+                }
+            };
+
+            // Polling sync every 2.5 seconds for real-time multi-device interaction
+            useEffect(() => {
+                syncWithServer();
+                const interval = setInterval(syncWithServer, 2500);
+                return () => clearInterval(interval);
+            }, [authUser?.id]);
+
+            // Register Service Worker
+            useEffect(() => {
+                if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+                    navigator.serviceWorker.register('sw.js').catch(err => {
+                        console.log('SW registration note:', err);
+                    });
+                }
+            }, []);
+
+            // Handle Login via Server REST API
+            const handleLogin = async (username, password) => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.user) {
+                        setAuthUser(data.user);
+                        localStorage.setItem('om_user_auth', JSON.stringify(data.user));
+                        setCurrentView('home');
+                        showToast(`Ahlan wa Sahlan, ${data.user.name}!`, 'success');
+                        syncWithServer();
+                    } else {
+                        showToast(data.message || 'Username atau password tidak cocok!', 'error');
+                    }
+                } catch (err) {
+                    // Fallback to local DB check if server is unreachable
+                    const localUser = db.users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password);
+                    if (localUser) {
+                        setAuthUser(localUser);
+                        localStorage.setItem('om_user_auth', JSON.stringify(localUser));
+                        setCurrentView('home');
+                        showToast(`Masuk (Mode Lokal): Ahlan wa Sahlan!`, 'info');
+                    } else {
+                        showToast('Gagal terhubung ke server atau akun tidak ditemukan.', 'error');
+                    }
+                }
+            };
+
+            const handleLogout = () => {
+                setAuthUser(null);
+                localStorage.removeItem('om_user_auth');
+                setCurrentView('home');
+                showToast('Berhasil keluar dari akun.', 'info');
+            };
+
+            if (!authUser) {
+                return (
+                    <LoginScreen 
+                        onLogin={handleLogin} 
+                        toast={toast} 
+                        serverOnline={serverOnline} 
+                    />
+                );
+            }
+
+            return (
+                <div className="mobile-container">
+                    {/* Header Bar */}
+                    <header className="bg-emerald-600 text-white px-4 py-3 shadow-md flex justify-between items-center sticky top-0 z-30">
+                        <div className="flex items-center space-x-2.5">
+                            <img src="assets/logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-emerald-300 object-cover bg-white" />
+                            <div>
+                                <div className="flex items-center space-x-1.5">
+                                    <h1 className="text-base font-bold leading-tight">Ojol Mengaji</h1>
+                                    <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-300 animate-pulse' : 'bg-amber-400'}`} title={serverOnline ? 'Tersambung ke Server Localhost' : 'Mode Offline'}></span>
+                                </div>
+                                <p className="text-[10px] text-emerald-100 font-medium">Binaan Al-Qur'an Hidayatullah</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-[10px] bg-emerald-700/80 px-2 py-0.5 rounded text-emerald-100 font-medium capitalize">
+                                {authUser.role.replace('_', ' ')}
+                            </span>
+                            <button 
+                                onClick={handleLogout} 
+                                title="Keluar"
+                                className="text-xs bg-emerald-800 hover:bg-emerald-900 text-emerald-100 px-2.5 py-1 rounded transition flex items-center space-x-1"
+                            >
+                                <span>Keluar</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Server Connection Bar */}
+                    <div className="bg-emerald-900 text-emerald-100 px-4 py-1 text-[10px] flex justify-between items-center">
+                        <span className="flex items-center space-x-1">
+                            <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-green-400' : 'bg-red-400'}`}></span>
+                            <span>{serverOnline ? 'Localhost Backend: Aktif & Sinkron' : 'Menghubungkan ke Localhost...'}</span>
+                        </span>
+                        <span className="text-emerald-300 font-mono">Port 3000</span>
+                    </div>
+
+                    {/* Toast Notification */}
+                    {toast.show && (
+                        <div className={`fixed top-16 left-1/2 transform -translate-x-1/2 z-50 text-xs px-4 py-2.5 rounded-lg shadow-xl w-11/12 max-w-sm text-center font-medium animate-fade-in ${
+                            toast.type === 'error' ? 'bg-red-600 text-white' :
+                            toast.type === 'success' ? 'bg-emerald-700 text-white' :
+                            'bg-gray-800 text-white'
+                        }`}>
+                            {toast.msg}
+                        </div>
+                    )}
+
+                    {/* Main Scrollable Content */}
+                    <main className="flex-1 overflow-y-auto p-4 pb-24 hide-scrollbar">
+                        {currentView === 'home' && (
+                            <Dashboard 
+                                user={authUser} 
+                                db={db} 
+                                syncWithServer={syncWithServer} 
+                                showToast={showToast} 
+                                setCurrentView={setCurrentView} 
+                            />
+                        )}
+                        {currentView === 'scan' && (
+                            <ScanScreen 
+                                user={authUser} 
+                                db={db} 
+                                syncWithServer={syncWithServer} 
+                                showToast={showToast} 
+                                setCurrentView={setCurrentView} 
+                            />
+                        )}
+                        {currentView === 'asesmen' && (
+                            <AssessmentScreen 
+                                user={authUser} 
+                                db={db} 
+                                syncWithServer={syncWithServer} 
+                                showToast={showToast} 
+                            />
+                        )}
+                        {currentView === 'profile' && (
+                            <ProfileScreen 
+                                user={authUser} 
+                                db={db} 
+                                onLogout={handleLogout} 
+                                showToast={showToast}
+                            />
+                        )}
+                    </main>
+
+                    {/* Bottom Floating Navigation */}
+                    <nav className="bg-white border-t border-gray-200 flex justify-around py-2 px-1 fixed bottom-0 w-full max-w-[480px] z-30 shadow-lg">
+                        <NavButton 
+                            icon={<IconHome />} 
+                            label="Beranda" 
+                            active={currentView === 'home'} 
+                            onClick={() => setCurrentView('home')} 
+                        />
+                        {authUser.role === 'peserta' && (
+                            <NavButton 
+                                icon={<IconScan />} 
+                                label="Presensi" 
+                                active={currentView === 'scan'} 
+                                onClick={() => setCurrentView('scan')} 
+                            />
+                        )}
+                        {authUser.role === 'guru' && (
+                            <NavButton 
+                                icon={<IconBook />} 
+                                label="Asesmen" 
+                                active={currentView === 'asesmen'} 
+                                onClick={() => setCurrentView('asesmen')} 
+                            />
+                        )}
+                        <NavButton 
+                            icon={<IconUser />} 
+                            label="Profil" 
+                            active={currentView === 'profile'} 
+                            onClick={() => setCurrentView('profile')} 
+                        />
+                    </nav>
+                </div>
+            );
+        };
+
+        const NavButton = ({ icon, label, active, onClick }) => (
+            <button 
+                onClick={onClick} 
+                className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition ${
+                    active ? 'text-emerald-600 font-bold' : 'text-gray-400 hover:text-gray-600'
+                }`}
+            >
+                {icon}
+                <span className="text-[11px] mt-1">{label}</span>
+            </button>
+        );
+
+        // --- SCREEN: LOGIN SCREEN ---
+        const LoginScreen = ({ onLogin, toast, serverOnline }) => {
+            const [username, setUsername] = useState('ojol1');
+            const [password, setPassword] = useState('123');
+
+            const quickLogin = (u, p) => {
+                setUsername(u);
+                setPassword(p);
+                onLogin(u, p);
+            };
+
+            return (
+                <div className="mobile-container bg-emerald-50/50 justify-between">
+                    <div className="p-6">
+                        {/* Hero / Logo Section */}
+                        <div className="text-center mt-3 mb-5">
+                            <div className="relative mx-auto w-24 h-24 rounded-full p-1 bg-white shadow-md border-2 border-emerald-500 overflow-hidden mb-3">
+                                <img src="assets/logo.jpg" alt="Logo Ojol Mengaji" className="w-full h-full object-cover rounded-full" />
+                            </div>
+                            <h1 className="text-2xl font-black text-gray-800 tracking-tight">Ojol Mengaji</h1>
+                            <p className="text-xs text-emerald-800 font-medium mt-1">Pembinaan Tilawah Al-Qur'an Mitra Pengemudi</p>
+                            
+                            <div className="flex items-center justify-center space-x-2 mt-2">
+                                <span className="inline-block text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">
+                                    Hidayatullah
+                                </span>
+                                <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                    serverOnline ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${serverOnline ? 'bg-white' : 'bg-amber-600'}`}></span>
+                                    {serverOnline ? 'Localhost Connected' : 'Mencari Server...'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Banner Image Card */}
+                        <div className="rounded-xl overflow-hidden shadow-sm mb-5 border border-emerald-100">
+                            <img src="assets/hero.jpg" alt="Hero Ojol Mengaji" className="w-full h-32 object-cover" />
+                        </div>
+
+                        {toast.show && (
+                            <div className={`p-3 rounded-lg mb-4 text-xs font-medium text-center ${
+                                toast.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                            }`}>
+                                {toast.msg}
+                            </div>
+                        )}
+
+                        {/* Form Login */}
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3.5">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Username Akun</label>
+                                <input 
+                                    type="text" 
+                                    value={username} 
+                                    onChange={e => setUsername(e.target.value)} 
+                                    className="w-full p-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" 
+                                    placeholder="Masukkan username" 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Password</label>
+                                <input 
+                                    type="password" 
+                                    value={password} 
+                                    onChange={e => setPassword(e.target.value)} 
+                                    className="w-full p-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" 
+                                    placeholder="••••••••" 
+                                />
+                            </div>
+                            <button 
+                                onClick={() => onLogin(username, password)} 
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg shadow-md transition text-sm flex items-center justify-center space-x-1"
+                            >
+                                <span>Masuk ke Localhost</span>
+                            </button>
+                        </div>
+
+                        {/* 1-Click Fast Switcher for Demo Testing */}
+                        <div className="mt-5">
+                            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center mb-2">
+                                Akses Cepat Demo (Klik untuk masuk langsung):
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <button 
+                                    onClick={() => quickLogin('ojol1', '123')} 
+                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
+                                >
+                                    <div className="font-bold text-emerald-800">🛵 Peserta 1 (Joko)</div>
+                                    <div className="text-[10px] text-gray-500">ojol1 • Level 1</div>
+                                </button>
+                                <button 
+                                    onClick={() => quickLogin('ojol2', '123')} 
+                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
+                                >
+                                    <div className="font-bold text-emerald-800">🛵 Peserta 2 (Rudi)</div>
+                                    <div className="text-[10px] text-gray-500">ojol2 • Level 0</div>
+                                </button>
+                                <button 
+                                    onClick={() => quickLogin('guru1', '123')} 
+                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
+                                >
+                                    <div className="font-bold text-emerald-800">📖 Guru (Ust. Ahmad)</div>
+                                    <div className="text-[10px] text-gray-500">guru1 • Buka Sesi/QR</div>
+                                </button>
+                                <button 
+                                    onClick={() => quickLogin('admin', '123')} 
+                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
+                                >
+                                    <div className="font-bold text-emerald-800">🏢 Admin Pusat</div>
+                                    <div className="text-[10px] text-gray-500">admin • Rekap & Evaluasi</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 text-center text-[11px] text-gray-400">
+                        PWA Ojol Mengaji • Localhost Backend v2.0
+                    </div>
+                </div>
+            );
+        };
+
+        // --- DASHBOARD ROUTER ---
+        const Dashboard = ({ user, db, syncWithServer, showToast, setCurrentView }) => {
+            if (user.role === 'peserta') return <DashboardPeserta user={user} db={db} setCurrentView={setCurrentView} />;
+            if (user.role === 'guru') return <DashboardGuru user={user} db={db} syncWithServer={syncWithServer} showToast={showToast} setCurrentView={setCurrentView} />;
+            if (user.role === 'admin_shelter' || user.role === 'admin_program') return <DashboardAdmin user={user} db={db} syncWithServer={syncWithServer} showToast={showToast} />;
+            return <div className="p-4 text-center text-gray-500">Role tidak terdefinisi.</div>;
+        };
+
+        // --- SCREEN: DASHBOARD PESERTA (OJOL) ---
+        const DashboardPeserta = ({ user, db, setCurrentView }) => {
+            const myAttendances = (db.attendances || []).filter(a => a.user_id === user.id);
+            const assessments = (db.assessments || []).filter(a => a.student_id === user.id);
+            const latestAssessment = assessments.length > 0 ? assessments[assessments.length - 1] : null;
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman' };
+            const activeSession = (db.sessions || []).find(s => s.shelter_id === user.shelter_id && s.status === 'active');
+            const hasCheckedInToday = activeSession ? myAttendances.some(a => a.session_id === activeSession.id) : false;
+
+            const currentLevel = user.level !== undefined ? user.level : 0;
+            const badgeStyle = LEVEL_BADGES[currentLevel] || LEVEL_BADGES[0];
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    {/* Welcome Card with Hero Image */}
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+                        <div className="relative z-10">
+                            <span className="text-[10px] uppercase font-bold tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
+                                Sahabat Hijrah Ojol
+                            </span>
+                            <h2 className="text-lg font-bold mt-1.5">{user.name}</h2>
+                            <p className="text-xs text-emerald-100 flex items-center mt-1">
+                                <IconMapPin />
+                                <span className="ml-1">{shelter.name}</span>
+                            </p>
+                        </div>
+                        <div className="absolute -right-4 -bottom-4 w-28 h-28 opacity-20 pointer-events-none">
+                            <img src="assets/logo.jpg" alt="watermark" className="w-full h-full rounded-full object-cover" />
+                        </div>
+                    </div>
+
+                    {/* Sesi Mengaji Status Banner */}
+                    {activeSession ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center justify-between">
+                            <div>
+                                <div className="flex items-center space-x-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                                    <span className="text-xs font-bold text-amber-900">Sesi Mengaji Sedang Dibuka!</span>
+                                </div>
+                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                    {hasCheckedInToday ? '✓ Anda sudah presensi hari ini' : 'Segera presensi di shelter sebelum sesi ditutup'}
+                                </p>
+                            </div>
+                            {!hasCheckedInToday && (
+                                <button 
+                                    onClick={() => setCurrentView('scan')}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-lg shadow-sm"
+                                >
+                                    Presensi
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="bg-gray-100 border border-gray-200 rounded-xl p-3 text-xs text-gray-500 flex items-center justify-between">
+                            <span>Sesi shelter saat ini: <b>Belum Dibuka</b></span>
+                            <span className="text-[10px] bg-gray-200 px-2 py-0.5 rounded">Menunggu Ustadz</span>
+                        </div>
+                    )}
+
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-xs text-center">
+                            <span className="text-2xl font-black text-emerald-600">{currentLevel}</span>
+                            <span className="block text-[11px] font-semibold text-gray-500 mt-0.5">Level Tilawah</span>
+                            <span className="text-[10px] text-emerald-700 font-medium">Skala 0-4</span>
+                        </div>
+                        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-xs text-center">
+                            <span className="text-2xl font-black text-blue-600">{myAttendances.length}</span>
+                            <span className="block text-[11px] font-semibold text-gray-500 mt-0.5">Total Kehadiran</span>
+                            <span className="text-[10px] text-blue-700 font-medium">Halaqah Terverifikasi</span>
+                        </div>
+                    </div>
+
+                    {/* Level Detail & Rubrik Status */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center space-x-1.5">
+                                <IconAward />
+                                <span>Status Kemampuan Baca</span>
+                            </h3>
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                                Level {currentLevel}
+                            </span>
+                        </div>
+
+                        <p className="text-sm font-bold text-gray-800">{LEVEL_NAMES[currentLevel]}</p>
+
+                        {/* Progress Bar (Level 0 - 4) */}
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] text-gray-400 font-semibold">
+                                <span>Iqro Dasar</span>
+                                <span>Al-Qur'an Lancar</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                <div 
+                                    className="bg-emerald-600 h-2.5 rounded-full transition-all duration-500" 
+                                    style={{ width: `${Math.max(15, (currentLevel / 4) * 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+
+                        {latestAssessment && (
+                            <div className="bg-emerald-50/60 border border-emerald-100 rounded-lg p-3 text-xs mt-3">
+                                <p className="font-bold text-emerald-900 mb-1">Catatan Pembimbing Terakhir:</p>
+                                <p className="text-gray-700 italic">"{latestAssessment.notes}"</p>
+                                <div className="mt-2 text-[10px] text-gray-400">
+                                    Dinilai pada: {new Date(latestAssessment.date).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Riwayat Presensi Realtime dari Server */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
+                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
+                            Riwayat Presensi ({myAttendances.length})
+                        </h3>
+                        {myAttendances.length === 0 ? (
+                            <p className="text-xs text-gray-400 text-center py-4">Belum ada catatan presensi di server.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {myAttendances.slice().reverse().map((att, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-gray-50 rounded-lg">
+                                        <div>
+                                            <p className="font-semibold text-gray-800">{new Date(att.timestamp).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+                                            <p className="text-[10px] text-gray-500">{new Date(att.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • GPS Server: ~{att.distance_meters}m</p>
+                                        </div>
+                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center space-x-0.5">
+                                            <IconCheck />
+                                            <span>Valid</span>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SCREEN: DASHBOARD GURU (USTADZ) ---
+        const DashboardGuru = ({ user, db, syncWithServer, showToast, setCurrentView }) => {
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman' };
+            const activeSession = (db.sessions || []).find(s => s.teacher_id === user.id && s.status === 'active');
+            const myStudents = (db.users || []).filter(u => u.role === 'peserta' && u.shelter_id === user.shelter_id);
+            const qrCanvasRef = useRef(null);
+
+            // Buka Sesi Baru via REST API
+            const openSession = async () => {
+                if (activeSession) return showToast('Sesi sudah aktif!', 'error');
+                try {
+                    const res = await fetch(`${API_BASE}/api/sessions/open`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ teacher_id: user.id, shelter_id: user.shelter_id })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast(`Sesi dibuka! Token QR: ${data.session.qr_token}`, 'success');
+                        syncWithServer();
+                    } else {
+                        showToast(data.message || 'Gagal membuka sesi', 'error');
+                    }
+                } catch (err) {
+                    showToast('Gagal terhubung ke backend server!', 'error');
+                }
+            };
+
+            // Tutup Sesi via REST API
+            const closeSession = async () => {
+                if (!activeSession) return;
+                try {
+                    const res = await fetch(`${API_BASE}/api/sessions/close`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: activeSession.id, teacher_id: user.id })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('Sesi mengaji resmi ditutup di server.', 'info');
+                        syncWithServer();
+                    }
+                } catch (err) {
+                    showToast('Gagal menutup sesi di server.', 'error');
+                }
+            };
+
+            // Render visual QR Code saat sesi aktif
+            useEffect(() => {
+                if (activeSession && qrCanvasRef.current && window.QRCode) {
+                    qrCanvasRef.current.innerHTML = '';
+                    new QRCode(qrCanvasRef.current, {
+                        text: activeSession.qr_token,
+                        width: 170,
+                        height: 170,
+                        colorDark: "#064e3b",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+            }, [activeSession?.qr_token]);
+
+            const sessionAttendances = activeSession ? (db.attendances || []).filter(a => a.session_id === activeSession.id) : [];
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    {/* Teacher Header */}
+                    <div className="bg-emerald-700 text-white p-4 rounded-2xl shadow-sm">
+                        <span className="text-[10px] bg-emerald-800 px-2 py-0.5 rounded-full font-semibold uppercase">
+                            Dashboard Pengajar Al-Qur'an
+                        </span>
+                        <h2 className="text-lg font-bold mt-1">{user.name}</h2>
+                        <p className="text-xs text-emerald-100 flex items-center mt-0.5">
+                            <IconMapPin />
+                            <span className="ml-1">{shelter.name}</span>
+                        </p>
+                    </div>
+
+                    {/* Sesi Halaqah & QR Code Generator */}
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
+                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
+                            Manajemen Sesi Halaqah
+                        </h3>
+
+                        {!activeSession ? (
+                            <div className="py-4 space-y-3">
+                                <p className="text-xs text-gray-500">
+                                    Buka sesi untuk mulai mengajar. Server akan membuat Token QR dinamis yang dapat discan oleh santri ojol di sekitarmu.
+                                </p>
+                                <button 
+                                    onClick={openSession} 
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl w-full shadow-md text-sm transition"
+                                >
+                                    + Buka Sesi Mengaji (Generate QR)
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="bg-emerald-50/70 border-2 border-dashed border-emerald-300 rounded-xl p-4 flex flex-col items-center">
+                                    <p className="text-xs text-emerald-800 font-semibold mb-3">
+                                        Tunjukkan QR Code ini ke peserta ojol:
+                                    </p>
+                                    
+                                    {/* Real Visual QR Code */}
+                                    <div ref={qrCanvasRef} className="bg-white p-2.5 rounded-lg shadow-sm border border-emerald-200 mb-2"></div>
+                                    
+                                    <div className="flex items-center space-x-2 mt-2">
+                                        <span className="text-sm font-mono font-bold tracking-widest text-emerald-950 bg-white px-3 py-1.5 rounded border border-emerald-200">
+                                            {activeSession.qr_token}
+                                        </span>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard?.writeText(activeSession.qr_token);
+                                                showToast('Kode disalin: ' + activeSession.qr_token, 'success');
+                                            }}
+                                            className="text-xs bg-emerald-600 text-white px-2 py-1.5 rounded hover:bg-emerald-700 font-medium"
+                                        >
+                                            Salin
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 mt-2">Token aktif di server • Terikat Shelter Sudirman</p>
+                                </div>
+
+                                <div className="flex justify-between items-center text-xs px-2 pt-1">
+                                    <span className="font-semibold text-gray-700">
+                                        Hadir di Server: <b className="text-emerald-700">{sessionAttendances.length}</b> / {myStudents.length} santri
+                                    </span>
+                                    <button 
+                                        onClick={closeSession} 
+                                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 px-3 rounded-lg border border-red-200 transition"
+                                    >
+                                        Tutup Sesi
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Student List with Real-time Presence Check */}
+                    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                Peserta Binaan Shelter ({myStudents.length})
+                            </h3>
+                            <button 
+                                onClick={() => setCurrentView('asesmen')} 
+                                className="text-xs text-emerald-700 font-bold hover:underline"
+                            >
+                                + Input Asesmen
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {myStudents.map(student => {
+                                const isPresent = activeSession && sessionAttendances.some(a => a.user_id === student.id);
+                                return (
+                                    <div key={student.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl bg-gray-50 hover:bg-gray-100/60 transition">
+                                        <div>
+                                            <p className="font-bold text-xs text-gray-800">{student.name}</p>
+                                            <p className="text-[10px] text-gray-500">
+                                                Level Tilawah: <b className="text-emerald-700">Level {student.level !== undefined ? student.level : '?'}</b>
+                                            </p>
+                                        </div>
+                                        <div>
+                                            {activeSession ? (
+                                                isPresent ? (
+                                                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1">
+                                                        <IconCheck /> <span>Hadir</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="bg-gray-200 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                                                        Belum Presensi
+                                                    </span>
+                                                )
+                                            ) : (
+                                                <button 
+                                                    onClick={() => setCurrentView('asesmen')}
+                                                    className="text-[11px] bg-white border border-gray-200 text-gray-700 px-2 py-1 rounded-md font-medium hover:bg-gray-50"
+                                                >
+                                                    Nilai
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SCREEN: DASHBOARD ADMIN (SHELTER / PUSAT) ---
+        const DashboardAdmin = ({ user, db, syncWithServer, showToast }) => {
+            const [selectedTab, setSelectedTab] = useState('summary');
+            const totalPeserta = (db.users || []).filter(u => u.role === 'peserta').length;
+            const totalGuru = (db.users || []).filter(u => u.role === 'guru').length;
+            const totalSesi = (db.sessions || []).length;
+            const totalHadir = (db.attendances || []).length;
+
+            const handleResetDB = async () => {
+                if (!confirm('Apakah Anda yakin ingin me-reset database server ke data awal contoh?')) return;
+                try {
+                    const res = await fetch(`${API_BASE}/api/admin/reset`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('Database server berhasil di-reset.', 'success');
+                        syncWithServer();
+                    }
+                } catch (e) {
+                    showToast('Gagal mereset database server.', 'error');
+                }
+            };
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    {/* Admin Header */}
+                    <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 rounded-2xl shadow-sm">
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-semibold uppercase">
+                            {user.role === 'admin_program' ? 'Manajemen Program Pusat' : 'Admin Operasional Shelter'}
+                        </span>
+                        <h2 className="text-lg font-bold mt-1">{user.name}</h2>
+                        <p className="text-xs text-emerald-200">Monitoring & Evaluasi Tilawah Berkelanjutan</p>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
+                            <span className="text-2xl font-black text-gray-800">{totalPeserta}</span>
+                            <span className="block text-[11px] font-semibold text-gray-500">Santri Ojol Aktif</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
+                            <span className="text-2xl font-black text-emerald-600">{totalGuru}</span>
+                            <span className="block text-[11px] font-semibold text-gray-500">Asatidz Pembina</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
+                            <span className="text-2xl font-black text-blue-600">{totalSesi}</span>
+                            <span className="block text-[11px] font-semibold text-gray-500">Sesi Terlaksana</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
+                            <span className="text-2xl font-black text-purple-600">{totalHadir}</span>
+                            <span className="block text-[11px] font-semibold text-gray-500">Total Presensi</span>
+                        </div>
+                    </div>
+
+                    {/* Sub Navigation */}
+                    <div className="flex border-b border-gray-200 bg-white rounded-t-xl px-2 pt-2">
+                        <button 
+                            onClick={() => setSelectedTab('summary')} 
+                            className={`flex-1 py-2 text-xs font-bold text-center ${selectedTab === 'summary' ? 'tab-active' : 'text-gray-400'}`}
+                        >
+                            Log Presensi Realtime
+                        </button>
+                        <button 
+                            onClick={() => setSelectedTab('students')} 
+                            className={`flex-1 py-2 text-xs font-bold text-center ${selectedTab === 'students' ? 'tab-active' : 'text-gray-400'}`}
+                        >
+                            Progres Santri
+                        </button>
+                    </div>
+
+                    {/* Tab 1: Log Presensi Realtime dari Server */}
+                    {selectedTab === 'summary' && (
+                        <div className="bg-white p-4 rounded-b-xl border border-t-0 border-gray-100 shadow-xs space-y-3">
+                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                Riwayat Presensi Terverifikasi ({totalHadir})
+                            </h3>
+                            {totalHadir === 0 ? (
+                                <p className="text-xs text-gray-400 text-center py-4">Belum ada presensi tercatat di server.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {(db.attendances || []).slice().reverse().map((att, idx) => {
+                                        const student = (db.users || []).find(u => u.id === att.user_id);
+                                        return (
+                                            <div key={idx} className="p-2.5 bg-gray-50 rounded-lg text-xs border border-gray-100 flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-bold text-gray-800">{student ? student.name : att.user_name || 'Santri Ojol'}</p>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        Jarak Server GPS: <span className="text-emerald-700 font-semibold">{att.distance_meters}m</span> • {new Date(att.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
+                                                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                                                    Status Valid
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Tab 2: Progres Santri */}
+                    {selectedTab === 'students' && (
+                        <div className="bg-white p-4 rounded-b-xl border border-t-0 border-gray-100 shadow-xs space-y-2">
+                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">
+                                Distribusi Level Peserta di Server
+                            </h3>
+                            {(db.users || []).filter(u => u.role === 'peserta').map(student => (
+                                <div key={student.id} className="p-2.5 bg-gray-50 rounded-lg text-xs flex justify-between items-center">
+                                    <div>
+                                        <p className="font-bold text-gray-800">{student.name}</p>
+                                        <p className="text-[10px] text-gray-500">{LEVEL_NAMES[student.level || 0]}</p>
+                                    </div>
+                                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
+                                        Level {student.level !== undefined ? student.level : 0}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Reset Database Button */}
+                    <div className="pt-2">
+                        <button 
+                            onClick={handleResetDB}
+                            className="w-full text-xs text-gray-400 hover:text-red-500 py-2 border border-dashed border-gray-300 rounded-lg transition"
+                        >
+                            Reset Data Percobaan ke Awal (Server Database)
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SCREEN: SCAN SCREEN (PRESENSI GPS & QR DI SISI SERVER) ---
+        const ScanScreen = ({ user, db, syncWithServer, showToast, setCurrentView }) => {
+            const [qrInput, setQrInput] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [gpsMode, setGpsMode] = useState('simulated_valid'); // 'simulated_valid', 'simulated_invalid', 'real'
+            const [cameraActive, setCameraActive] = useState(false);
+            const scannerRef = useRef(null);
+
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { lat: -6.2, lng: 106.816666, radius: 75 };
+            const activeSession = (db.sessions || []).find(s => s.status === 'active' && s.shelter_id === user.shelter_id);
+
+            // Handler Kamera Scanner HTML5-QRCode
+            const toggleCamera = () => {
+                if (cameraActive) {
+                    if (scannerRef.current) {
+                        scannerRef.current.stop().then(() => {
+                            scannerRef.current.clear();
+                            setCameraActive(false);
+                        }).catch(e => setCameraActive(false));
+                    }
+                } else {
+                    setCameraActive(true);
+                    setTimeout(() => {
+                        try {
+                            const html5QrCode = new Html5Qrcode("reader");
+                            scannerRef.current = html5QrCode;
+                            html5QrCode.start(
+                                { facingMode: "environment" },
+                                { fps: 10, qrbox: 220 },
+                                (decodedText) => {
+                                    setQrInput(decodedText);
+                                    html5QrCode.stop().then(() => {
+                                        html5QrCode.clear();
+                                        setCameraActive(false);
+                                        showToast('QR Code terdeteksi: ' + decodedText, 'success');
+                                    });
+                                },
+                                (errorMessage) => {
+                                    // continuous scanning...
+                                }
+                            ).catch(err => {
+                                showToast('Tidak dapat membuka kamera: ' + err.message, 'error');
+                                setCameraActive(false);
+                            });
+                        } catch (err) {
+                            showToast('Gagal inisialisasi modul kamera.', 'error');
+                            setCameraActive(false);
+                        }
+                    }, 300);
+                }
+            };
+
+            const sendAttendanceToServer = async (userLat, userLng) => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/attendances`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: activeSession.id,
+                            user_id: user.id,
+                            lat: userLat,
+                            lng: userLng,
+                            qr_token: qrInput.trim().toUpperCase()
+                        })
+                    });
+
+                    const data = await res.json();
+                    setLoading(false);
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        syncWithServer();
+                        setCurrentView('home');
+                    } else {
+                        showToast(data.message || 'Presensi gagal divalidasi server.', 'error');
+                    }
+                } catch (err) {
+                    setLoading(false);
+                    showToast('Gagal terhubung ke server localhost untuk validasi!', 'error');
+                }
+            };
+
+            const handlePresensi = () => {
+                const token = qrInput.trim().toUpperCase();
+                if (!token) return showToast("Masukkan atau scan Token QR dari Ustadz!", 'error');
+                if (!activeSession) return showToast("Tidak ada sesi mengaji aktif di shelter Anda saat ini.", 'error');
+
+                setLoading(true);
+
+                if (gpsMode === 'real') {
+                    if (!navigator.geolocation) {
+                        setLoading(false);
+                        return showToast('Sensor GPS tidak didukung perangkat.', 'error');
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => sendAttendanceToServer(pos.coords.latitude, pos.coords.longitude),
+                        (err) => {
+                            setLoading(false);
+                            showToast('Gagal membaca GPS: ' + err.message + '. Gunakan opsi simulasi.', 'error');
+                        },
+                        { enableHighAccuracy: true, timeout: 8000 }
+                    );
+                } else if (gpsMode === 'simulated_valid') {
+                    // Koordinat berjarak ~18 meter dari Shelter Sudirman
+                    sendAttendanceToServer(-6.200020, 106.816680);
+                } else {
+                    // Koordinat berjarak ~180 meter (Di luar radius 75m)
+                    sendAttendanceToServer(-6.201500, 106.818000);
+                }
+            };
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+                        <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                            <IconScan />
+                        </div>
+                        <h2 className="text-base font-bold text-gray-800">Presensi Kehadiran Tilawah</h2>
+                        <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+                            Verifikasi ganda: Token QR Dinamis & Server-Side Geolocation Haversine ({shelter.radius}m).
+                        </p>
+
+                        {/* Scanner View Container */}
+                        {cameraActive && (
+                            <div className="mt-4 p-2 bg-gray-900 rounded-xl overflow-hidden">
+                                <div id="reader" className="w-full"></div>
+                                <button 
+                                    onClick={toggleCamera} 
+                                    className="mt-2 text-xs bg-red-600 text-white font-bold py-1 px-3 rounded"
+                                >
+                                    Tutup Kamera
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="mt-5 space-y-3.5">
+                            {/* Input Token QR */}
+                            <div>
+                                <label className="block text-left text-xs font-semibold text-gray-600 mb-1">
+                                    Token Sesi QR
+                                </label>
+                                <div className="flex space-x-2">
+                                    <input 
+                                        type="text" 
+                                        value={qrInput} 
+                                        onChange={(e) => setQrInput(e.target.value)} 
+                                        placeholder="Cth: OM-SDR-XXXX" 
+                                        className="flex-1 p-2.5 border border-gray-300 rounded-lg text-center font-mono font-bold tracking-wider uppercase text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    />
+                                    <button 
+                                        onClick={toggleCamera} 
+                                        title="Buka Kamera Scan"
+                                        className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100"
+                                    >
+                                        📷 Kamera
+                                    </button>
+                                </div>
+
+                                {activeSession && (
+                                    <div className="mt-1.5 text-left">
+                                        <button 
+                                            onClick={() => setQrInput(activeSession.qr_token)} 
+                                            className="text-[11px] text-emerald-600 hover:underline font-medium"
+                                        >
+                                            ⚡ Isi Cepat dengan Kode Sesi Aktif ({activeSession.qr_token})
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* GPS Simulation Switcher for Testing */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-left">
+                                <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wide mb-1.5">
+                                    Opsi Uji Coba Geolocation (GPS):
+                                </label>
+                                <div className="space-y-1.5 text-xs">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="gps" 
+                                            checked={gpsMode === 'simulated_valid'} 
+                                            onChange={() => setGpsMode('simulated_valid')} 
+                                            className="text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <span className="font-medium text-gray-700">Simulasi: Di Dalam Shelter (~18m) <b className="text-emerald-600">[Valid]</b></span>
+                                    </label>
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="gps" 
+                                            checked={gpsMode === 'simulated_invalid'} 
+                                            onChange={() => setGpsMode('simulated_invalid')} 
+                                            className="text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <span className="font-medium text-gray-700">Simulasi: Di Luar Jangkauan (~180m) <b className="text-red-600">[Tolak]</b></span>
+                                    </label>
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="gps" 
+                                            checked={gpsMode === 'real'} 
+                                            onChange={() => setGpsMode('real')} 
+                                            className="text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <span className="font-medium text-gray-700">GPS Asli Perangkat (Lokasi HP/Laptop)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handlePresensi} 
+                                disabled={loading}
+                                className={`w-full font-bold py-3 rounded-xl shadow-md transition text-sm ${
+                                    loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
+                                } text-white`}
+                            >
+                                {loading ? 'Memvalidasi ke Backend Server...' : 'Kirim Presensi Sekarang'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SCREEN: ASESMEN TILAWAH (USTADZ / GURU) ---
+        const AssessmentScreen = ({ user, db, syncWithServer, showToast }) => {
+            const myStudents = (db.users || []).filter(u => u.role === 'peserta' && u.shelter_id === user.shelter_id);
+            const [selectedStudent, setSelectedStudent] = useState(myStudents[0]?.id?.toString() || '');
+            const [scores, setScores] = useState({ hijaiyah: 2, lancar: 2, makhraj: 2, tajwid: 2 });
+            const [assignedLevel, setAssignedLevel] = useState(1);
+            const [notes, setNotes] = useState('');
+            const [submitting, setSubmitting] = useState(false);
+
+            // Auto calculate recommended level based on average score
+            useEffect(() => {
+                const total = scores.hijaiyah + scores.lancar + scores.makhraj + scores.tajwid;
+                const avg = total / 4;
+                if (avg < 1.6) setAssignedLevel(0);
+                else if (avg < 2.5) setAssignedLevel(1);
+                else if (avg < 3.2) setAssignedLevel(2);
+                else if (avg < 3.8) setAssignedLevel(3);
+                else setAssignedLevel(4);
+            }, [scores]);
+
+            const currentStudentObj = myStudents.find(s => s.id === parseInt(selectedStudent));
+
+            const handleSubmit = async () => {
+                if (!selectedStudent) return showToast("Pilih santri ojol terlebih dahulu!", 'error');
+                setSubmitting(true);
+
+                try {
+                    const res = await fetch(`${API_BASE}/api/assessments`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            student_id: parseInt(selectedStudent),
+                            teacher_id: user.id,
+                            score_json: scores,
+                            level_assigned: parseInt(assignedLevel),
+                            notes: notes.trim() || 'Peserta menunjukkan progres tilawah yang baik.'
+                        })
+                    });
+
+                    const data = await res.json();
+                    setSubmitting(false);
+
+                    if (data.success) {
+                        showToast(`Asesmen tersimpan di server! Level ${currentStudentObj?.name} menjadi Level ${assignedLevel}`, 'success');
+                        setNotes('');
+                        syncWithServer();
+                    } else {
+                        showToast(data.message || 'Gagal menyimpan asesmen ke server.', 'error');
+                    }
+                } catch (e) {
+                    setSubmitting(false);
+                    showToast('Gagal terhubung ke backend server!', 'error');
+                }
+            };
+
+            const handleScoreChange = (field, val) => setScores({ ...scores, [field]: parseInt(val) });
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-sm">
+                        <h2 className="text-base font-bold">Form Asesmen & Rubrik Tilawah</h2>
+                        <p className="text-xs text-emerald-100">Standardisasi Pengujian Kemampuan Membaca Al-Qur'an (Level 0 - 4)</p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                        {/* Pilih Santri */}
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                                Pilih Santri Ojol Binaan
+                            </label>
+                            <select 
+                                value={selectedStudent} 
+                                onChange={e => setSelectedStudent(e.target.value)} 
+                                className="w-full p-2.5 text-xs font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"
+                            >
+                                <option value="">-- Pilih Santri --</option>
+                                {myStudents.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} (Level Saat Ini: {s.level !== undefined ? s.level : '0'})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {selectedStudent && (
+                            <div className="space-y-4 pt-2">
+                                {/* Rubrik Penilaian 4 Aspek */}
+                                <div className="space-y-2.5 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
+                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wide border-b pb-1.5">
+                                        Skor Kompetensi Rubrik (Skala 1 - 4)
+                                    </h3>
+                                    {[
+                                        { key: 'hijaiyah', label: '1. Pengenalan Huruf & Harakat' },
+                                        { key: 'lancar', label: '2. Kelancaran Membaca / Artikulasi' },
+                                        { key: 'makhraj', label: '3. Makharijul Huruf & Sifat' },
+                                        { key: 'tajwid', label: '4. Penerapan Hukum Tajwid Dasar' }
+                                    ].map(item => (
+                                        <div key={item.key} className="flex justify-between items-center text-xs">
+                                            <span className="text-gray-700 font-medium">{item.label}</span>
+                                            <select 
+                                                value={scores[item.key]} 
+                                                onChange={(e) => handleScoreChange(item.key, e.target.value)} 
+                                                className="p-1.5 text-xs border border-gray-300 rounded-md font-semibold bg-white"
+                                            >
+                                                <option value="1">1 - Kurang</option>
+                                                <option value="2">2 - Cukup</option>
+                                                <option value="3">3 - Baik</option>
+                                                <option value="4">4 - Sangat Baik</option>
+                                            </select>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Rekomendasi Level */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                                        Penetapan Level Tilawah
+                                    </label>
+                                    <select 
+                                        value={assignedLevel} 
+                                        onChange={e => setAssignedLevel(e.target.value)} 
+                                        className="w-full p-2.5 border border-emerald-300 rounded-lg bg-emerald-50 font-bold text-emerald-800 text-xs focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="0">Level 0 - Pengenalan Dasar (Iqro 1-2)</option>
+                                        <option value="1">Level 1 - Mulai Membaca Huruf Sambung (Iqro 3-4)</option>
+                                        <option value="2">Level 2 - Belum Lancar / Kalimat Panjang (Iqro 5-6)</option>
+                                        <option value="3">Level 3 - Cukup Lancar & Tajwid Dasar (Juz 'Amma)</option>
+                                        <option value="4">Level 4 - Baik, Tartil & Konsisten (Al-Qur'an 30 Juz)</option>
+                                    </select>
+                                    <p className="text-[10px] text-gray-500 mt-1">
+                                        *Sistem otomatis menyarankan level berdasarkan kalkulasi rata-rata skor rubrik.
+                                    </p>
+                                </div>
+
+                                {/* Catatan dan Target Belajar */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                                        Catatan Ustadz & Target Belajar Santri
+                                    </label>
+                                    <textarea 
+                                        value={notes} 
+                                        onChange={e => setNotes(e.target.value)} 
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg text-xs h-20 focus:ring-2 focus:ring-emerald-500" 
+                                        placeholder="Cth: Perlu latihan di mad thabi'i dan dengung nun sukun. Semangat terus..."
+                                    ></textarea>
+                                </div>
+
+                                <button 
+                                    onClick={handleSubmit} 
+                                    disabled={submitting}
+                                    className={`w-full font-bold py-3 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1 ${
+                                        submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
+                                    } text-white`}
+                                >
+                                    <IconCheck />
+                                    <span>{submitting ? 'Menyimpan ke Server...' : 'Simpan & Finalisasi Asesmen'}</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SCREEN: PROFIL PENGGUNA ---
+        const ProfileScreen = ({ user, db, onLogout }) => {
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman' };
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+                        <div className="w-20 h-20 bg-emerald-100 text-emerald-800 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-black shadow-inner border-2 border-emerald-300">
+                            {user.name.charAt(0)}
+                        </div>
+                        <h2 className="text-base font-bold text-gray-800">{user.name}</h2>
+                        <span className="inline-block mt-1 text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold capitalize">
+                            Peran: {user.role.replace('_', ' ')}
+                        </span>
+
+                        <div className="mt-5 border-t border-gray-100 pt-3 text-left space-y-2.5 text-xs">
+                            <div className="flex justify-between py-1 border-b border-gray-50">
+                                <span className="text-gray-400">Username</span>
+                                <span className="font-semibold text-gray-800">{user.username}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-gray-50">
+                                <span className="text-gray-400">Shelter Penempatan</span>
+                                <span className="font-semibold text-gray-800">{shelter ? shelter.name : 'Pusat'}</span>
+                            </div>
+                            {user.role === 'peserta' && (
+                                <div className="flex justify-between py-1 border-b border-gray-50">
+                                    <span className="text-gray-400">Level Pembinaan</span>
+                                    <span className="font-bold text-emerald-700">Level {user.level !== undefined ? user.level : 0}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between py-1">
+                                <span className="text-gray-400">Status Server</span>
+                                <span className="font-semibold text-emerald-600">Localhost API v2.0 (Online)</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 space-y-2">
+                            <button 
+                                onClick={onLogout}
+                                className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl border border-red-200 transition text-xs"
+                            >
+                                Keluar dari Akun (Logout)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-xs text-emerald-900 space-y-1">
+                        <p className="font-bold">Tentang Sistem Localhost Ojol Mengaji</p>
+                        <p className="text-[11px] text-gray-600 leading-relaxed">
+                            Aplikasi kini terhubung langsung dengan REST API backend Node.js di localhost:3000 dan database JSON persisten di disk. Data presensi, QR code, dan asesmen disinkronkan secara real-time antar tab dan perangkat.
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        // Bootstrap App into DOM
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
