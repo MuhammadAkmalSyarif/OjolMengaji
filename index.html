@@ -2,39 +2,69 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#059669">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#064e3b">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Ojol Mengaji - PWA & Localhost Server</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Ojol Mengaji - Pembinaan Tilawah Al-Qur'an Mitra Pengemudi</title>
     
     <!-- PWA Manifest & Icons -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
     <link rel="apple-touch-icon" href="assets/logo.jpg">
 
-    <!-- CSS Framework & Libraries -->
+    <!-- Google Fonts: Plus Jakarta Sans & Amiri -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        arabic: ['"Amiri"', 'serif']
+                    },
                     colors: {
-                        emerald: {
+                        brand: {
                             50: '#ecfdf5',
                             100: '#d1fae5',
                             200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
                             500: '#10b981',
                             600: '#059669',
                             700: '#047857',
                             800: '#065f46',
-                            900: '#064e3b'
+                            900: '#064e3b',
+                            950: '#022c22'
+                        },
+                        gold: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            200: '#fde68a',
+                            300: '#fcd34d',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309'
                         }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
+                        'card': '0 10px 25px -5px rgba(6, 78, 59, 0.08), 0 8px 10px -6px rgba(6, 78, 59, 0.04)',
+                        'glow': '0 0 25px -3px rgba(16, 185, 129, 0.35)',
+                        'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
                     }
                 }
             }
         }
     </script>
+    
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -44,90 +74,103 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
     <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #0f172a; 
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at 50% 20%, #064e3b 0%, #022c22 45%, #051410 100%);
+            margin: 0; 
+            padding: 0; 
+            min-height: 100vh;
+            color: #1e293b;
         }
-        .mobile-container { 
-            max-width: 480px; 
-            margin: 0 auto; 
-            min-height: 100vh; 
-            background-color: #f8fafc; 
-            position: relative; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+
+        /* Subtle Islamic Geometric Motif Overlay on Desktop Background */
+        .bg-pattern {
+            background-image: radial-gradient(rgba(16, 185, 129, 0.07) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        /* Mobile Device Mockup Frame */
+        .device-wrapper {
+            max-width: 440px;
+            width: 100%;
+            min-height: 100vh;
+            margin: 0 auto;
+            background-color: #f8fafc;
+            position: relative;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
+
+        @media (min-width: 768px) {
+            body { padding: 32px 16px; display: flex; justify-content: center; align-items: center; }
+            .device-wrapper {
+                min-height: 870px;
+                max-height: 92vh;
+                border-radius: 44px;
+                border: 9px solid #1e293b;
+                box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            }
+        }
+
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .tab-active { color: #059669; border-bottom: 2px solid #059669; }
-        .animate-fade-in { animation: fadeIn 0.25s ease-out; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        /* Smooth tab & card animations */
+        .page-enter { animation: pageEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(8px) scale(0.99); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+        /* Pulse radar ring */
+        @keyframes radarSweep {
+            0% { transform: scale(0.7); opacity: 0.9; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .radar-pulse { animation: radarSweep 2.2s infinite cubic-bezier(0.2, 0.8, 0.2, 1); }
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="bg-pattern">
+    <div id="root" class="w-full flex justify-center"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Base API configuration (auto-detect localhost or fallback)
         const API_BASE = window.location.origin.includes('http') ? window.location.origin : 'http://localhost:3000';
 
-        const LEVEL_NAMES = [
-            "Level 0 - Pengenalan Dasar (Iqro 1-2)",
-            "Level 1 - Mulai Membaca Huruf Sambung (Iqro 3-4)",
-            "Level 2 - Membaca Kalimat Belum Lancar (Iqro 5-6)",
-            "Level 3 - Cukup Lancar & Tajwid Dasar (Juz 'Amma)",
-            "Level 4 - Baik, Tartil & Konsisten (Al-Qur'an 30 Juz)"
+        const LEVEL_TITLES = [
+            "Iqro 1-2 • Pengenalan Huruf",
+            "Iqro 3-4 • Huruf Sambung & Harakat",
+            "Iqro 5-6 • Kalimat & Kelancaran",
+            "Juz 'Amma • Tajwid & Tartil Dasar",
+            "Al-Qur'an 30 Juz • Tartil Mandiri"
         ];
 
-        const LEVEL_BADGES = [
-            { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' },
-            { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
-            { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
-            { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
-            { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' }
+        const LEVEL_DESCRIPTIONS = [
+            "Fokus pada identifikasi huruf hijaiyah tunggal dan pelafalan harakat dasar (fathah, kasrah, dhammah).",
+            "Mulai membaca huruf sambung 2-3 karakter, mengenal tanwin, sukun, dan mad thabi'i 2 harakat.",
+            "Melatih konsistensi bacaan, kelancaran merangkai kata, mengenal hukum waqaf dan tasydid.",
+            "Membaca surat-surat pendek dalam Juz 30 dengan penerapan hukum nun mati, mim mati, dan qalqalah.",
+            "Membaca Al-Qur'an secara fasih, makharijul huruf tepat, sifatul huruf terjaga, dan tartil konsisten."
         ];
 
-        // --- HAVERSINE GPS DISTANCE FORMULA (Client Fallback) ---
-        const calculateDistance = (lat1, lon1, lat2, lon2) => {
-            const R = 6371e3; // metres
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δφ = (lat2 - lat1) * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        };
+        // --- MODERN VECTOR ICONS ---
+        const IconHome = ({ active }) => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1.5" : "2"} strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+        const IconScan = ({ active }) => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></svg>;
+        const IconBook = ({ active }) => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1.5" : "2"} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2h0Z"/></svg>;
+        const IconUser = ({ active }) => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1.5" : "2"} strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const IconMapPin = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const IconCheckCircle = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+        const IconQr = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>;
+        const IconChevronRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
+        const IconCopy = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
+        const IconSparkles = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>;
 
-        // --- SVG ICONS ---
-        const IconHome = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-        const IconScan = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>;
-        const IconBook = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2h0Z"/></svg>;
-        const IconUser = () => <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-        const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
-        const IconMapPin = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
-        const IconAward = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>;
-
-        // --- MAIN APP COMPONENT ---
+        // --- APP ROOT ---
         const App = () => {
-            const [db, setDb] = useState({
-                users: [],
-                shelters: [],
-                sessions: [],
-                attendances: [],
-                assessments: []
-            });
+            const [db, setDb] = useState({ users: [], shelters: [], sessions: [], attendances: [], assessments: [] });
             const [serverOnline, setServerOnline] = useState(false);
             const [authUser, setAuthUser] = useState(() => {
                 const saved = localStorage.getItem('om_user_auth');
@@ -135,13 +178,25 @@
             });
             const [currentView, setCurrentView] = useState('home');
             const [toast, setToast] = useState({ show: false, msg: '', type: 'info' });
+            const [currentTime, setCurrentTime] = useState('');
+
+            // Digital clock update
+            useEffect(() => {
+                const updateTime = () => {
+                    const now = new Date();
+                    setCurrentTime(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+                };
+                updateTime();
+                const timer = setInterval(updateTime, 30000);
+                return () => clearInterval(timer);
+            }, []);
 
             const showToast = (msg, type = 'info') => {
                 setToast({ show: true, msg, type });
-                setTimeout(() => setToast({ show: false, msg: '', type: 'info' }), 3500);
+                setTimeout(() => setToast({ show: false, msg: '', type: 'info' }), 3800);
             };
 
-            // Fetch live state from backend server (REST API)
+            // Sync with Localhost REST API
             const syncWithServer = async () => {
                 try {
                     const res = await fetch(`${API_BASE}/api/bootstrap`);
@@ -150,7 +205,6 @@
                         if (json.success && json.data) {
                             setDb(json.data);
                             setServerOnline(true);
-                            // Refresh current authUser profile if level changed
                             if (authUser) {
                                 const currentInDb = json.data.users.find(u => u.id === authUser.id);
                                 if (currentInDb && currentInDb.level !== authUser.level) {
@@ -166,23 +220,12 @@
                 }
             };
 
-            // Polling sync every 2.5 seconds for real-time multi-device interaction
             useEffect(() => {
                 syncWithServer();
                 const interval = setInterval(syncWithServer, 2500);
                 return () => clearInterval(interval);
             }, [authUser?.id]);
 
-            // Register Service Worker
-            useEffect(() => {
-                if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-                    navigator.serviceWorker.register('sw.js').catch(err => {
-                        console.log('SW registration note:', err);
-                    });
-                }
-            }, []);
-
-            // Handle Login via Server REST API
             const handleLogin = async (username, password) => {
                 try {
                     const res = await fetch(`${API_BASE}/api/auth/login`, {
@@ -198,19 +241,10 @@
                         showToast(`Ahlan wa Sahlan, ${data.user.name}!`, 'success');
                         syncWithServer();
                     } else {
-                        showToast(data.message || 'Username atau password tidak cocok!', 'error');
+                        showToast(data.message || 'Username atau password salah', 'error');
                     }
                 } catch (err) {
-                    // Fallback to local DB check if server is unreachable
-                    const localUser = db.users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password);
-                    if (localUser) {
-                        setAuthUser(localUser);
-                        localStorage.setItem('om_user_auth', JSON.stringify(localUser));
-                        setCurrentView('home');
-                        showToast(`Masuk (Mode Lokal): Ahlan wa Sahlan!`, 'info');
-                    } else {
-                        showToast('Gagal terhubung ke server atau akun tidak ditemukan.', 'error');
-                    }
+                    showToast('Gagal menghubungi backend server!', 'error');
                 }
             };
 
@@ -221,151 +255,165 @@
                 showToast('Berhasil keluar dari akun.', 'info');
             };
 
-            if (!authUser) {
-                return (
-                    <LoginScreen 
-                        onLogin={handleLogin} 
-                        toast={toast} 
-                        serverOnline={serverOnline} 
-                    />
-                );
-            }
-
             return (
-                <div className="mobile-container">
-                    {/* Header Bar */}
-                    <header className="bg-emerald-600 text-white px-4 py-3 shadow-md flex justify-between items-center sticky top-0 z-30">
-                        <div className="flex items-center space-x-2.5">
-                            <img src="assets/logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-emerald-300 object-cover bg-white" />
-                            <div>
-                                <div className="flex items-center space-x-1.5">
-                                    <h1 className="text-base font-bold leading-tight">Ojol Mengaji</h1>
-                                    <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-300 animate-pulse' : 'bg-amber-400'}`} title={serverOnline ? 'Tersambung ke Server Localhost' : 'Mode Offline'}></span>
-                                </div>
-                                <p className="text-[10px] text-emerald-100 font-medium">Binaan Al-Qur'an Hidayatullah</p>
-                            </div>
-                        </div>
+                <div className="device-wrapper shadow-2xl">
+                    {/* Simulated Mobile Status Bar */}
+                    <div className="bg-brand-950 text-white/90 px-6 pt-3 pb-1 flex justify-between items-center text-[11px] font-semibold tracking-tight select-none">
+                        <span>{currentTime || '21:00'}</span>
                         <div className="flex items-center space-x-2">
-                            <span className="text-[10px] bg-emerald-700/80 px-2 py-0.5 rounded text-emerald-100 font-medium capitalize">
-                                {authUser.role.replace('_', ' ')}
+                            <span className="flex items-center space-x-1">
+                                <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                                <span className="text-[10px] text-emerald-200/90 font-medium">{serverOnline ? 'Online' : 'Offline'}</span>
                             </span>
-                            <button 
-                                onClick={handleLogout} 
-                                title="Keluar"
-                                className="text-xs bg-emerald-800 hover:bg-emerald-900 text-emerald-100 px-2.5 py-1 rounded transition flex items-center space-x-1"
-                            >
-                                <span>Keluar</span>
-                            </button>
+                            <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono">5G</span>
+                            <span>98%</span>
                         </div>
-                    </header>
-
-                    {/* Server Connection Bar */}
-                    <div className="bg-emerald-900 text-emerald-100 px-4 py-1 text-[10px] flex justify-between items-center">
-                        <span className="flex items-center space-x-1">
-                            <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-green-400' : 'bg-red-400'}`}></span>
-                            <span>{serverOnline ? 'Localhost Backend: Aktif & Sinkron' : 'Menghubungkan ke Localhost...'}</span>
-                        </span>
-                        <span className="text-emerald-300 font-mono">Port 3000</span>
                     </div>
 
-                    {/* Toast Notification */}
+                    {/* App Bar / Navigation Header */}
+                    {authUser && (
+                        <header className="bg-gradient-to-r from-brand-900 via-brand-800 to-brand-900 text-white px-4 py-3 shadow-md flex justify-between items-center sticky top-0 z-40 border-b border-brand-700/50">
+                            <div className="flex items-center space-x-3">
+                                <div className="relative">
+                                    <img src="assets/logo.jpg" alt="Logo" className="w-9 h-9 rounded-full border-2 border-gold-400/80 object-cover shadow-sm bg-white" />
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-brand-900 rounded-full"></span>
+                                </div>
+                                <div>
+                                    <div className="flex items-center space-x-1.5">
+                                        <h1 className="text-sm font-extrabold tracking-tight">Ojol Mengaji</h1>
+                                        <span className="text-[9px] font-bold uppercase tracking-wider bg-gold-400/20 text-gold-300 border border-gold-400/30 px-1.5 py-0.2 rounded">
+                                            Hidayatullah
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-brand-200 font-medium">Binaan Tilawah Pengemudi</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                                <span className="text-[10px] bg-white/10 text-white px-2 py-0.5 rounded-full font-semibold capitalize border border-white/10">
+                                    {authUser.role.replace('_', ' ')}
+                                </span>
+                                <button 
+                                    onClick={handleLogout} 
+                                    title="Keluar Akun"
+                                    className="text-[11px] bg-brand-950/60 hover:bg-red-900/80 text-white/90 px-2.5 py-1 rounded-lg border border-white/10 transition active:scale-95"
+                                >
+                                    Keluar
+                                </button>
+                            </div>
+                        </header>
+                    )}
+
+                    {/* Floating Toast Notification */}
                     {toast.show && (
-                        <div className={`fixed top-16 left-1/2 transform -translate-x-1/2 z-50 text-xs px-4 py-2.5 rounded-lg shadow-xl w-11/12 max-w-sm text-center font-medium animate-fade-in ${
+                        <div className={`fixed top-14 left-1/2 transform -translate-x-1/2 z-50 text-xs px-4 py-3 rounded-xl shadow-modal w-11/12 max-w-sm text-center font-semibold animate-fade-in flex items-center justify-center space-x-2 ${
                             toast.type === 'error' ? 'bg-red-600 text-white' :
-                            toast.type === 'success' ? 'bg-emerald-700 text-white' :
-                            'bg-gray-800 text-white'
+                            toast.type === 'success' ? 'bg-brand-800 border border-emerald-400/30 text-white' :
+                            'bg-slate-900 text-white border border-slate-700'
                         }`}>
-                            {toast.msg}
+                            <span>{toast.msg}</span>
                         </div>
                     )}
 
-                    {/* Main Scrollable Content */}
+                    {/* Main Content Area */}
                     <main className="flex-1 overflow-y-auto p-4 pb-24 hide-scrollbar">
-                        {currentView === 'home' && (
-                            <Dashboard 
-                                user={authUser} 
-                                db={db} 
-                                syncWithServer={syncWithServer} 
-                                showToast={showToast} 
-                                setCurrentView={setCurrentView} 
-                            />
-                        )}
-                        {currentView === 'scan' && (
-                            <ScanScreen 
-                                user={authUser} 
-                                db={db} 
-                                syncWithServer={syncWithServer} 
-                                showToast={showToast} 
-                                setCurrentView={setCurrentView} 
-                            />
-                        )}
-                        {currentView === 'asesmen' && (
-                            <AssessmentScreen 
-                                user={authUser} 
-                                db={db} 
-                                syncWithServer={syncWithServer} 
-                                showToast={showToast} 
-                            />
-                        )}
-                        {currentView === 'profile' && (
-                            <ProfileScreen 
-                                user={authUser} 
-                                db={db} 
-                                onLogout={handleLogout} 
-                                showToast={showToast}
-                            />
+                        {!authUser ? (
+                            <LoginScreen onLogin={handleLogin} serverOnline={serverOnline} />
+                        ) : (
+                            <div className="page-enter">
+                                {currentView === 'home' && (
+                                    <Dashboard 
+                                        user={authUser} 
+                                        db={db} 
+                                        syncWithServer={syncWithServer} 
+                                        showToast={showToast} 
+                                        setCurrentView={setCurrentView} 
+                                    />
+                                )}
+                                {currentView === 'scan' && (
+                                    <ScanScreen 
+                                        user={authUser} 
+                                        db={db} 
+                                        syncWithServer={syncWithServer} 
+                                        showToast={showToast} 
+                                        setCurrentView={setCurrentView} 
+                                    />
+                                )}
+                                {currentView === 'asesmen' && (
+                                    <AssessmentScreen 
+                                        user={authUser} 
+                                        db={db} 
+                                        syncWithServer={syncWithServer} 
+                                        showToast={showToast} 
+                                    />
+                                )}
+                                {currentView === 'profile' && (
+                                    <ProfileScreen 
+                                        user={authUser} 
+                                        db={db} 
+                                        serverOnline={serverOnline}
+                                        onLogout={handleLogout} 
+                                    />
+                                )}
+                            </div>
                         )}
                     </main>
 
-                    {/* Bottom Floating Navigation */}
-                    <nav className="bg-white border-t border-gray-200 flex justify-around py-2 px-1 fixed bottom-0 w-full max-w-[480px] z-30 shadow-lg">
-                        <NavButton 
-                            icon={<IconHome />} 
-                            label="Beranda" 
-                            active={currentView === 'home'} 
-                            onClick={() => setCurrentView('home')} 
-                        />
-                        {authUser.role === 'peserta' && (
+                    {/* Bottom Navigation Dock */}
+                    {authUser && (
+                        <nav className="bg-white/95 backdrop-blur-md border-t border-slate-200/80 flex justify-around py-2 px-2 absolute bottom-0 w-full z-40 shadow-soft">
                             <NavButton 
-                                icon={<IconScan />} 
-                                label="Presensi" 
-                                active={currentView === 'scan'} 
-                                onClick={() => setCurrentView('scan')} 
+                                icon={<IconHome active={currentView === 'home'} />} 
+                                label="Beranda" 
+                                active={currentView === 'home'} 
+                                onClick={() => setCurrentView('home')} 
                             />
-                        )}
-                        {authUser.role === 'guru' && (
+                            {authUser.role === 'peserta' && (
+                                <NavButton 
+                                    icon={<IconScan active={currentView === 'scan'} />} 
+                                    label="Presensi" 
+                                    active={currentView === 'scan'} 
+                                    onClick={() => setCurrentView('scan')} 
+                                    badge={db.sessions?.some(s => s.status === 'active' && s.shelter_id === authUser.shelter_id)}
+                                />
+                            )}
+                            {authUser.role === 'guru' && (
+                                <NavButton 
+                                    icon={<IconBook active={currentView === 'asesmen'} />} 
+                                    label="Asesmen" 
+                                    active={currentView === 'asesmen'} 
+                                    onClick={() => setCurrentView('asesmen')} 
+                                />
+                            )}
                             <NavButton 
-                                icon={<IconBook />} 
-                                label="Asesmen" 
-                                active={currentView === 'asesmen'} 
-                                onClick={() => setCurrentView('asesmen')} 
+                                icon={<IconUser active={currentView === 'profile'} />} 
+                                label="Profil" 
+                                active={currentView === 'profile'} 
+                                onClick={() => setCurrentView('profile')} 
                             />
-                        )}
-                        <NavButton 
-                            icon={<IconUser />} 
-                            label="Profil" 
-                            active={currentView === 'profile'} 
-                            onClick={() => setCurrentView('profile')} 
-                        />
-                    </nav>
+                        </nav>
+                    )}
                 </div>
             );
         };
 
-        const NavButton = ({ icon, label, active, onClick }) => (
+        const NavButton = ({ icon, label, active, onClick, badge }) => (
             <button 
                 onClick={onClick} 
-                className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition ${
-                    active ? 'text-emerald-600 font-bold' : 'text-gray-400 hover:text-gray-600'
+                className={`relative flex flex-col items-center justify-center py-1 px-4 rounded-xl transition duration-150 active:scale-95 ${
+                    active ? 'text-brand-700 font-bold' : 'text-slate-400 hover:text-slate-600 font-medium'
                 }`}
             >
                 {icon}
-                <span className="text-[11px] mt-1">{label}</span>
+                <span className="text-[10px] mt-1 tracking-tight">{label}</span>
+                {badge && (
+                    <span className="absolute top-1 right-3.5 w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                )}
             </button>
         );
 
-        // --- SCREEN: LOGIN SCREEN ---
-        const LoginScreen = ({ onLogin, toast, serverOnline }) => {
+        // --- MODERN LOGIN SCREEN ---
+        const LoginScreen = ({ onLogin, serverOnline }) => {
             const [username, setUsername] = useState('ojol1');
             const [password, setPassword] = useState('123');
 
@@ -376,112 +424,111 @@
             };
 
             return (
-                <div className="mobile-container bg-emerald-50/50 justify-between">
-                    <div className="p-6">
-                        {/* Hero / Logo Section */}
-                        <div className="text-center mt-3 mb-5">
-                            <div className="relative mx-auto w-24 h-24 rounded-full p-1 bg-white shadow-md border-2 border-emerald-500 overflow-hidden mb-3">
-                                <img src="assets/logo.jpg" alt="Logo Ojol Mengaji" className="w-full h-full object-cover rounded-full" />
+                <div className="page-enter space-y-4 py-2">
+                    {/* Hero Card with Real Image Background */}
+                    <div className="relative rounded-3xl overflow-hidden shadow-card border border-brand-800/30">
+                        <img src="assets/hero.jpg" alt="Hero Ojol Mengaji" className="w-full h-44 object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-brand-950 via-brand-950/70 to-transparent flex flex-col justify-end p-5 text-white">
+                            <div className="flex items-center space-x-2 mb-1.5">
+                                <img src="assets/logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-gold-400 object-cover bg-white" />
+                                <span className="text-xs font-bold text-gold-300 tracking-wider uppercase">Sinergi Pembinaan Umat</span>
                             </div>
-                            <h1 className="text-2xl font-black text-gray-800 tracking-tight">Ojol Mengaji</h1>
-                            <p className="text-xs text-emerald-800 font-medium mt-1">Pembinaan Tilawah Al-Qur'an Mitra Pengemudi</p>
-                            
-                            <div className="flex items-center justify-center space-x-2 mt-2">
-                                <span className="inline-block text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">
-                                    Hidayatullah
-                                </span>
-                                <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                                    serverOnline ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800'
-                                }`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${serverOnline ? 'bg-white' : 'bg-amber-600'}`}></span>
-                                    {serverOnline ? 'Localhost Connected' : 'Mencari Server...'}
-                                </span>
-                            </div>
+                            <h2 className="text-xl font-extrabold leading-snug">Ojol Mengaji</h2>
+                            <p className="text-xs text-brand-100 font-medium mt-0.5">Gerakan Literasi Al-Qur'an Sahabat Ojol Se-Jabodetabek</p>
+                        </div>
+                    </div>
+
+                    {/* Status Pill */}
+                    <div className="flex justify-between items-center bg-white px-4 py-2 rounded-xl border border-slate-200 text-xs shadow-soft">
+                        <span className="text-slate-500 font-medium">Status Koneksi Server</span>
+                        <span className={`inline-flex items-center font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                            serverOnline ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${serverOnline ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                            {serverOnline ? 'Localhost Backend Aktif (Port 3000)' : 'Menghubungkan Server...'}
+                        </span>
+                    </div>
+
+                    {/* Login Card */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-card space-y-4">
+                        <div className="border-b border-slate-100 pb-2">
+                            <h3 className="text-sm font-bold text-slate-800">Masuk Akun Pengguna</h3>
+                            <p className="text-[11px] text-slate-400">Silakan gunakan akun binaan yang telah terdaftar</p>
                         </div>
 
-                        {/* Banner Image Card */}
-                        <div className="rounded-xl overflow-hidden shadow-sm mb-5 border border-emerald-100">
-                            <img src="assets/hero.jpg" alt="Hero Ojol Mengaji" className="w-full h-32 object-cover" />
-                        </div>
-
-                        {toast.show && (
-                            <div className={`p-3 rounded-lg mb-4 text-xs font-medium text-center ${
-                                toast.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
-                            }`}>
-                                {toast.msg}
-                            </div>
-                        )}
-
-                        {/* Form Login */}
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3.5">
+                        <div className="space-y-3">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Username Akun</label>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Username</label>
                                 <input 
                                     type="text" 
                                     value={username} 
                                     onChange={e => setUsername(e.target.value)} 
-                                    className="w-full p-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" 
-                                    placeholder="Masukkan username" 
+                                    className="w-full px-3.5 py-2.5 text-xs font-medium border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none bg-slate-50/50" 
+                                    placeholder="Username akun" 
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Password</label>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Password</label>
                                 <input 
                                     type="password" 
                                     value={password} 
                                     onChange={e => setPassword(e.target.value)} 
-                                    className="w-full p-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" 
+                                    className="w-full px-3.5 py-2.5 text-xs font-medium border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none bg-slate-50/50" 
                                     placeholder="••••••••" 
                                 />
                             </div>
+
                             <button 
                                 onClick={() => onLogin(username, password)} 
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg shadow-md transition text-sm flex items-center justify-center space-x-1"
+                                className="w-full bg-gradient-to-r from-brand-700 to-brand-800 hover:from-brand-800 hover:to-brand-900 text-white font-bold py-3 rounded-xl shadow-soft text-xs transition duration-150 active:scale-95 flex items-center justify-center space-x-1.5"
                             >
-                                <span>Masuk ke Localhost</span>
+                                <span>Masuk ke Dashboard</span>
+                                <IconChevronRight />
                             </button>
-                        </div>
-
-                        {/* 1-Click Fast Switcher for Demo Testing */}
-                        <div className="mt-5">
-                            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center mb-2">
-                                Akses Cepat Demo (Klik untuk masuk langsung):
-                            </p>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                <button 
-                                    onClick={() => quickLogin('ojol1', '123')} 
-                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
-                                >
-                                    <div className="font-bold text-emerald-800">🛵 Peserta 1 (Joko)</div>
-                                    <div className="text-[10px] text-gray-500">ojol1 • Level 1</div>
-                                </button>
-                                <button 
-                                    onClick={() => quickLogin('ojol2', '123')} 
-                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
-                                >
-                                    <div className="font-bold text-emerald-800">🛵 Peserta 2 (Rudi)</div>
-                                    <div className="text-[10px] text-gray-500">ojol2 • Level 0</div>
-                                </button>
-                                <button 
-                                    onClick={() => quickLogin('guru1', '123')} 
-                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
-                                >
-                                    <div className="font-bold text-emerald-800">📖 Guru (Ust. Ahmad)</div>
-                                    <div className="text-[10px] text-gray-500">guru1 • Buka Sesi/QR</div>
-                                </button>
-                                <button 
-                                    onClick={() => quickLogin('admin', '123')} 
-                                    className="bg-white hover:bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-left shadow-xs transition"
-                                >
-                                    <div className="font-bold text-emerald-800">🏢 Admin Pusat</div>
-                                    <div className="text-[10px] text-gray-500">admin • Rekap & Evaluasi</div>
-                                </button>
-                            </div>
                         </div>
                     </div>
 
-                    <div className="p-4 text-center text-[11px] text-gray-400">
-                        PWA Ojol Mengaji • Localhost Backend v2.0
+                    {/* Quick Persona Switcher */}
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+                            Mode Pengujian 1-Klik (Pilih Peran):
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <button 
+                                onClick={() => quickLogin('ojol1', '123')} 
+                                className="bg-white hover:bg-emerald-50/60 border border-slate-200 p-2.5 rounded-xl text-left shadow-soft transition active:scale-95"
+                            >
+                                <div className="font-bold text-brand-900 flex items-center justify-between">
+                                    <span>🛵 Joko (Gojek)</span>
+                                    <span className="text-[9px] bg-brand-100 text-brand-800 px-1 rounded font-bold">L-1</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">Peserta Shelter Sudirman</div>
+                            </button>
+                            <button 
+                                onClick={() => quickLogin('ojol2', '123')} 
+                                className="bg-white hover:bg-emerald-50/60 border border-slate-200 p-2.5 rounded-xl text-left shadow-soft transition active:scale-95"
+                            >
+                                <div className="font-bold text-brand-900 flex items-center justify-between">
+                                    <span>🛵 Rudi (Grab)</span>
+                                    <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-bold">L-0</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">Peserta Shelter Sudirman</div>
+                            </button>
+                            <button 
+                                onClick={() => quickLogin('guru1', '123')} 
+                                className="bg-white hover:bg-emerald-50/60 border border-slate-200 p-2.5 rounded-xl text-left shadow-soft transition active:scale-95"
+                            >
+                                <div className="font-bold text-brand-900">📖 Ust. Ahmad</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">Guru • Buka Sesi & QR</div>
+                            </button>
+                            <button 
+                                onClick={() => quickLogin('admin', '123')} 
+                                className="bg-white hover:bg-emerald-50/60 border border-slate-200 p-2.5 rounded-xl text-left shadow-soft transition active:scale-95"
+                            >
+                                <div className="font-bold text-brand-900">🏢 Manager Pusat</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">Admin • Log Presensi Realtime</div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -492,138 +539,163 @@
             if (user.role === 'peserta') return <DashboardPeserta user={user} db={db} setCurrentView={setCurrentView} />;
             if (user.role === 'guru') return <DashboardGuru user={user} db={db} syncWithServer={syncWithServer} showToast={showToast} setCurrentView={setCurrentView} />;
             if (user.role === 'admin_shelter' || user.role === 'admin_program') return <DashboardAdmin user={user} db={db} syncWithServer={syncWithServer} showToast={showToast} />;
-            return <div className="p-4 text-center text-gray-500">Role tidak terdefinisi.</div>;
+            return null;
         };
 
-        // --- SCREEN: DASHBOARD PESERTA (OJOL) ---
+        // --- 1. DASHBOARD PESERTA (MITRA OJOL) ---
         const DashboardPeserta = ({ user, db, setCurrentView }) => {
             const myAttendances = (db.attendances || []).filter(a => a.user_id === user.id);
             const assessments = (db.assessments || []).filter(a => a.student_id === user.id);
             const latestAssessment = assessments.length > 0 ? assessments[assessments.length - 1] : null;
-            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman' };
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman (Posko Ojol)', radius: 75 };
             const activeSession = (db.sessions || []).find(s => s.shelter_id === user.shelter_id && s.status === 'active');
             const hasCheckedInToday = activeSession ? myAttendances.some(a => a.session_id === activeSession.id) : false;
 
             const currentLevel = user.level !== undefined ? user.level : 0;
-            const badgeStyle = LEVEL_BADGES[currentLevel] || LEVEL_BADGES[0];
 
             return (
-                <div className="space-y-4 animate-fade-in">
-                    {/* Welcome Card with Hero Image */}
-                    <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
-                        <div className="relative z-10">
-                            <span className="text-[10px] uppercase font-bold tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
-                                Sahabat Hijrah Ojol
-                            </span>
-                            <h2 className="text-lg font-bold mt-1.5">{user.name}</h2>
-                            <p className="text-xs text-emerald-100 flex items-center mt-1">
+                <div className="space-y-4">
+                    {/* Welcome Card with Gradient Mesh */}
+                    <div className="bg-gradient-to-br from-brand-900 via-brand-800 to-teal-900 rounded-3xl p-5 text-white shadow-card relative overflow-hidden border border-brand-700/60">
+                        <div className="relative z-10 space-y-1">
+                            <div className="inline-flex items-center space-x-1.5 bg-white/15 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border border-white/10 text-emerald-200">
+                                <IconSparkles />
+                                <span>Mitra Pengemudi Mengaji</span>
+                            </div>
+                            <h2 className="text-lg font-black tracking-tight">{user.name}</h2>
+                            <p className="text-xs text-brand-200 flex items-center pt-0.5">
                                 <IconMapPin />
-                                <span className="ml-1">{shelter.name}</span>
+                                <span className="ml-1 font-medium">{shelter.name}</span>
                             </p>
                         </div>
+                        {/* Decorative Islamic Star Watermark */}
                         <div className="absolute -right-4 -bottom-4 w-28 h-28 opacity-20 pointer-events-none">
                             <img src="assets/logo.jpg" alt="watermark" className="w-full h-full rounded-full object-cover" />
                         </div>
                     </div>
 
-                    {/* Sesi Mengaji Status Banner */}
+                    {/* Sesi Mengaji Status Card */}
                     {activeSession ? (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center justify-between">
-                            <div>
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-4 shadow-card flex items-center justify-between">
+                            <div className="space-y-0.5">
                                 <div className="flex items-center space-x-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                                    <span className="text-xs font-bold text-amber-900">Sesi Mengaji Sedang Dibuka!</span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                                    <span className="text-xs font-black tracking-wide">SESI MENGAJI DIBUKA</span>
                                 </div>
-                                <p className="text-[11px] text-amber-700 mt-0.5">
-                                    {hasCheckedInToday ? '✓ Anda sudah presensi hari ini' : 'Segera presensi di shelter sebelum sesi ditutup'}
+                                <p className="text-[11px] text-emerald-100">
+                                    {hasCheckedInToday ? '✓ Anda telah berhasil presensi pada sesi ini' : 'Ustadz telah hadir di shelter. Silakan presensi!'}
                                 </p>
                             </div>
                             {!hasCheckedInToday && (
                                 <button 
-                                    onClick={() => setCurrentView('scan')}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-lg shadow-sm"
+                                    onClick={() => setCurrentView('scan')} 
+                                    className="bg-white text-brand-900 hover:bg-gold-50 font-bold text-xs px-3.5 py-2 rounded-xl shadow-soft transition active:scale-95 flex items-center space-x-1"
                                 >
-                                    Presensi
+                                    <IconScan active={false} />
+                                    <span>Presensi</span>
                                 </button>
                             )}
                         </div>
                     ) : (
-                        <div className="bg-gray-100 border border-gray-200 rounded-xl p-3 text-xs text-gray-500 flex items-center justify-between">
-                            <span>Sesi shelter saat ini: <b>Belum Dibuka</b></span>
-                            <span className="text-[10px] bg-gray-200 px-2 py-0.5 rounded">Menunggu Ustadz</span>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between text-xs shadow-soft">
+                            <div className="flex items-center space-x-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+                                <span className="text-slate-600 font-medium">Sesi halaqah shelter: <b>Belum Dibuka</b></span>
+                            </div>
+                            <span className="text-[10px] bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-md">Menunggu Ustadz</span>
                         </div>
                     )}
 
                     {/* Quick Stats Grid */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-xs text-center">
-                            <span className="text-2xl font-black text-emerald-600">{currentLevel}</span>
-                            <span className="block text-[11px] font-semibold text-gray-500 mt-0.5">Level Tilawah</span>
-                            <span className="text-[10px] text-emerald-700 font-medium">Skala 0-4</span>
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft text-center">
+                            <span className="text-3xl font-black text-brand-700">{currentLevel}</span>
+                            <span className="block text-xs font-bold text-slate-700 mt-0.5">Level Tilawah</span>
+                            <span className="text-[10px] text-slate-400">Tahapan Standardisasi</span>
                         </div>
-                        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-xs text-center">
-                            <span className="text-2xl font-black text-blue-600">{myAttendances.length}</span>
-                            <span className="block text-[11px] font-semibold text-gray-500 mt-0.5">Total Kehadiran</span>
-                            <span className="text-[10px] text-blue-700 font-medium">Halaqah Terverifikasi</span>
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft text-center">
+                            <span className="text-3xl font-black text-teal-600">{myAttendances.length}</span>
+                            <span className="block text-xs font-bold text-slate-700 mt-0.5">Total Hadir</span>
+                            <span className="text-[10px] text-slate-400">Pertemuan Halaqah</span>
                         </div>
                     </div>
 
-                    {/* Level Detail & Rubrik Status */}
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center space-x-1.5">
-                                <IconAward />
-                                <span>Status Kemampuan Baca</span>
+                    {/* Milestone Progress Stepper */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-card space-y-3">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center space-x-1.5">
+                                <IconSparkles />
+                                <span>Peta Kemampuan Baca Al-Qur'an</span>
                             </h3>
-                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
-                                Level {currentLevel}
+                            <span className="text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
+                                Level {currentLevel} dari 4
                             </span>
                         </div>
 
-                        <p className="text-sm font-bold text-gray-800">{LEVEL_NAMES[currentLevel]}</p>
+                        <div>
+                            <p className="text-sm font-extrabold text-slate-800">{LEVEL_TITLES[currentLevel]}</p>
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">{LEVEL_DESCRIPTIONS[currentLevel]}</p>
+                        </div>
 
-                        {/* Progress Bar (Level 0 - 4) */}
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] text-gray-400 font-semibold">
-                                <span>Iqro Dasar</span>
-                                <span>Al-Qur'an Lancar</span>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                        {/* Interactive Step Circles */}
+                        <div className="pt-2">
+                            <div className="flex justify-between items-center relative">
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 w-full z-0"></div>
                                 <div 
-                                    className="bg-emerald-600 h-2.5 rounded-full transition-all duration-500" 
-                                    style={{ width: `${Math.max(15, (currentLevel / 4) * 100)}%` }}
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-brand-600 transition-all duration-500 z-0"
+                                    style={{ width: `${(currentLevel / 4) * 100}%` }}
                                 ></div>
+
+                                {[0, 1, 2, 3, 4].map(lvl => {
+                                    const isCompleted = lvl <= currentLevel;
+                                    const isCurrent = lvl === currentLevel;
+                                    return (
+                                        <div key={lvl} className="relative z-10 flex flex-col items-center">
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                                                isCurrent ? 'bg-gold-500 text-white ring-4 ring-gold-100 shadow-md' :
+                                                isCompleted ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-400'
+                                            }`}>
+                                                {lvl}
+                                            </div>
+                                            <span className="text-[9px] font-semibold text-slate-400 mt-1">L-{lvl}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
                         {latestAssessment && (
-                            <div className="bg-emerald-50/60 border border-emerald-100 rounded-lg p-3 text-xs mt-3">
-                                <p className="font-bold text-emerald-900 mb-1">Catatan Pembimbing Terakhir:</p>
-                                <p className="text-gray-700 italic">"{latestAssessment.notes}"</p>
-                                <div className="mt-2 text-[10px] text-gray-400">
-                                    Dinilai pada: {new Date(latestAssessment.date).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 text-xs mt-3">
+                                <div className="flex items-center space-x-1 text-brand-900 font-bold mb-1">
+                                    <span>Catatan Evaluasi Ustadz:</span>
                                 </div>
+                                <p className="text-slate-700 italic">"{latestAssessment.notes}"</p>
+                                <span className="block text-[10px] text-slate-400 mt-1.5 font-medium">
+                                    Diperbarui pada: {new Date(latestAssessment.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </span>
                             </div>
                         )}
                     </div>
 
-                    {/* Riwayat Presensi Realtime dari Server */}
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
-                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
-                            Riwayat Presensi ({myAttendances.length})
-                        </h3>
+                    {/* Riwayat Presensi Realtime */}
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft">
+                        <div className="flex justify-between items-center mb-2.5">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                                Riwayat Presensi Terverifikasi ({myAttendances.length})
+                            </h3>
+                        </div>
                         {myAttendances.length === 0 ? (
-                            <p className="text-xs text-gray-400 text-center py-4">Belum ada catatan presensi di server.</p>
+                            <p className="text-xs text-slate-400 text-center py-4">Belum ada riwayat kehadiran.</p>
                         ) : (
                             <div className="space-y-2">
                                 {myAttendances.slice().reverse().map((att, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-gray-50 rounded-lg">
+                                    <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50/80 rounded-xl border border-slate-100">
                                         <div>
-                                            <p className="font-semibold text-gray-800">{new Date(att.timestamp).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
-                                            <p className="text-[10px] text-gray-500">{new Date(att.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • GPS Server: ~{att.distance_meters}m</p>
+                                            <p className="font-bold text-slate-800">{new Date(att.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+                                            <p className="text-[10px] text-slate-500">Pukul {new Date(att.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB • Jarak GPS: ~{att.distance_meters}m</p>
                                         </div>
-                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center space-x-0.5">
-                                            <IconCheck />
+                                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                                            <IconCheckCircle />
                                             <span>Valid</span>
                                         </span>
                                     </div>
@@ -635,14 +707,13 @@
             );
         };
 
-        // --- SCREEN: DASHBOARD GURU (USTADZ) ---
+        // --- 2. DASHBOARD GURU (USTADZ PEMBINA) ---
         const DashboardGuru = ({ user, db, syncWithServer, showToast, setCurrentView }) => {
             const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman' };
             const activeSession = (db.sessions || []).find(s => s.teacher_id === user.id && s.status === 'active');
             const myStudents = (db.users || []).filter(u => u.role === 'peserta' && u.shelter_id === user.shelter_id);
             const qrCanvasRef = useRef(null);
 
-            // Buka Sesi Baru via REST API
             const openSession = async () => {
                 if (activeSession) return showToast('Sesi sudah aktif!', 'error');
                 try {
@@ -655,15 +726,12 @@
                     if (data.success) {
                         showToast(`Sesi dibuka! Token QR: ${data.session.qr_token}`, 'success');
                         syncWithServer();
-                    } else {
-                        showToast(data.message || 'Gagal membuka sesi', 'error');
                     }
-                } catch (err) {
-                    showToast('Gagal terhubung ke backend server!', 'error');
+                } catch (e) {
+                    showToast('Gagal menghubungi server!', 'error');
                 }
             };
 
-            // Tutup Sesi via REST API
             const closeSession = async () => {
                 if (!activeSession) return;
                 try {
@@ -674,25 +742,25 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        showToast('Sesi mengaji resmi ditutup di server.', 'info');
+                        showToast('Sesi mengaji ditutup.', 'info');
                         syncWithServer();
                     }
-                } catch (err) {
-                    showToast('Gagal menutup sesi di server.', 'error');
+                } catch (e) {
+                    showToast('Gagal menutup sesi!', 'error');
                 }
             };
 
-            // Render visual QR Code saat sesi aktif
+            // Render high-res QR Code canvas
             useEffect(() => {
                 if (activeSession && qrCanvasRef.current && window.QRCode) {
                     qrCanvasRef.current.innerHTML = '';
                     new QRCode(qrCanvasRef.current, {
                         text: activeSession.qr_token,
-                        width: 170,
-                        height: 170,
+                        width: 180,
+                        height: 180,
                         colorDark: "#064e3b",
                         colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.M
+                        correctLevel: QRCode.CorrectLevel.H
                     });
                 }
             }, [activeSession?.qr_token]);
@@ -700,71 +768,72 @@
             const sessionAttendances = activeSession ? (db.attendances || []).filter(a => a.session_id === activeSession.id) : [];
 
             return (
-                <div className="space-y-4 animate-fade-in">
-                    {/* Teacher Header */}
-                    <div className="bg-emerald-700 text-white p-4 rounded-2xl shadow-sm">
-                        <span className="text-[10px] bg-emerald-800 px-2 py-0.5 rounded-full font-semibold uppercase">
-                            Dashboard Pengajar Al-Qur'an
+                <div className="space-y-4">
+                    {/* Header Guru */}
+                    <div className="bg-gradient-to-r from-brand-900 to-teal-900 text-white p-5 rounded-3xl shadow-card">
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-emerald-200">
+                            Asatidz Pembimbing Halaqah
                         </span>
-                        <h2 className="text-lg font-bold mt-1">{user.name}</h2>
-                        <p className="text-xs text-emerald-100 flex items-center mt-0.5">
+                        <h2 className="text-lg font-black mt-1">{user.name}</h2>
+                        <p className="text-xs text-brand-200 flex items-center mt-0.5">
                             <IconMapPin />
-                            <span className="ml-1">{shelter.name}</span>
+                            <span className="ml-1 font-medium">{shelter.name}</span>
                         </p>
                     </div>
 
-                    {/* Sesi Halaqah & QR Code Generator */}
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
-                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
-                            Manajemen Sesi Halaqah
+                    {/* Halaqah & QR Code Control Center */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-card text-center space-y-4">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                            Pusat Kontrol Halaqah & Presensi
                         </h3>
 
                         {!activeSession ? (
                             <div className="py-4 space-y-3">
-                                <p className="text-xs text-gray-500">
-                                    Buka sesi untuk mulai mengajar. Server akan membuat Token QR dinamis yang dapat discan oleh santri ojol di sekitarmu.
+                                <div className="w-14 h-14 bg-emerald-50 text-brand-700 rounded-full flex items-center justify-center mx-auto mb-2 border border-emerald-100">
+                                    <IconBook active={false} />
+                                </div>
+                                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                                    Buka sesi halaqah untuk mengaktifkan Token QR Dinamis & mengizinkan santri ojol presensi di lokasi shelter.
                                 </p>
                                 <button 
                                     onClick={openSession} 
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl w-full shadow-md text-sm transition"
+                                    className="bg-brand-700 hover:bg-brand-800 text-white font-bold py-3 px-6 rounded-xl w-full shadow-soft text-xs transition active:scale-95"
                                 >
                                     + Buka Sesi Mengaji (Generate QR)
                                 </button>
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                <div className="bg-emerald-50/70 border-2 border-dashed border-emerald-300 rounded-xl p-4 flex flex-col items-center">
-                                    <p className="text-xs text-emerald-800 font-semibold mb-3">
-                                        Tunjukkan QR Code ini ke peserta ojol:
-                                    </p>
+                                <div className="bg-gradient-to-b from-brand-50 to-white border-2 border-dashed border-brand-300 rounded-2xl p-4 flex flex-col items-center">
+                                    <span className="text-[11px] font-bold text-brand-900 mb-2">Tunjukkan QR Code ke Santri Ojol</span>
                                     
-                                    {/* Real Visual QR Code */}
-                                    <div ref={qrCanvasRef} className="bg-white p-2.5 rounded-lg shadow-sm border border-emerald-200 mb-2"></div>
-                                    
+                                    <div ref={qrCanvasRef} className="bg-white p-3 rounded-xl shadow-card border border-brand-200 mb-2"></div>
+
                                     <div className="flex items-center space-x-2 mt-2">
-                                        <span className="text-sm font-mono font-bold tracking-widest text-emerald-950 bg-white px-3 py-1.5 rounded border border-emerald-200">
+                                        <span className="text-sm font-mono font-black tracking-widest text-brand-950 bg-white px-3 py-1.5 rounded-lg border border-brand-200 shadow-sm">
                                             {activeSession.qr_token}
                                         </span>
                                         <button 
                                             onClick={() => {
                                                 navigator.clipboard?.writeText(activeSession.qr_token);
-                                                showToast('Kode disalin: ' + activeSession.qr_token, 'success');
+                                                showToast('Token disalin: ' + activeSession.qr_token, 'success');
                                             }}
-                                            className="text-xs bg-emerald-600 text-white px-2 py-1.5 rounded hover:bg-emerald-700 font-medium"
+                                            className="text-xs bg-brand-700 hover:bg-brand-800 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center space-x-1"
                                         >
-                                            Salin
+                                            <IconCopy />
+                                            <span>Salin</span>
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-gray-500 mt-2">Token aktif di server • Terikat Shelter Sudirman</p>
+                                    <p className="text-[10px] text-slate-400 mt-2 font-medium">Validasi Geofence Aktif (Radius 75 Meter)</p>
                                 </div>
 
-                                <div className="flex justify-between items-center text-xs px-2 pt-1">
-                                    <span className="font-semibold text-gray-700">
-                                        Hadir di Server: <b className="text-emerald-700">{sessionAttendances.length}</b> / {myStudents.length} santri
+                                <div className="flex justify-between items-center text-xs px-1">
+                                    <span className="font-bold text-slate-700">
+                                        Kehadiran: <b className="text-brand-700">{sessionAttendances.length}</b> / {myStudents.length} Santri
                                     </span>
                                     <button 
                                         onClick={closeSession} 
-                                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 px-3 rounded-lg border border-red-200 transition"
+                                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-3.5 rounded-xl border border-red-200 transition text-xs"
                                     >
                                         Tutup Sesi
                                     </button>
@@ -773,15 +842,15 @@
                         )}
                     </div>
 
-                    {/* Student List with Real-time Presence Check */}
-                    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                    {/* Santri Binaan List */}
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-card">
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
-                                Peserta Binaan Shelter ({myStudents.length})
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                                Santri Binaan Shelter ({myStudents.length})
                             </h3>
                             <button 
                                 onClick={() => setCurrentView('asesmen')} 
-                                className="text-xs text-emerald-700 font-bold hover:underline"
+                                className="text-xs text-brand-700 font-bold hover:underline"
                             >
                                 + Input Asesmen
                             </button>
@@ -791,28 +860,28 @@
                             {myStudents.map(student => {
                                 const isPresent = activeSession && sessionAttendances.some(a => a.user_id === student.id);
                                 return (
-                                    <div key={student.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl bg-gray-50 hover:bg-gray-100/60 transition">
+                                    <div key={student.id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl bg-slate-50/70 hover:bg-white transition">
                                         <div>
-                                            <p className="font-bold text-xs text-gray-800">{student.name}</p>
-                                            <p className="text-[10px] text-gray-500">
-                                                Level Tilawah: <b className="text-emerald-700">Level {student.level !== undefined ? student.level : '?'}</b>
+                                            <p className="font-bold text-xs text-slate-800">{student.name}</p>
+                                            <p className="text-[10px] text-slate-500">
+                                                Level: <span className="text-brand-800 font-bold">Level {student.level !== undefined ? student.level : 0}</span> ({LEVEL_TITLES[student.level || 0]?.split('•')[0]})
                                             </p>
                                         </div>
                                         <div>
                                             {activeSession ? (
                                                 isPresent ? (
-                                                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1">
-                                                        <IconCheck /> <span>Hadir</span>
+                                                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1">
+                                                        <IconCheckCircle /> <span>Hadir</span>
                                                     </span>
                                                 ) : (
-                                                    <span className="bg-gray-200 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-medium">
-                                                        Belum Presensi
+                                                    <span className="bg-slate-200 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                                                        Belum
                                                     </span>
                                                 )
                                             ) : (
                                                 <button 
                                                     onClick={() => setCurrentView('asesmen')}
-                                                    className="text-[11px] bg-white border border-gray-200 text-gray-700 px-2 py-1 rounded-md font-medium hover:bg-gray-50"
+                                                    className="text-xs bg-white border border-slate-200 text-slate-700 hover:border-brand-500 font-semibold px-2.5 py-1 rounded-lg shadow-xs"
                                                 >
                                                     Nilai
                                                 </button>
@@ -827,7 +896,7 @@
             );
         };
 
-        // --- SCREEN: DASHBOARD ADMIN (SHELTER / PUSAT) ---
+        // --- 3. DASHBOARD ADMIN (PROGRAM & SHELTER) ---
         const DashboardAdmin = ({ user, db, syncWithServer, showToast }) => {
             const [selectedTab, setSelectedTab] = useState('summary');
             const totalPeserta = (db.users || []).filter(u => u.role === 'peserta').length;
@@ -841,83 +910,80 @@
                     const res = await fetch(`${API_BASE}/api/admin/reset`, { method: 'POST' });
                     const data = await res.json();
                     if (data.success) {
-                        showToast('Database server berhasil di-reset.', 'success');
+                        showToast('Database server di-reset.', 'success');
                         syncWithServer();
                     }
                 } catch (e) {
-                    showToast('Gagal mereset database server.', 'error');
+                    showToast('Gagal mereset database!', 'error');
                 }
             };
 
             return (
-                <div className="space-y-4 animate-fade-in">
-                    {/* Admin Header */}
-                    <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 rounded-2xl shadow-sm">
-                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-semibold uppercase">
-                            {user.role === 'admin_program' ? 'Manajemen Program Pusat' : 'Admin Operasional Shelter'}
+                <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-slate-900 to-brand-950 text-white p-5 rounded-3xl shadow-card">
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-emerald-300">
+                            {user.role === 'admin_program' ? 'Manajemen Pusat' : 'Admin Lapangan'}
                         </span>
-                        <h2 className="text-lg font-bold mt-1">{user.name}</h2>
-                        <p className="text-xs text-emerald-200">Monitoring & Evaluasi Tilawah Berkelanjutan</p>
+                        <h2 className="text-lg font-black mt-1">{user.name}</h2>
+                        <p className="text-xs text-slate-300">Monitoring Tilawah & Audit Presensi GPS</p>
                     </div>
 
-                    {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
-                            <span className="text-2xl font-black text-gray-800">{totalPeserta}</span>
-                            <span className="block text-[11px] font-semibold text-gray-500">Santri Ojol Aktif</span>
+                        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-soft text-center">
+                            <span className="text-2xl font-black text-slate-800">{totalPeserta}</span>
+                            <span className="block text-[11px] font-bold text-slate-500">Santri Ojol</span>
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
-                            <span className="text-2xl font-black text-emerald-600">{totalGuru}</span>
-                            <span className="block text-[11px] font-semibold text-gray-500">Asatidz Pembina</span>
+                        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-soft text-center">
+                            <span className="text-2xl font-black text-brand-700">{totalGuru}</span>
+                            <span className="block text-[11px] font-bold text-slate-500">Asatidz Pembina</span>
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
+                        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-soft text-center">
                             <span className="text-2xl font-black text-blue-600">{totalSesi}</span>
-                            <span className="block text-[11px] font-semibold text-gray-500">Sesi Terlaksana</span>
+                            <span className="block text-[11px] font-bold text-slate-500">Sesi Selesai</span>
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs text-center">
-                            <span className="text-2xl font-black text-purple-600">{totalHadir}</span>
-                            <span className="block text-[11px] font-semibold text-gray-500">Total Presensi</span>
+                        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-soft text-center">
+                            <span className="text-2xl font-black text-teal-600">{totalHadir}</span>
+                            <span className="block text-[11px] font-bold text-slate-500">Total Presensi</span>
                         </div>
                     </div>
 
                     {/* Sub Navigation */}
-                    <div className="flex border-b border-gray-200 bg-white rounded-t-xl px-2 pt-2">
+                    <div className="flex border-b border-slate-200 bg-white rounded-t-2xl px-2 pt-2">
                         <button 
                             onClick={() => setSelectedTab('summary')} 
-                            className={`flex-1 py-2 text-xs font-bold text-center ${selectedTab === 'summary' ? 'tab-active' : 'text-gray-400'}`}
+                            className={`flex-1 py-2 text-xs font-bold text-center transition ${selectedTab === 'summary' ? 'text-brand-700 border-b-2 border-brand-700' : 'text-slate-400'}`}
                         >
                             Log Presensi Realtime
                         </button>
                         <button 
                             onClick={() => setSelectedTab('students')} 
-                            className={`flex-1 py-2 text-xs font-bold text-center ${selectedTab === 'students' ? 'tab-active' : 'text-gray-400'}`}
+                            className={`flex-1 py-2 text-xs font-bold text-center transition ${selectedTab === 'students' ? 'text-brand-700 border-b-2 border-brand-700' : 'text-slate-400'}`}
                         >
-                            Progres Santri
+                            Sebaran Level Santri
                         </button>
                     </div>
 
-                    {/* Tab 1: Log Presensi Realtime dari Server */}
                     {selectedTab === 'summary' && (
-                        <div className="bg-white p-4 rounded-b-xl border border-t-0 border-gray-100 shadow-xs space-y-3">
-                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
-                                Riwayat Presensi Terverifikasi ({totalHadir})
+                        <div className="bg-white p-4 rounded-b-2xl border border-t-0 border-slate-100 shadow-card space-y-2.5">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                                Audit Log Kehadiran Terakhir ({totalHadir})
                             </h3>
                             {totalHadir === 0 ? (
-                                <p className="text-xs text-gray-400 text-center py-4">Belum ada presensi tercatat di server.</p>
+                                <p className="text-xs text-slate-400 text-center py-4">Belum ada data presensi.</p>
                             ) : (
                                 <div className="space-y-2">
                                     {(db.attendances || []).slice().reverse().map((att, idx) => {
                                         const student = (db.users || []).find(u => u.id === att.user_id);
                                         return (
-                                            <div key={idx} className="p-2.5 bg-gray-50 rounded-lg text-xs border border-gray-100 flex justify-between items-center">
+                                            <div key={idx} className="p-3 bg-slate-50/80 rounded-xl text-xs border border-slate-100 flex justify-between items-center">
                                                 <div>
-                                                    <p className="font-bold text-gray-800">{student ? student.name : att.user_name || 'Santri Ojol'}</p>
-                                                    <p className="text-[10px] text-gray-500">
-                                                        Jarak Server GPS: <span className="text-emerald-700 font-semibold">{att.distance_meters}m</span> • {new Date(att.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                    <p className="font-bold text-slate-800">{student ? student.name : att.user_name || 'Santri Ojol'}</p>
+                                                    <p className="text-[10px] text-slate-500">
+                                                        GPS Distance: <b className="text-brand-700">{att.distance_meters}m</b> • {new Date(att.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                                                     </p>
                                                 </div>
-                                                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                                                    Status Valid
+                                                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                                                    Sah / Valid
                                                 </span>
                                             </div>
                                         );
@@ -927,19 +993,15 @@
                         </div>
                     )}
 
-                    {/* Tab 2: Progres Santri */}
                     {selectedTab === 'students' && (
-                        <div className="bg-white p-4 rounded-b-xl border border-t-0 border-gray-100 shadow-xs space-y-2">
-                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">
-                                Distribusi Level Peserta di Server
-                            </h3>
+                        <div className="bg-white p-4 rounded-b-2xl border border-t-0 border-slate-100 shadow-card space-y-2">
                             {(db.users || []).filter(u => u.role === 'peserta').map(student => (
-                                <div key={student.id} className="p-2.5 bg-gray-50 rounded-lg text-xs flex justify-between items-center">
+                                <div key={student.id} className="p-3 bg-slate-50/80 rounded-xl text-xs flex justify-between items-center border border-slate-100">
                                     <div>
-                                        <p className="font-bold text-gray-800">{student.name}</p>
-                                        <p className="text-[10px] text-gray-500">{LEVEL_NAMES[student.level || 0]}</p>
+                                        <p className="font-bold text-slate-800">{student.name}</p>
+                                        <p className="text-[10px] text-slate-500">{LEVEL_TITLES[student.level || 0]}</p>
                                     </div>
-                                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
+                                    <span className="text-xs font-bold text-brand-800 bg-brand-50 border border-brand-200 px-2.5 py-1 rounded-lg">
                                         Level {student.level !== undefined ? student.level : 0}
                                     </span>
                                 </div>
@@ -947,38 +1009,36 @@
                         </div>
                     )}
 
-                    {/* Reset Database Button */}
                     <div className="pt-2">
                         <button 
-                            onClick={handleResetDB}
-                            className="w-full text-xs text-gray-400 hover:text-red-500 py-2 border border-dashed border-gray-300 rounded-lg transition"
+                            onClick={handleResetDB} 
+                            className="w-full text-xs text-slate-400 hover:text-red-600 py-2.5 border border-dashed border-slate-300 rounded-xl transition"
                         >
-                            Reset Data Percobaan ke Awal (Server Database)
+                            Reset Database Server ke Awal
                         </button>
                     </div>
                 </div>
             );
         };
 
-        // --- SCREEN: SCAN SCREEN (PRESENSI GPS & QR DI SISI SERVER) ---
+        // --- 4. SCREEN PRESENSI (SCAN & GPS RADAR) ---
         const ScanScreen = ({ user, db, syncWithServer, showToast, setCurrentView }) => {
             const [qrInput, setQrInput] = useState('');
             const [loading, setLoading] = useState(false);
-            const [gpsMode, setGpsMode] = useState('simulated_valid'); // 'simulated_valid', 'simulated_invalid', 'real'
+            const [gpsMode, setGpsMode] = useState('simulated_valid');
             const [cameraActive, setCameraActive] = useState(false);
             const scannerRef = useRef(null);
 
-            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { lat: -6.2, lng: 106.816666, radius: 75 };
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { radius: 75, lat: -6.2, lng: 106.816666 };
             const activeSession = (db.sessions || []).find(s => s.status === 'active' && s.shelter_id === user.shelter_id);
 
-            // Handler Kamera Scanner HTML5-QRCode
             const toggleCamera = () => {
                 if (cameraActive) {
                     if (scannerRef.current) {
                         scannerRef.current.stop().then(() => {
                             scannerRef.current.clear();
                             setCameraActive(false);
-                        }).catch(e => setCameraActive(false));
+                        }).catch(() => setCameraActive(false));
                     }
                 } else {
                     setCameraActive(true);
@@ -994,25 +1054,23 @@
                                     html5QrCode.stop().then(() => {
                                         html5QrCode.clear();
                                         setCameraActive(false);
-                                        showToast('QR Code terdeteksi: ' + decodedText, 'success');
+                                        showToast('QR terdeteksi: ' + decodedText, 'success');
                                     });
                                 },
-                                (errorMessage) => {
-                                    // continuous scanning...
-                                }
+                                () => {}
                             ).catch(err => {
                                 showToast('Tidak dapat membuka kamera: ' + err.message, 'error');
                                 setCameraActive(false);
                             });
                         } catch (err) {
-                            showToast('Gagal inisialisasi modul kamera.', 'error');
+                            showToast('Gagal memuat modul kamera scanner.', 'error');
                             setCameraActive(false);
                         }
                     }, 300);
                 }
             };
 
-            const sendAttendanceToServer = async (userLat, userLng) => {
+            const sendAttendance = async (lat, lng) => {
                 try {
                     const res = await fetch(`${API_BASE}/api/attendances`, {
                         method: 'POST',
@@ -1020,8 +1078,8 @@
                         body: JSON.stringify({
                             session_id: activeSession.id,
                             user_id: user.id,
-                            lat: userLat,
-                            lng: userLng,
+                            lat,
+                            lng,
                             qr_token: qrInput.trim().toUpperCase()
                         })
                     });
@@ -1034,137 +1092,135 @@
                         syncWithServer();
                         setCurrentView('home');
                     } else {
-                        showToast(data.message || 'Presensi gagal divalidasi server.', 'error');
+                        showToast(data.message, 'error');
                     }
-                } catch (err) {
+                } catch (e) {
                     setLoading(false);
-                    showToast('Gagal terhubung ke server localhost untuk validasi!', 'error');
+                    showToast('Gagal memvalidasi ke server!', 'error');
                 }
             };
 
             const handlePresensi = () => {
-                const token = qrInput.trim().toUpperCase();
-                if (!token) return showToast("Masukkan atau scan Token QR dari Ustadz!", 'error');
-                if (!activeSession) return showToast("Tidak ada sesi mengaji aktif di shelter Anda saat ini.", 'error');
+                if (!qrInput.trim()) return showToast("Masukkan atau scan Token QR!", 'error');
+                if (!activeSession) return showToast("Tidak ada sesi mengaji aktif di shelter ini.", 'error');
 
                 setLoading(true);
 
                 if (gpsMode === 'real') {
                     if (!navigator.geolocation) {
                         setLoading(false);
-                        return showToast('Sensor GPS tidak didukung perangkat.', 'error');
+                        return showToast('Sensor GPS tidak didukung.', 'error');
                     }
                     navigator.geolocation.getCurrentPosition(
-                        (pos) => sendAttendanceToServer(pos.coords.latitude, pos.coords.longitude),
+                        (pos) => sendAttendance(pos.coords.latitude, pos.coords.longitude),
                         (err) => {
                             setLoading(false);
-                            showToast('Gagal membaca GPS: ' + err.message + '. Gunakan opsi simulasi.', 'error');
+                            showToast('Gagal membaca GPS: ' + err.message, 'error');
                         },
                         { enableHighAccuracy: true, timeout: 8000 }
                     );
                 } else if (gpsMode === 'simulated_valid') {
-                    // Koordinat berjarak ~18 meter dari Shelter Sudirman
-                    sendAttendanceToServer(-6.200020, 106.816680);
+                    sendAttendance(-6.200020, 106.816680); // ~18m (Valid)
                 } else {
-                    // Koordinat berjarak ~180 meter (Di luar radius 75m)
-                    sendAttendanceToServer(-6.201500, 106.818000);
+                    sendAttendance(-6.202500, 106.821000); // ~500m (Invalid)
                 }
             };
 
             return (
-                <div className="space-y-4 animate-fade-in">
-                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
-                        <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
-                            <IconScan />
+                <div className="space-y-4">
+                    {/* Visual Radar Header */}
+                    <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-card text-center relative overflow-hidden">
+                        <div className="relative w-20 h-20 mx-auto mb-3 flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full bg-emerald-100 radar-pulse"></div>
+                            <div className="relative w-16 h-16 bg-gradient-to-tr from-brand-700 to-brand-500 text-white rounded-full flex items-center justify-center shadow-glow">
+                                <IconScan active={false} />
+                            </div>
                         </div>
-                        <h2 className="text-base font-bold text-gray-800">Presensi Kehadiran Tilawah</h2>
-                        <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
-                            Verifikasi ganda: Token QR Dinamis & Server-Side Geolocation Haversine ({shelter.radius}m).
+
+                        <h2 className="text-base font-extrabold text-slate-800">Presensi Kehadiran Geolocation</h2>
+                        <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                            Verifikasi ganda: QR Token Dinamis & Jarak Geofence Shelter (Maks. {shelter.radius} Meter)
                         </p>
 
-                        {/* Scanner View Container */}
+                        {/* Camera Scanner View */}
                         {cameraActive && (
-                            <div className="mt-4 p-2 bg-gray-900 rounded-xl overflow-hidden">
+                            <div className="mt-4 p-2 bg-slate-900 rounded-2xl overflow-hidden shadow-modal">
                                 <div id="reader" className="w-full"></div>
                                 <button 
                                     onClick={toggleCamera} 
-                                    className="mt-2 text-xs bg-red-600 text-white font-bold py-1 px-3 rounded"
+                                    className="mt-2 text-xs bg-red-600 text-white font-bold py-1.5 px-4 rounded-lg"
                                 >
                                     Tutup Kamera
                                 </button>
                             </div>
                         )}
 
-                        <div className="mt-5 space-y-3.5">
-                            {/* Input Token QR */}
+                        <div className="mt-5 space-y-4 text-left">
                             <div>
-                                <label className="block text-left text-xs font-semibold text-gray-600 mb-1">
-                                    Token Sesi QR
-                                </label>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Token Sesi QR</label>
                                 <div className="flex space-x-2">
                                     <input 
                                         type="text" 
                                         value={qrInput} 
-                                        onChange={(e) => setQrInput(e.target.value)} 
+                                        onChange={e => setQrInput(e.target.value)} 
                                         placeholder="Cth: OM-SDR-XXXX" 
-                                        className="flex-1 p-2.5 border border-gray-300 rounded-lg text-center font-mono font-bold tracking-wider uppercase text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        className="flex-1 px-3.5 py-2.5 border border-slate-200 rounded-xl text-center font-mono font-bold tracking-widest uppercase text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none bg-slate-50/50"
                                     />
                                     <button 
                                         onClick={toggleCamera} 
-                                        title="Buka Kamera Scan"
-                                        className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100"
+                                        className="bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-800 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1"
                                     >
-                                        📷 Kamera
+                                        <span>📷 Kamera</span>
                                     </button>
                                 </div>
 
                                 {activeSession && (
-                                    <div className="mt-1.5 text-left">
+                                    <div className="mt-1.5">
                                         <button 
                                             onClick={() => setQrInput(activeSession.qr_token)} 
-                                            className="text-[11px] text-emerald-600 hover:underline font-medium"
+                                            className="text-[11px] text-brand-700 hover:underline font-semibold"
                                         >
-                                            ⚡ Isi Cepat dengan Kode Sesi Aktif ({activeSession.qr_token})
+                                            ⚡ Isi Cepat dengan Token Sesi Aktif ({activeSession.qr_token})
                                         </button>
                                     </div>
                                 )}
                             </div>
 
-                            {/* GPS Simulation Switcher for Testing */}
-                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-left">
-                                <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wide mb-1.5">
-                                    Opsi Uji Coba Geolocation (GPS):
-                                </label>
+                            {/* GPS Segmented Mode */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+                                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Mode Geolocation (Uji Radius 75m):
+                                </span>
                                 <div className="space-y-1.5 text-xs">
-                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                    <label className="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-white cursor-pointer transition">
                                         <input 
                                             type="radio" 
                                             name="gps" 
                                             checked={gpsMode === 'simulated_valid'} 
                                             onChange={() => setGpsMode('simulated_valid')} 
-                                            className="text-emerald-600 focus:ring-emerald-500"
+                                            className="text-brand-600 focus:ring-brand-500"
                                         />
-                                        <span className="font-medium text-gray-700">Simulasi: Di Dalam Shelter (~18m) <b className="text-emerald-600">[Valid]</b></span>
+                                        <span className="font-semibold text-slate-700">Simulasi: Dalam Shelter (~18m) <b className="text-emerald-700">[Sah]</b></span>
                                     </label>
-                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                    <label className="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-white cursor-pointer transition">
                                         <input 
                                             type="radio" 
                                             name="gps" 
                                             checked={gpsMode === 'simulated_invalid'} 
                                             onChange={() => setGpsMode('simulated_invalid')} 
-                                            className="text-emerald-600 focus:ring-emerald-500"
+                                            className="text-brand-600 focus:ring-brand-500"
                                         />
-                                        <span className="font-medium text-gray-700">Simulasi: Di Luar Jangkauan (~180m) <b className="text-red-600">[Tolak]</b></span>
+                                        <span className="font-semibold text-slate-700">Simulasi: Luar Radius (~500m) <b className="text-red-600">[Ditolak]</b></span>
                                     </label>
-                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                    <label className="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-white cursor-pointer transition">
                                         <input 
                                             type="radio" 
                                             name="gps" 
                                             checked={gpsMode === 'real'} 
                                             onChange={() => setGpsMode('real')} 
-                                            className="text-emerald-600 focus:ring-emerald-500"
+                                            className="text-brand-600 focus:ring-brand-500"
                                         />
-                                        <span className="font-medium text-gray-700">GPS Asli Perangkat (Lokasi HP/Laptop)</span>
+                                        <span className="font-semibold text-slate-700">Sensor GPS Asli Perangkat Fisik</span>
                                     </label>
                                 </div>
                             </div>
@@ -1172,11 +1228,11 @@
                             <button 
                                 onClick={handlePresensi} 
                                 disabled={loading}
-                                className={`w-full font-bold py-3 rounded-xl shadow-md transition text-sm ${
-                                    loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
-                                } text-white`}
+                                className={`w-full font-bold py-3.5 rounded-xl shadow-card transition text-xs flex items-center justify-center space-x-1.5 ${
+                                    loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-brand-700 to-brand-800 hover:from-brand-800 hover:to-brand-900'
+                                } text-white active:scale-95`}
                             >
-                                {loading ? 'Memvalidasi ke Backend Server...' : 'Kirim Presensi Sekarang'}
+                                {loading ? <span>Memvalidasi ke Server...</span> : <span>Kirim Presensi Sekarang</span>}
                             </button>
                         </div>
                     </div>
@@ -1184,7 +1240,7 @@
             );
         };
 
-        // --- SCREEN: ASESMEN TILAWAH (USTADZ / GURU) ---
+        // --- 5. SCREEN ASESMEN TILAWAH (RUBRIK STANDAR) ---
         const AssessmentScreen = ({ user, db, syncWithServer, showToast }) => {
             const myStudents = (db.users || []).filter(u => u.role === 'peserta' && u.shelter_id === user.shelter_id);
             const [selectedStudent, setSelectedStudent] = useState(myStudents[0]?.id?.toString() || '');
@@ -1193,7 +1249,6 @@
             const [notes, setNotes] = useState('');
             const [submitting, setSubmitting] = useState(false);
 
-            // Auto calculate recommended level based on average score
             useEffect(() => {
                 const total = scores.hijaiyah + scores.lancar + scores.makhraj + scores.tajwid;
                 const avg = total / 4;
@@ -1207,7 +1262,7 @@
             const currentStudentObj = myStudents.find(s => s.id === parseInt(selectedStudent));
 
             const handleSubmit = async () => {
-                if (!selectedStudent) return showToast("Pilih santri ojol terlebih dahulu!", 'error');
+                if (!selectedStudent) return showToast("Pilih santri terlebih dahulu!", 'error');
                 setSubmitting(true);
 
                 try {
@@ -1219,7 +1274,7 @@
                             teacher_id: user.id,
                             score_json: scores,
                             level_assigned: parseInt(assignedLevel),
-                            notes: notes.trim() || 'Peserta menunjukkan progres tilawah yang baik.'
+                            notes: notes.trim() || 'Peserta menunjukkan komitmen yang baik dalam pembelajaran Al-Qur\'an.'
                         })
                     });
 
@@ -1227,118 +1282,121 @@
                     setSubmitting(false);
 
                     if (data.success) {
-                        showToast(`Asesmen tersimpan di server! Level ${currentStudentObj?.name} menjadi Level ${assignedLevel}`, 'success');
+                        showToast(`Asesmen ${currentStudentObj?.name} tersimpan di Level ${assignedLevel}!`, 'success');
                         setNotes('');
                         syncWithServer();
-                    } else {
-                        showToast(data.message || 'Gagal menyimpan asesmen ke server.', 'error');
                     }
                 } catch (e) {
                     setSubmitting(false);
-                    showToast('Gagal terhubung ke backend server!', 'error');
+                    showToast('Gagal menyimpan asesmen!', 'error');
                 }
             };
 
             const handleScoreChange = (field, val) => setScores({ ...scores, [field]: parseInt(val) });
 
             return (
-                <div className="space-y-4 animate-fade-in">
-                    <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-sm">
-                        <h2 className="text-base font-bold">Form Asesmen & Rubrik Tilawah</h2>
-                        <p className="text-xs text-emerald-100">Standardisasi Pengujian Kemampuan Membaca Al-Qur'an (Level 0 - 4)</p>
+                <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-brand-900 to-teal-900 text-white p-5 rounded-3xl shadow-card">
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-emerald-200">
+                            Standardisasi Tilawah Hidayatullah
+                        </span>
+                        <h2 className="text-base font-black mt-1">Rubrik Asesmen & Uji Kenaikan Level</h2>
+                        <p className="text-xs text-brand-200">Evaluasi berkala kompetensi baca Al-Qur'an santri binaan</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-                        {/* Pilih Santri */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-card space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
-                                Pilih Santri Ojol Binaan
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                                Pilih Santri Ojol
                             </label>
                             <select 
                                 value={selectedStudent} 
                                 onChange={e => setSelectedStudent(e.target.value)} 
-                                className="w-full p-2.5 text-xs font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"
+                                className="w-full p-2.5 text-xs font-semibold border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 bg-slate-50/50"
                             >
                                 <option value="">-- Pilih Santri --</option>
                                 {myStudents.map(s => (
                                     <option key={s.id} value={s.id}>
-                                        {s.name} (Level Saat Ini: {s.level !== undefined ? s.level : '0'})
+                                        {s.name} (Saat Ini: Level {s.level !== undefined ? s.level : 0})
                                     </option>
                                 ))}
                             </select>
                         </div>
 
                         {selectedStudent && (
-                            <div className="space-y-4 pt-2">
-                                {/* Rubrik Penilaian 4 Aspek */}
-                                <div className="space-y-2.5 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wide border-b pb-1.5">
+                            <div className="space-y-4 pt-1">
+                                {/* Rubrik 4 Aspek */}
+                                <div className="space-y-2.5 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                                    <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 pb-1.5">
                                         Skor Kompetensi Rubrik (Skala 1 - 4)
-                                    </h3>
+                                    </span>
                                     {[
                                         { key: 'hijaiyah', label: '1. Pengenalan Huruf & Harakat' },
-                                        { key: 'lancar', label: '2. Kelancaran Membaca / Artikulasi' },
+                                        { key: 'lancar', label: '2. Kelancaran & Artikulasi' },
                                         { key: 'makhraj', label: '3. Makharijul Huruf & Sifat' },
-                                        { key: 'tajwid', label: '4. Penerapan Hukum Tajwid Dasar' }
+                                        { key: 'tajwid', label: '4. Hukum Tajwid Dasar' }
                                     ].map(item => (
                                         <div key={item.key} className="flex justify-between items-center text-xs">
-                                            <span className="text-gray-700 font-medium">{item.label}</span>
-                                            <select 
-                                                value={scores[item.key]} 
-                                                onChange={(e) => handleScoreChange(item.key, e.target.value)} 
-                                                className="p-1.5 text-xs border border-gray-300 rounded-md font-semibold bg-white"
-                                            >
-                                                <option value="1">1 - Kurang</option>
-                                                <option value="2">2 - Cukup</option>
-                                                <option value="3">3 - Baik</option>
-                                                <option value="4">4 - Sangat Baik</option>
-                                            </select>
+                                            <span className="text-slate-700 font-semibold">{item.label}</span>
+                                            <div className="flex space-x-1">
+                                                {[1, 2, 3, 4].map(num => (
+                                                    <button
+                                                        key={num}
+                                                        type="button"
+                                                        onClick={() => handleScoreChange(item.key, num)}
+                                                        className={`w-7 h-7 rounded-lg text-xs font-bold transition ${
+                                                            scores[item.key] === num 
+                                                            ? 'bg-brand-700 text-white shadow-soft' 
+                                                            : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        {num}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Rekomendasi Level */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
-                                        Penetapan Level Tilawah
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                                        Penetapan Level Baru
                                     </label>
                                     <select 
                                         value={assignedLevel} 
                                         onChange={e => setAssignedLevel(e.target.value)} 
-                                        className="w-full p-2.5 border border-emerald-300 rounded-lg bg-emerald-50 font-bold text-emerald-800 text-xs focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full p-2.5 border border-brand-300 rounded-xl bg-brand-50 font-bold text-brand-900 text-xs focus:ring-2 focus:ring-brand-500"
                                     >
-                                        <option value="0">Level 0 - Pengenalan Dasar (Iqro 1-2)</option>
-                                        <option value="1">Level 1 - Mulai Membaca Huruf Sambung (Iqro 3-4)</option>
-                                        <option value="2">Level 2 - Belum Lancar / Kalimat Panjang (Iqro 5-6)</option>
-                                        <option value="3">Level 3 - Cukup Lancar & Tajwid Dasar (Juz 'Amma)</option>
-                                        <option value="4">Level 4 - Baik, Tartil & Konsisten (Al-Qur'an 30 Juz)</option>
+                                        <option value="0">Level 0 - Iqro 1-2 • Pengenalan Dasar</option>
+                                        <option value="1">Level 1 - Iqro 3-4 • Huruf Sambung & Harakat</option>
+                                        <option value="2">Level 2 - Iqro 5-6 • Kalimat & Kelancaran</option>
+                                        <option value="3">Level 3 - Juz 'Amma • Tajwid & Tartil Dasar</option>
+                                        <option value="4">Level 4 - Al-Qur'an 30 Juz • Tartil Mandiri</option>
                                     </select>
-                                    <p className="text-[10px] text-gray-500 mt-1">
-                                        *Sistem otomatis menyarankan level berdasarkan kalkulasi rata-rata skor rubrik.
-                                    </p>
+                                    <p className="text-[10px] text-slate-400 mt-1">*Kalkulasi otomatis berdasarkan rata-rata skor rubrik.</p>
                                 </div>
 
-                                {/* Catatan dan Target Belajar */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
-                                        Catatan Ustadz & Target Belajar Santri
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                                        Catatan Ustadz & Target Belajar
                                     </label>
                                     <textarea 
                                         value={notes} 
                                         onChange={e => setNotes(e.target.value)} 
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg text-xs h-20 focus:ring-2 focus:ring-emerald-500" 
-                                        placeholder="Cth: Perlu latihan di mad thabi'i dan dengung nun sukun. Semangat terus..."
+                                        className="w-full p-2.5 border border-slate-200 rounded-xl text-xs h-20 focus:ring-2 focus:ring-brand-500" 
+                                        placeholder="Tuliskan catatan perbaikan makhraj, tajwid, atau motivasi belajar..."
                                     ></textarea>
                                 </div>
 
                                 <button 
                                     onClick={handleSubmit} 
                                     disabled={submitting}
-                                    className={`w-full font-bold py-3 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1 ${
-                                        submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
-                                    } text-white`}
+                                    className={`w-full font-bold py-3.5 rounded-xl shadow-card transition text-xs flex items-center justify-center space-x-1.5 ${
+                                        submitting ? 'bg-slate-400' : 'bg-brand-700 hover:bg-brand-800'
+                                    } text-white active:scale-95`}
                                 >
-                                    <IconCheck />
+                                    <IconCheckCircle />
                                     <span>{submitting ? 'Menyimpan ke Server...' : 'Simpan & Finalisasi Asesmen'}</span>
                                 </button>
                             </div>
@@ -1348,66 +1406,65 @@
             );
         };
 
-        // --- SCREEN: PROFIL PENGGUNA ---
-        const ProfileScreen = ({ user, db, onLogout }) => {
-            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Shelter Sudirman' };
+        // --- 6. SCREEN PROFIL PENGGUNA ---
+        const ProfileScreen = ({ user, db, serverOnline, onLogout }) => {
+            const shelter = (db.shelters || []).find(s => s.id === user.shelter_id) || db.shelters?.[0] || { name: 'Pusat' };
 
             return (
-                <div className="space-y-4 animate-fade-in">
-                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
-                        <div className="w-20 h-20 bg-emerald-100 text-emerald-800 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-black shadow-inner border-2 border-emerald-300">
+                <div className="space-y-4">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-card text-center">
+                        <div className="w-20 h-20 bg-gradient-to-tr from-brand-800 to-teal-700 text-white rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-black shadow-glow border-2 border-white">
                             {user.name.charAt(0)}
                         </div>
-                        <h2 className="text-base font-bold text-gray-800">{user.name}</h2>
-                        <span className="inline-block mt-1 text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold capitalize">
+                        <h2 className="text-base font-extrabold text-slate-800">{user.name}</h2>
+                        <span className="inline-block mt-1 text-[10px] bg-brand-50 text-brand-800 border border-brand-200 px-2.5 py-0.5 rounded-full font-bold capitalize">
                             Peran: {user.role.replace('_', ' ')}
                         </span>
 
-                        <div className="mt-5 border-t border-gray-100 pt-3 text-left space-y-2.5 text-xs">
-                            <div className="flex justify-between py-1 border-b border-gray-50">
-                                <span className="text-gray-400">Username</span>
-                                <span className="font-semibold text-gray-800">{user.username}</span>
+                        <div className="mt-5 border-t border-slate-100 pt-3 text-left space-y-2 text-xs">
+                            <div className="flex justify-between py-1.5 border-b border-slate-50">
+                                <span className="text-slate-400">Username</span>
+                                <span className="font-bold text-slate-800">{user.username}</span>
                             </div>
-                            <div className="flex justify-between py-1 border-b border-gray-50">
-                                <span className="text-gray-400">Shelter Penempatan</span>
-                                <span className="font-semibold text-gray-800">{shelter ? shelter.name : 'Pusat'}</span>
+                            <div className="flex justify-between py-1.5 border-b border-slate-50">
+                                <span className="text-slate-400">Shelter Penempatan</span>
+                                <span className="font-bold text-slate-800">{shelter ? shelter.name : 'Pusat'}</span>
                             </div>
                             {user.role === 'peserta' && (
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-400">Level Pembinaan</span>
-                                    <span className="font-bold text-emerald-700">Level {user.level !== undefined ? user.level : 0}</span>
+                                <div className="flex justify-between py-1.5 border-b border-slate-50">
+                                    <span className="text-slate-400">Level Kemampuan</span>
+                                    <span className="font-bold text-brand-700">Level {user.level !== undefined ? user.level : 0}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between py-1">
-                                <span className="text-gray-400">Status Server</span>
-                                <span className="font-semibold text-emerald-600">Localhost API v2.0 (Online)</span>
+                            <div className="flex justify-between py-1.5">
+                                <span className="text-slate-400">Status Server</span>
+                                <span className="font-bold text-emerald-600 flex items-center space-x-1">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span>Localhost REST API (Online)</span>
+                                </span>
                             </div>
                         </div>
 
-                        <div className="mt-6 space-y-2">
-                            <button 
-                                onClick={onLogout}
-                                className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl border border-red-200 transition text-xs"
-                            >
-                                Keluar dari Akun (Logout)
-                            </button>
-                        </div>
+                        <button 
+                            onClick={onLogout} 
+                            className="w-full mt-6 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl border border-red-200 transition text-xs"
+                        >
+                            Keluar dari Akun (Logout)
+                        </button>
                     </div>
 
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-xs text-emerald-900 space-y-1">
-                        <p className="font-bold">Tentang Sistem Localhost Ojol Mengaji</p>
-                        <p className="text-[11px] text-gray-600 leading-relaxed">
-                            Aplikasi kini terhubung langsung dengan REST API backend Node.js di localhost:3000 dan database JSON persisten di disk. Data presensi, QR code, dan asesmen disinkronkan secara real-time antar tab dan perangkat.
+                    <div className="bg-brand-900 text-white rounded-2xl p-4 text-xs space-y-1 shadow-card border border-brand-700">
+                        <p className="font-bold text-gold-300">Visi Gerakan Ojol Mengaji</p>
+                        <p className="text-[11px] text-brand-100 leading-relaxed">
+                            Mewujudkan pengemudi ojek online yang bertilawah tartil, berakhlak mulia, dan istiqamah dalam naungan Al-Qur'an di setiap sela perjalanan mencari nafkah yang halal.
                         </p>
                     </div>
                 </div>
             );
         };
 
-        // Bootstrap App into DOM
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
 </html>
-
