@@ -1,18 +1,29 @@
 {
   "name": "ojol-mengaji",
   "version": "1.0.0",
-  "description": "Aplikasi Halaqah Al-Qur'an dan Pembinaan Spiritual Driver Ojek Online oleh DPW Hidayatullah DKI Jakarta",
+  "private": true,
   "scripts": {
-    "start": "npx -y serve . -l 8080",
-    "dev": "powershell -ExecutionPolicy Bypass -File ./server.ps1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "keywords": [
-    "ojol",
-    "mengaji",
-    "hidayatullah",
-    "quran",
-    "halaqah"
-  ],
-  "author": "DPW Hidayatullah DKI Jakarta",
-  "license": "ISC"
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.453.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3"
+  }
 }
+

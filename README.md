@@ -1,83 +1,99 @@
-# 🛵 Ojol Mengaji - Berkah Dunia Akhirat
-**Aplikasi Mobile Halaqah Al-Qur'an, Presensi GPS Geofencing & Pembinaan Spiritual Pengemudi Ojek Online**
-*Inisiasi Dakwah DPW Hidayatullah DKI Jakarta bersama Komunitas Driver Ojek Online*
+# 🕌 Website Ojol Mengaji
+
+> **Platform Digital Pembinaan Al-Qur'an & Presensi Berbasis Shelter bagi Pengemudi Ojek Online**
+> Sesuai dokumen *Software Requirements Specification (SRS) / Product Requirements Document (PRD)* Ojol Mengaji.
 
 ---
 
-## 🌟 Fitur Utama & Arsitektur Sistem
+## 🌟 Fitur Utama Berdasarkan Peran Pengguna
 
-### 1. 📱 Aplikasi Santri Driver & Guru (`index.html`)
-- **Tema Desain Premium**: Islamic Emerald (`#064e3b`, `#047857`) dipadu sentuhan Royal Gold (`#d97706`), Glassmorphism, dan Tipografi modern *Plus Jakarta Sans* & *Amiri Arabic*.
-- **Tampilan Presisi**: Tampil sebagai simulator smartphone berkelas di desktop dan otomatis 100% full-screen responsif di layar ponsel pengemudi.
-- **Header Bersih**: Tidak ada tombol peran/ganti peran pada antarmuka santri pengguna. Pengguna fokus pada halaqah dan presensi mereka.
-- **🛵 Fitur Peserta (Driver Ojol - Gojek, Grab, ShopeeFood, Maxim, inDrive)**:
-  - **Profil Driver**: Menampilkan nama, kontak WhatsApp, shelter binaan, status akun (Aktif / Menunggu Verifikasi), dan Kategori Kemampuan (A, B, C, D).
-  - **Presensi GPS Geofencing**: Deteksi koordinat GPS satelit dengan rumus Haversine presisi dalam radius shelter binaan. Dilengkapi **Mode Simulasi GPS** untuk kemudahan uji coba langsung.
-  - **Rapor & Evaluasi Ustadz**: Riwayat penilaian skor Makhraj & Tajwid (1-5), skor Kelancaran (1-5), serta catatan bimbingan dari Ustadz.
-  - **Mushaf Saku Digital**: Bacaan surah-surah pendek (Al-Fatihah, Al-Ikhlas, Al-Falaq, An-Nas) lengkap dengan teks Arab, transliterasi Latin, dan terjemahan Bahasa Indonesia.
-- **👳 Fitur Guru (Ustadz Pembina)**:
-  - **Daftar Santri Binaan**: Menampilkan seluruh driver di bawah shelter yang ditugaskan kepada ustadz.
-  - **Akses Cepat WhatsApp**: 1-klik untuk menghubungi santri langsung melalui WhatsApp (`wa.me`).
-  - **Form Penilaian Santri**: Slider evaluasi Makhraj/Tajwid, Kelancaran bacaan, penentuan jenjang Kategori (A, B, C, D), dan catatan perkembangan santri.
-
-### 2. 🛡️ Portal Admin DPW Halaman Terpisah (`admin.html`)
-- **Halaman Khusus Pengurus**: Memiliki halaman tersendiri dengan antarmuka portal yang elegan, aman, dan responsif untuk desktop maupun mobile.
-- **Ringkasan Metrik**: Statistik jumlah shelter, guru mengaji, driver santri, dan antrean verifikasi realtime.
-- **Manajemen Titik Shelter**: Tambah titik kumpul baru dengan fitur **"Ambil GPS Saya Sekarang"**, pengaturan radius geofencing, alamat, jadwal halaqah, dan hapus shelter.
-- **Manajemen Guru (Asatidz)**: Pendaftaran akun ustadz baru serta penugasan multi-shelter binaan dan direct chat WhatsApp.
-- **Verifikasi Peserta Driver**: Persetujuan pendaftar driver baru (1-klik Setujui / Batalkan verifikasi), filter status (Semua / Pending / Terverifikasi), hubungi driver via WhatsApp, dan hapus akun.
-
----
-
-## 🔑 Kredensial Akun (Akun Siap Pakai)
-
-Gunakan akun berikut untuk masuk ke aplikasi santri atau portal admin:
-
-| Halaman | Peran | Nama Akun | Identitas (Email / No. HP) | Kata Sandi | Keterangan |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **🛡️ [admin.html](file:///c:/Project%20Ojol%20Mengaji/admin.html)** | **Admin DPW** | Ustadz Haris Wijaya | `admin@ojolmengaji.id` | `admin123` | Portal khusus pengurus DPW (Shelter, Guru, Verifikasi) |
-| **🛵 [index.html](file:///c:/Project%20Ojol%20Mengaji/index.html)** | **Santri Aktif** | Bambang Pamungkas | `081234567890` | `ojol123` | Driver Gojek - Kategori B (Shelter Gambir) |
-| **🛵 [index.html](file:///c:/Project%20Ojol%20Mengaji/index.html)** | **Santri Pending**| Rudi Hartono | `081234567891` | `ojol123` | Driver Grab - Menunggu verifikasi admin |
-| **👳 [index.html](file:///c:/Project%20Ojol%20Mengaji/index.html)** | **Guru / Ustadz** | Ustadz Ahmad Fauzi, Lc | `081299990001` *(atau `guru@ojolmengaji.id`)* | `guru123` | Pembina Shelter Gambir & Tebet |
-| **📝 [index.html](file:///c:/Project%20Ojol%20Mengaji/index.html)** | **Santri Baru** | Pendaftaran Mandiri | *(Formulir Daftar Santri)* | Bebas | Otomatis masuk antrean verifikasi admin |
+### 1. 🛵 Portal Driver Ojol (Mobile-First / PWA Experience)
+* **Presensi Mandiri Berbasis Shelter**:
+  * Menggunakan sensor Geolokasi GPS ponsel dengan validasi jarak meter ke pusat shelter.
+  * Fitur alternatif: Scan **QR Code Shelter** jika sinyal GPS mengalami kendala di lapangan.
+  * Mencegah presensi ganda untuk sesi harian yang sama (*anti-fraud*).
+* **Perhitungan Persentase Kehadiran Otomatis**:
+  $$\text{Persentase Kehadiran} = \left(\frac{\text{Jumlah Sesi Hadir}}{\text{Jumlah Sesi Wajib Berlangsung}}\right) \times 100\%$$
+* **Progres Membaca Al-Qur'an (Rubrik 6 Aspek)**:
+  * Pengenalan Huruf Hijaiyah (Skala 1–4)
+  * Harakat & Rangkaian Huruf Sambung (Skala 1–4)
+  * Kelancaran Membaca (Skala 1–4)
+  * Tajwid Dasar (Skala 1–4)
+  * Makhraj & Pelafalan Huruf (Skala 1–4)
+  * Kemandirian Membaca (Skala 1–4)
+  * Catatan kelebihan & rekomendasi latihan mandiri dari Ustadz.
+* **Tugas Mengaji & Setoran Bacaan**:
+  * Notifikasi tugas dengan batas tenggat (*due date*).
+  * Pengiriman catatan setoran dan simulasi **Voice Note Audio** bacaan.
+  * Umpan balik serta penilaian langsung dari Ustadz pembimbing.
 
 ---
 
-## 💻 Cara Menjalankan Aplikasi
-
-Aplikasi ini bersifat **Zero-Dependency** dan mandiri:
-
-### Cara 1: Buka Berkas Langsung di Browser
-- Aplikasi Santri Driver: Buka berkas [index.html](file:///c:/Project%20Ojol%20Mengaji/index.html).
-- Portal Admin DPW: Buka berkas [admin.html](file:///c:/Project%20Ojol%20Mengaji/admin.html).
-
-### Cara 2: Menjalankan Server Localhost
-1. **Klik ganda berkas `start-server.bat`** (Windows).
-2. Atau jalankan di terminal:
-   ```bash
-   node server.js
-   ```
-3. Buka di browser:
-   - Aplikasi Santri: **`http://localhost:8080/`**
-   - Portal Admin DPW: **`http://localhost:8080/admin.html`**
+### 2. 👳‍♂️ Portal Guru Mengaji (Ustadz Pembimbing)
+* **Dashboard Kelas Binaan**:
+  * Informasi jadwal mengajar dan shelter tanggung jawab.
+  * Alert otomatis tugas yang menunggu penilaian & evaluasi yang belum diisi.
+* **Manajemen Presensi Sesi Kelas**:
+  * Verifikasi kehadiran driver secara *real-time*.
+  * Fitur presensi manual oleh guru jika terjadi kendala teknis pada HP driver.
+  * Koreksi presensi resmi dengan catatan alasan.
+* **Pengisian Rubrik Evaluasi Al-Qur'an**:
+  * Form terstruktur untuk mencatat capaian 6 aspek rubrik.
+  * Kemampuan mempublikasikan hasil agar dapat langsung dipantau oleh driver.
+* **Pemberian & Koreksi Tugas Mengaji**:
+  * Membuat instruksi tugas (surah target, ayat, materi).
+  * Memeriksa setoran suara, memberikan skor 1-100, dan menuliskan catatan motivasi.
 
 ---
 
-## 📁 Struktur Berkas Proyek
+### 3. 👑 Portal Administrator Pusat
+* **Dashboard Eksekutif & KPI**:
+  * Statistik Driver Ojol Aktif, Guru Aktif, Shelter Aktif, dan sesi mingguan.
+  * Deteksi otomatis **Peserta Berisiko Kurang Aktif** (kehadiran < 75%).
+  * Grafik distribusi kemampuan membaca (Iqro 1-3, Iqro 4-6, Al-Qur'an Dasar, Mahir).
+* **Master Data Shelter GPS**:
+  * Menambah/mengubah shelter dengan titik koordinat *latitude*, *longitude*, dan *radius presensi* (meter).
+* **Master Data Guru & Peserta**:
+  * Pendaftaran akun, penugasan guru ke shelter, dan alokasi driver ke shelter binaan.
+* **Monitoring Presensi & Koreksi Berizin**:
+  * Log lengkap kehadiran dengan rincian metode (GPS, QR, Manual) dan jarak radius.
+  * Tombol koreksi presensi resmi yang secara otomatis mewajibkan input alasan audit.
+* **Pengumuman Terarah**:
+  * Kirim informasi ke seluruh pengguna, khusus driver ojol, atau khusus guru mengaji.
+* **Laporan & Ekspor Data**:
+  * Unduh rekap kehadiran bulanan dalam format Spreadsheet (CSV).
+* **Audit Log Compliance**:
+  * Mencatat setiap aksi penting (Waktu, Pengguna, Peran, Entitas, Aksi, Keterangan).
 
-```text
-Project Ojol Mengaji/
-├── index.html                                  # Antarmuka Pengguna Santri Driver & Guru Mengaji
-├── admin.html                                  # Portal Khusus Admin Dewan Pengurus DPW
-├── css/
-│   └── style.css                               # Desain Sistem Emerald-Gold, Radar Animasi & Glassmorphism
-├── js/
-│   ├── data.js                                 # Data Store, Seed Akun, Kurikulum A-D, & Rumus Haversine
-│   ├── app.js                                  # Logika Aplikasi Santri (GPS Presensi, Rapor, Mushaf)
-│   └── admin.js                                # Logika Portal Admin (Shelter GPS, Guru, Verifikasi)
-├── Logo Ojol Mengaji Berkah Dunia Akhirat.png  # Logo Utama
-├── Logo DPW DKI Jakarta.jpg                    # Logo Kemitraan DPW Hidayatullah DKI
-├── server.js                                   # Localhost Server (Node.js)
-├── start-server.bat                            # Script 1-Klik Jalankan di Windows
-└── README.md                                   # Dokumentasi Lengkap Sistem
+---
+
+## 🛠️ Tech Stack
+* **Framework**: [Next.js 14](https://nextjs.org/) (App Router, React 18, TypeScript)
+* **Styling**: [Tailwind CSS](https://tailwindcss.com/) dengan palet Islamic Emerald Green & Warm Gold
+* **Icons**: [Lucide React](https://lucide.dev/)
+* **State Management & Persistence**: React Context API + LocalStorage persistence
+* **Mobile Ready**: Desain responsif ramah layar ponsel (*PWA ready*)
+
+---
+
+## 🚀 Cara Menjalankan Project
+
+### 1. Masuk ke direktori project:
+```bash
+cd "c:\Project Ojol Mengaji"
 ```
+
+### 2. Jalankan server development:
+```bash
+npm run dev
+```
+
+Buka browser dan akses: `http://localhost:3000`
+
+### 3. Mode Simulasi Interaktif:
+Di bagian atas halaman aplikasi, tersedia **Role Switcher** instan:
+* Klik **Admin** untuk masuk sebagai Administrator Pusat.
+* Klik **Guru Mengaji** untuk masuk sebagai Ust. Ahmad Fauzi.
+* Klik **Peserta Ojol** untuk masuk sebagai Rian Hidayat (Driver Gojek).
+* Terdapat juga dropdown untuk memilih akun driver / ustadz lainnya.
+
