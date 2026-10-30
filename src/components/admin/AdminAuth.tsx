@@ -15,7 +15,6 @@ import {
   CheckCircle2, 
   ArrowLeft, 
   Bike, 
-  Sparkles,
   Info,
   KeyRound
 } from 'lucide-react';
@@ -25,7 +24,7 @@ interface AdminAuthProps {
 }
 
 export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
-  const { loginStaff, users, currentUser } = useApp();
+  const { loginStaff, currentUser } = useApp();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -34,25 +33,19 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Available staff accounts for demo quick fill
-  const demoStaff = users.filter(u => u.role === 'admin' || u.role === 'guru');
-
-  const handleLogin = (e?: React.FormEvent, customId?: string, customPass?: string) => {
+  const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const targetId = customId !== undefined ? customId : identifier;
-    const targetPass = customPass !== undefined ? customPass : password;
-
-    if (!targetId.trim()) {
+    if (!identifier.trim()) {
       setErrorMsg('Silakan masukkan email atau nomor HP pengelola.');
       return;
     }
 
     setIsSubmitting(true);
     setTimeout(() => {
-      const res = loginStaff(targetId, targetPass);
+      const res = loginStaff(identifier, password);
       setIsSubmitting(false);
 
       if (res.success) {
@@ -62,12 +55,6 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
         setErrorMsg(res.message);
       }
     }, 450);
-  };
-
-  const handleQuickLogin = (email: string, pass: string) => {
-    setIdentifier(email);
-    setPassword(pass);
-    handleLogin(undefined, email, pass);
   };
 
   return (
@@ -230,52 +217,6 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
               </button>
             </div>
           </form>
-
-          {/* Demo Quick Access Helper */}
-          <div className="pt-4 border-t border-slate-200">
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              <span className="text-xs font-bold text-slate-700">
-                Akses Cepat Pengujian (1-Klik Masuk)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {demoStaff.map((staff) => (
-                <button
-                  key={staff.id}
-                  type="button"
-                  onClick={() => handleQuickLogin(staff.email, staff.password || (staff.role === 'admin' ? 'admin' : 'guru'))}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-left transition group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <img 
-                      src={staff.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100'} 
-                      alt={staff.name} 
-                      className="w-8 h-8 rounded-full object-cover border border-slate-300 group-hover:border-purple-400"
-                    />
-                    <div>
-                      <div className="text-xs font-bold text-slate-800 group-hover:text-purple-900 flex items-center gap-1.5">
-                        <span>{staff.name}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                          staff.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {staff.role === 'admin' ? 'Admin' : 'Guru'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {staff.email} • sandi: <span className="font-mono text-slate-700">{staff.password || 'admin'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className="text-[11px] font-semibold text-purple-700 bg-white group-hover:bg-purple-600 group-hover:text-white px-2.5 py-1 rounded-lg border border-purple-200 transition-colors shadow-2xs">
-                    Masuk
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Card Footer: Ojol Driver reminder */}
