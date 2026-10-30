@@ -59,7 +59,7 @@ export default function AdminPage() {
   };
 
   // Find active teacher profile for guru view
-  const currentTeacher = teachers.find(t => t.userId === currentUser.id) || teachers[0];
+  const currentTeacher = teachers.find(t => t.userId === currentUser?.id) || teachers[0];
 
   // Count pending submissions waiting for review
   const pendingSubmissionsCount = submissions.filter(s => s.status === 'menunggu_pemeriksaan').length;
@@ -130,16 +130,16 @@ export default function AdminPage() {
               <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
                 <div className="text-right">
                   <div className="text-xs font-semibold text-slate-800 leading-tight">
-                    {currentUser.name}
+                    {currentUser?.name || 'Administrator'}
                   </div>
                   <div className="text-[10px] text-purple-700 font-medium">
-                    {currentUser.role === 'admin' ? 'Administrator Pusat' : 'Guru Mengaji (Ustadz)'}
+                    {currentUser?.role === 'admin' ? 'Administrator Pusat' : 'Guru Mengaji (Ustadz)'}
                   </div>
                 </div>
 
                 <img
-                  src={currentUser.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100'}
-                  alt={currentUser.name}
+                  src={currentUser?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100'}
+                  alt={currentUser?.name || 'User'}
                   className="w-9 h-9 rounded-full border-2 border-purple-500 object-cover shadow-2xs ring-2 ring-purple-100"
                 />
               </div>
@@ -202,7 +202,7 @@ export default function AdminPage() {
                     Pilih Ustadz:
                   </span>
                   <select
-                    value={currentUser.id}
+                    value={currentUser?.id || ''}
                     onChange={(e) => switchUser(e.target.value)}
                     className="bg-transparent font-bold text-emerald-950 focus:outline-none cursor-pointer"
                   >
