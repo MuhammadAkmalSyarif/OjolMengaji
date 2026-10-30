@@ -16,7 +16,8 @@ import {
   TaskSubmission, 
   TaskStatus,
   Announcement, 
-  AuditLog 
+  AuditLog,
+  RegisterDriverData
 } from '@/types';
 
 import {
@@ -34,7 +35,7 @@ import {
 } from '@/data/initialData';
 
 interface AppContextType {
-  currentUser: User;
+  currentUser: User | null;
   users: User[];
   shelters: Shelter[];
   teachers: Teacher[];
@@ -47,7 +48,10 @@ interface AppContextType {
   announcements: Announcement[];
   auditLogs: AuditLog[];
   
-  // Auth & Role switching
+  // Auth & Driver Onboarding
+  loginDriver: (identifier: string, password?: string) => { success: boolean; message: string; user?: User };
+  registerDriver: (data: RegisterDriverData) => { success: boolean; message: string; user?: User };
+  logout: () => void;
   switchUser: (userId: string) => void;
   quickSwitchRole: (role: UserRole) => void;
   
@@ -105,7 +109,8 @@ const STORAGE_KEY = 'ojol_mengaji_state_v1';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState<User>(INITIAL_USERS[0]); // Default admin
+  // Default currentUser to null so users start with the Driver Registration & Login screen
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [shelters, setShelters] = useState<Shelter[]>(INITIAL_SHELTERS);
   const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
   const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
@@ -125,7 +130,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.users) setUsers(parsed.users);
-        if (parsed.currentUser) setCurrentUser(parsed.currentUser);
+        if (parsed.currentUser !== undefined) setCurrentUser(parsed.currentUser);
         if (parsed.shelters) setShelters(parsed.shelters);
         if (parsed.teachers) setTeachers(parsed.teachers);
         if (parsed.participants) setParticipants(parsed.participants);
@@ -185,14 +190,124 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newLog: AuditLog = {
       id: 'audit-' + Date.now(),
       action,
-      userName: currentUser.name,
-      userRole: currentUser.role,
+      userName: currentUser?.name || 'Sistem Mandiri',
+      userRole: currentUser?.role || 'ojol',
       targetEntity: entity,
       targetId,
       details,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
     setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const loginDriver = (identifier: string, password?: string): { success: boolean; message: string; user?: User } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanPhone = identifier.replace(/[\s-]/g, '');
+
+    const found = users.find(u => 
+      u.role === 'ojol' && (
+        u.email.toLowerCase() === cleanId ||
+        u.phone.replace(/[\s-]/g, '') === cleanPhone ||
+        u.name.toLowerCase() === cleanId
+      )
+    );
+
+    if (!found) {
+      return {
+        success: false,
+        message: 'Akun santri driver tidak ditemukan dengan data tersebut. Silakan lakukan pendaftaran terlebih dahulu.'
+      };
+    }
+
+    if (!found.isActive) {
+      return {
+        success: false,
+        message: 'Status akun driver Anda sedang tidak aktif. Silakan hubungi ustadz atau admin.'
+      };
+    }
+
+    if (password && found.password && found.password !== password) {
+      return {
+        success: false,
+        message: 'Kata sandi tidak sesuai. Silakan coba kembali.'
+      };
+    }
+
+    setCurrentUser(found);
+    addAudit('LOGIN_DRIVER', 'users', found.id, `Driver ${found.name} berhasil masuk ke dashboard`);
+    return {
+      success: true,
+      message: `Alhamdulillah! Selamat datang kembali, ${found.name}.`,
+      user: found
+    };
+  };
+
+  const registerDriver = (data: RegisterDriverData): { success: boolean; message: string; user?: User } => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanPhone = data.phone.replace(/[\s-]/g, '');
+
+    // Check if phone or email already registered
+    const exists = users.find(u => 
+      (cleanEmail && u.email.toLowerCase() === cleanEmail) ||
+      (cleanPhone && u.phone.replace(/[\s-]/g, '') === cleanPhone)
+    );
+
+    if (exists) {
+      return {
+        success: false,
+        message: `Nomor WhatsApp atau Email sudah terdaftar atas nama ${exists.name}. Silakan langsung masuk.`
+      };
+    }
+
+    const userId = 'user-ojol-' + Date.now();
+    const partId = 'part-' + Date.now();
+    const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`;
+
+    const newUser: User = {
+      id: userId,
+      name: data.name.trim(),
+      email: cleanEmail || `${cleanPhone}@ojolmengaji.id`,
+      phone: data.phone.trim(),
+      role: 'ojol',
+      avatar: avatarUrl,
+      password: data.password || '123',
+      isActive: true,
+    };
+
+    const newParticipant: Participant = {
+      id: partId,
+      userId,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: cleanEmail || `${cleanPhone}@ojolmengaji.id`,
+      avatar: avatarUrl,
+      ojolPlatform: data.ojolPlatform,
+      vehiclePlate: data.vehiclePlate.trim().toUpperCase(),
+      shelterId: data.shelterId,
+      currentLevel: data.currentLevel,
+      joinedDate: new Date().toISOString().split('T')[0],
+      isActive: true,
+    };
+
+    setUsers(prev => [...prev, newUser]);
+    setParticipants(prev => [...prev, newParticipant]);
+    setCurrentUser(newUser);
+
+    const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
+    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran santri driver baru "${data.name}" (${data.ojolPlatform} - ${data.vehiclePlate}) di ${shelterName}`);
+
+    return {
+      success: true,
+      message: `Alhamdulillah! Pendaftaran berhasil. Selamat datang di Ojol Mengaji, Akhina ${data.name}.`,
+      user: newUser
+    };
+  };
+
+  const logout = () => {
+    if (currentUser) {
+      addAudit('LOGOUT_DRIVER', 'users', currentUser.id, `Driver ${currentUser.name} keluar dari akun`);
+    }
+    setCurrentUser(null);
   };
 
   const switchUser = (userId: string) => {
@@ -340,7 +455,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status,
       method,
       distanceMeters,
-      verifiedByTeacherId: currentUser.role === 'guru' ? teachers.find(t => t.userId === currentUser.id)?.id : undefined,
+      verifiedByTeacherId: currentUser?.role === 'guru' ? teachers.find(t => t.userId === currentUser.id)?.id : undefined,
       notes: notes || `Presensi berhasil via ${method.toUpperCase()} (${distanceMeters}m dari pusat shelter)`
     };
 
@@ -356,7 +471,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return {
           ...a,
           status: newStatus,
-          notes: (a.notes ? a.notes + ' | ' : '') + `Koreksi status oleh ${currentUser.name}: ${newStatus} (Alasan: ${reason})`
+          notes: (a.notes ? a.notes + ' | ' : '') + `Koreksi status oleh ${currentUser?.name || 'Admin'}: ${newStatus} (Alasan: ${reason})`
         };
       }
       return a;
@@ -434,7 +549,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newAnn: Announcement = {
       ...data,
       id,
-      authorName: currentUser.name,
+      authorName: currentUser?.name || 'Admin Pusat',
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
     setAnnouncements(prev => [newAnn, ...prev]);
@@ -492,6 +607,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       submissions,
       announcements,
       auditLogs,
+      loginDriver,
+      registerDriver,
+      logout,
       switchUser,
       quickSwitchRole,
       addShelter,

@@ -54,7 +54,7 @@ export const GuruPortal: React.FC = () => {
   } = useApp();
 
   // Find active teacher profile
-  const teacher = teachers.find(t => t.userId === currentUser.id) || teachers[0];
+  const teacher = teachers.find(t => t.userId === currentUser?.id) || teachers[0];
   
   // Filter shelters managed by this teacher
   const myShelters = shelters.filter(s => teacher.shelterIds.includes(s.id));

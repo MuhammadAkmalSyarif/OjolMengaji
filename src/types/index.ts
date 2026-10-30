@@ -7,7 +7,19 @@ export interface User {
   role: UserRole;
   avatar?: string;
   phone: string;
+  password?: string;
   isActive: boolean;
+}
+
+export interface RegisterDriverData {
+  name: string;
+  email: string;
+  phone: string;
+  password?: string;
+  ojolPlatform: 'Gojek' | 'Grab' | 'Maxim' | 'InDrive' | 'ShopeeFood';
+  vehiclePlate: string;
+  shelterId: string;
+  currentLevel: 'Iqro 1-3' | 'Iqro 4-6' | 'Al-Qur\'an Dasar' | 'Al-Qur\'an Mahir / Tajwid';
 }
 
 export interface Shelter {

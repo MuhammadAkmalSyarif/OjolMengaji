@@ -20,6 +20,7 @@ export const INITIAL_USERS: User[] = [
     role: 'admin',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     phone: '0812-3456-7890',
+    password: 'admin',
     isActive: true,
   },
   {
@@ -29,6 +30,7 @@ export const INITIAL_USERS: User[] = [
     role: 'guru',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     phone: '0813-8899-1234',
+    password: 'guru',
     isActive: true,
   },
   {
@@ -38,6 +40,7 @@ export const INITIAL_USERS: User[] = [
     role: 'guru',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     phone: '0815-7766-5544',
+    password: 'guru',
     isActive: true,
   },
   {
@@ -47,6 +50,7 @@ export const INITIAL_USERS: User[] = [
     role: 'ojol',
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
     phone: '0857-1122-3344',
+    password: '123',
     isActive: true,
   },
   {
@@ -56,6 +60,7 @@ export const INITIAL_USERS: User[] = [
     role: 'ojol',
     avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
     phone: '0878-9988-7766',
+    password: '123',
     isActive: true,
   },
   {
@@ -65,6 +70,7 @@ export const INITIAL_USERS: User[] = [
     role: 'ojol',
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
     phone: '0821-3344-5566',
+    password: '123',
     isActive: true,
   },
   {
@@ -74,6 +80,7 @@ export const INITIAL_USERS: User[] = [
     role: 'ojol',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     phone: '0819-2233-4455',
+    password: '123',
     isActive: true,
   }
 ];

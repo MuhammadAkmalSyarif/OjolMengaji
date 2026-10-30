@@ -22,13 +22,15 @@ import {
   TrendingUp,
   ShieldCheck,
   Send,
-  UserCheck
+  UserCheck,
+  LogOut
 } from 'lucide-react';
 import { TaskStatus } from '@/types';
 
 export const OjolPortal: React.FC = () => {
   const { 
     currentUser, 
+    logout,
     participants, 
     shelters, 
     schedules, 
@@ -43,7 +45,7 @@ export const OjolPortal: React.FC = () => {
   } = useApp();
 
   // Find participant profile corresponding to current logged in user
-  const participant = participants.find(p => p.userId === currentUser.id) || participants[0];
+  const participant = participants.find(p => p.userId === currentUser?.id) || participants[0];
   const shelter = shelters.find(s => s.id === participant.shelterId) || shelters[0];
   const participantSchedules = schedules.filter(s => s.shelterId === shelter.id);
 
@@ -775,10 +777,25 @@ export const OjolPortal: React.FC = () => {
                 <span className="text-slate-500">Level Pembelajaran</span>
                 <span className="font-bold text-emerald-800">{participant.currentLevel}</span>
               </div>
-              <div className="flex justify-between py-2">
+              <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Tanggal Bergabung</span>
                 <span className="font-bold text-slate-800">{participant.joinedDate}</span>
               </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Apakah Anda yakin ingin keluar dari akun driver?')) {
+                    logout();
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Keluar dari Akun Driver</span>
+              </button>
             </div>
           </div>
         </div>
