@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { AdminPortal } from '@/components/admin/AdminPortal';
 import { GuruPortal } from '@/components/guru/GuruPortal';
+import { AdminAuth } from '@/components/admin/AdminAuth';
 import { 
   Shield, 
   GraduationCap, 
@@ -17,7 +18,8 @@ import {
   MapPin, 
   CheckCircle2, 
   Volume2,
-  FileCheck
+  FileCheck,
+  LogOut
 } from 'lucide-react';
 import { UserRole } from '@/types';
 
@@ -32,27 +34,32 @@ export default function AdminPage() {
     participants, 
     switchUser, 
     quickSwitchRole, 
+    logout,
     resetAllData 
   } = useApp();
+
+  // Check if staff (admin or guru) is logged in
+  const isStaffLoggedIn = Boolean(currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru'));
 
   // Active module tab inside Admin: 'admin' | 'guru'
   const [managementTab, setManagementTab] = useState<'admin' | 'guru'>('admin');
 
-  // Ensure current user is in management (admin or guru), default to admin if coming from ojol or not logged in
+  // Synchronize management tab with logged in role
   useEffect(() => {
-    if (!currentUser || currentUser.role === 'ojol') {
-      const adminUser = users.find(u => u.role === 'admin') || users[0];
-      if (adminUser) switchUser(adminUser.id);
+    if (currentUser?.role === 'guru') {
+      setManagementTab('guru');
+    } else if (currentUser?.role === 'admin') {
+      setManagementTab('admin');
     }
-  }, [currentUser, users, switchUser]);
+  }, [currentUser?.role]);
 
   // When managementTab switches, adjust currentUser accordingly if appropriate
   const handleTabChange = (tab: 'admin' | 'guru') => {
     setManagementTab(tab);
-    if (tab === 'admin') {
+    if (tab === 'admin' && currentUser?.role !== 'admin') {
       const adminUser = users.find(u => u.role === 'admin');
       if (adminUser) switchUser(adminUser.id);
-    } else {
+    } else if (tab === 'guru' && currentUser?.role !== 'guru') {
       const guruUser = users.find(u => u.role === 'guru');
       if (guruUser) switchUser(guruUser.id);
     }
@@ -63,6 +70,52 @@ export default function AdminPage() {
 
   // Count pending submissions waiting for review
   const pendingSubmissionsCount = submissions.filter(s => s.status === 'menunggu_pemeriksaan').length;
+
+  // If not logged in as staff (admin or guru), show AdminAuth
+  if (!isStaffLoggedIn) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-100/70">
+        <header className="bg-white border-b border-slate-200 shadow-xs py-3 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-indigo-800 p-0.5 shadow-sm">
+                <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
+                  <BookOpen className="w-4 h-4 text-emerald-700" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-slate-900 text-base tracking-tight">
+                    Ojol<span className="text-emerald-600">Mengaji</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded border border-purple-200">
+                    <Shield className="w-2.5 h-2.5 text-purple-700" />
+                    Portal Pengelola
+                  </span>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors shadow-2xs"
+            >
+              <Bike className="w-3.5 h-3.5" />
+              <span>Halaman Driver</span>
+            </Link>
+          </div>
+        </header>
+
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 flex items-center justify-center">
+          <AdminAuth />
+        </main>
+
+        <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+          <p>Portal Manajemen Terpadu Administrator &amp; Dewan Guru — Ojol Mengaji Platform</p>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100/70">
@@ -126,9 +179,9 @@ export default function AdminPage() {
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
 
-              {/* Active Admin / Guru User Selector */}
-              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
-                <div className="text-right">
+              {/* Active Admin / Guru User Selector & Logout */}
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                <div className="text-right hidden sm:block">
                   <div className="text-xs font-semibold text-slate-800 leading-tight">
                     {currentUser?.name || 'Administrator'}
                   </div>
@@ -142,6 +195,21 @@ export default function AdminPage() {
                   alt={currentUser?.name || 'User'}
                   className="w-9 h-9 rounded-full border-2 border-purple-500 object-cover shadow-2xs ring-2 ring-purple-100"
                 />
+
+                {/* Logout Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Keluar dari portal pengelola?')) {
+                      logout();
+                    }
+                  }}
+                  title="Keluar dari akun pengelola"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-200 shadow-2xs"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Keluar</span>
+                </button>
               </div>
             </div>
           </div>

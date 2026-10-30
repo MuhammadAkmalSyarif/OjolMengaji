@@ -50,6 +50,7 @@ interface AppContextType {
   
   // Auth & Driver Onboarding
   loginDriver: (identifier: string, password?: string) => { success: boolean; message: string; user?: User };
+  loginStaff: (identifier: string, password?: string) => { success: boolean; message: string; user?: User };
   registerDriver: (data: RegisterDriverData) => { success: boolean; message: string; user?: User };
   logout: () => void;
   switchUser: (userId: string) => void;
@@ -242,6 +243,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
+  const loginStaff = (identifier: string, password?: string): { success: boolean; message: string; user?: User } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanPhone = identifier.replace(/[\s-]/g, '');
+
+    const found = users.find(u => 
+      (u.role === 'admin' || u.role === 'guru') && (
+        u.email.toLowerCase() === cleanId ||
+        u.phone.replace(/[\s-]/g, '') === cleanPhone ||
+        u.name.toLowerCase() === cleanId
+      )
+    );
+
+    if (!found) {
+      // Check if an ojol account was entered
+      const isOjol = users.find(u => 
+        u.role === 'ojol' && (
+          u.email.toLowerCase() === cleanId ||
+          u.phone.replace(/[\s-]/g, '') === cleanPhone ||
+          u.name.toLowerCase() === cleanId
+        )
+      );
+
+      if (isOjol) {
+        return {
+          success: false,
+          message: 'Akun ini terdaftar sebagai Mitra Driver Ojol. Portal ini khusus untuk Administrator Pusat & Dewan Guru. Silakan masuk melalui halaman login driver di portal utama.'
+        };
+      }
+
+      return {
+        success: false,
+        message: 'Kredensial tidak ditemukan. Pastikan email atau nomor HP admin/guru sudah terdaftar dalam sistem.'
+      };
+    }
+
+    if (!found.isActive) {
+      return {
+        success: false,
+        message: 'Status akun pengelola Anda sedang tidak aktif. Silakan hubungi Administrator Sistem.'
+      };
+    }
+
+    if (password && found.password && found.password !== password) {
+      return {
+        success: false,
+        message: 'Kata sandi pengelola tidak cocok. Silakan coba kembali.'
+      };
+    }
+
+    setCurrentUser(found);
+    const roleTitle = found.role === 'admin' ? 'Administrator Pusat' : 'Guru Mengaji (Ustadz)';
+    addAudit('LOGIN_STAFF', 'users', found.id, `${roleTitle} ${found.name} berhasil masuk ke portal manajemen`);
+    return {
+      success: true,
+      message: `Alhamdulillah! Selamat datang, ${found.name} (${roleTitle}).`,
+      user: found
+    };
+  };
+
   const registerDriver = (data: RegisterDriverData): { success: boolean; message: string; user?: User } => {
     const cleanEmail = data.email.trim().toLowerCase();
     const cleanPhone = data.phone.replace(/[\s-]/g, '');
@@ -305,7 +365,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     if (currentUser) {
-      addAudit('LOGOUT_DRIVER', 'users', currentUser.id, `Driver ${currentUser.name} keluar dari akun`);
+      const roleTitle = currentUser.role === 'admin' ? 'Administrator' : currentUser.role === 'guru' ? 'Guru' : 'Driver';
+      addAudit('LOGOUT', 'users', currentUser.id, `${roleTitle} ${currentUser.name} keluar dari akun`);
     }
     setCurrentUser(null);
   };
@@ -608,6 +669,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       announcements,
       auditLogs,
       loginDriver,
+      loginStaff,
       registerDriver,
       logout,
       switchUser,

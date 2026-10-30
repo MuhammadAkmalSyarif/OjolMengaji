@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { OjolPortal } from '@/components/ojol/OjolPortal';
 import { DriverAuth } from '@/components/ojol/DriverAuth';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Shield } from 'lucide-react';
 
 export default function Home() {
   const { currentUser } = useApp();
@@ -45,8 +46,18 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="text-xs text-slate-400">
-              Gerakan Solidaritas &amp; Dakwah Mitra Ojek Online
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-slate-400 hidden sm:inline">
+                Gerakan Solidaritas &amp; Dakwah Mitra Ojek Online
+              </span>
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-purple-700 bg-slate-100 hover:bg-purple-50 border border-slate-200 hover:border-purple-200 transition-colors shadow-2xs"
+                title="Akses Portal Pengelola (Admin & Dewan Guru)"
+              >
+                <Shield className="w-3.5 h-3.5 text-purple-600" />
+                <span>Portal Admin / Guru</span>
+              </Link>
             </div>
           </div>
 
