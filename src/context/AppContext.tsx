@@ -130,8 +130,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.users) setUsers(parsed.users);
-        if (parsed.currentUser !== undefined) setCurrentUser(parsed.currentUser);
+        if (parsed.users) {
+          // Synchronize admin credentials to guarantee admin@ojolmengaji.id and OjolMengaji_Admin123
+          const updatedUsers = parsed.users.map((u: User) => {
+            if (u.role === 'admin' || u.id === 'user-admin-1') {
+              return {
+                ...u,
+                email: 'admin@ojolmengaji.id',
+                password: 'OjolMengaji_Admin123',
+                isActive: true
+              };
+            }
+            return u;
+          });
+          setUsers(updatedUsers);
+        }
+        if (parsed.currentUser !== undefined) {
+          if (parsed.currentUser && (parsed.currentUser.role === 'admin' || parsed.currentUser.id === 'user-admin-1')) {
+            setCurrentUser({
+              ...parsed.currentUser,
+              email: 'admin@ojolmengaji.id',
+              password: 'OjolMengaji_Admin123',
+              isActive: true
+            });
+          } else {
+            setCurrentUser(parsed.currentUser);
+          }
+        }
         if (parsed.shelters) setShelters(parsed.shelters);
         if (parsed.teachers) setTeachers(parsed.teachers);
         if (parsed.participants) setParticipants(parsed.participants);
@@ -247,15 +272,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanId = identifier.trim().toLowerCase();
     const cleanPhone = identifier.replace(/[\s-]/g, '');
 
-    const found = users.find(u => 
-      (u.role === 'admin' || u.role === 'guru') && (
+    // Ketentuan Akun Administrator:
+    // Email: admin@ojolmengaji.id
+    // Password: OjolMengaji_Admin123
+    // Selain email dan password ini, TIDAK BISA login sebagai admin.
+    const isAdminEmail = cleanId === 'admin@ojolmengaji.id';
+
+    // Cari akun admin dalam data users
+    const adminUser = users.find(u => u.role === 'admin' || u.id === 'user-admin-1');
+
+    // Jika pengguna mencoba masuk dengan nomor HP atau nama admin (bukan email admin@ojolmengaji.id)
+    const isOtherAdminIdentifier = adminUser && (
+      adminUser.phone.replace(/[\s-]/g, '') === cleanPhone ||
+      adminUser.name.toLowerCase() === cleanId
+    );
+
+    if (isOtherAdminIdentifier && !isAdminEmail) {
+      return {
+        success: false,
+        message: 'Akses ditolak: Login Administrator hanya diizinkan menggunakan email resmi admin@ojolmengaji.id.'
+      };
+    }
+
+    // Jika mencoba login menggunakan email admin
+    if (isAdminEmail) {
+      if (!adminUser) {
+        return {
+          success: false,
+          message: 'Akun Administrator tidak ditemukan.'
+        };
+      }
+
+      if (!adminUser.isActive) {
+        return {
+          success: false,
+          message: 'Status akun Administrator sedang tidak aktif.'
+        };
+      }
+
+      if (password !== 'OjolMengaji_Admin123') {
+        return {
+          success: false,
+          message: 'Kata sandi Administrator salah. Silakan coba kembali.'
+        };
+      }
+
+      setCurrentUser(adminUser);
+      addAudit('LOGIN_STAFF', 'users', adminUser.id, `Administrator ${adminUser.name} berhasil masuk ke portal manajemen`);
+      return {
+        success: true,
+        message: `Alhamdulillah! Selamat datang, ${adminUser.name} (Administrator Pusat).`,
+        user: adminUser
+      };
+    }
+
+    // Pastikan tidak ada akun selain admin@ojolmengaji.id yang bisa login sebagai admin
+    const isAttemptingOtherAdmin = users.some(u => 
+      u.role === 'admin' && (
+        u.email.toLowerCase() === cleanId ||
+        u.phone.replace(/[\s-]/g, '') === cleanPhone ||
+        u.name.toLowerCase() === cleanId
+      )
+    );
+    if (isAttemptingOtherAdmin) {
+      return {
+        success: false,
+        message: 'Akses ditolak: Selain admin@ojolmengaji.id tidak dapat login sebagai Administrator.'
+      };
+    }
+
+    // Verifikasi untuk akun Dewan Guru (Ustadz)
+    const foundGuru = users.find(u => 
+      u.role === 'guru' && (
         u.email.toLowerCase() === cleanId ||
         u.phone.replace(/[\s-]/g, '') === cleanPhone ||
         u.name.toLowerCase() === cleanId
       )
     );
 
-    if (!found) {
+    if (!foundGuru) {
       // Check if an ojol account was entered
       const isOjol = users.find(u => 
         u.role === 'ojol' && (
@@ -278,27 +373,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    if (!found.isActive) {
+    if (!foundGuru.isActive) {
       return {
         success: false,
         message: 'Status akun pengelola Anda sedang tidak aktif. Silakan hubungi Administrator Sistem.'
       };
     }
 
-    if (password && found.password && found.password !== password) {
+    if (password && foundGuru.password && foundGuru.password !== password) {
       return {
         success: false,
         message: 'Kata sandi pengelola tidak cocok. Silakan coba kembali.'
       };
     }
 
-    setCurrentUser(found);
-    const roleTitle = found.role === 'admin' ? 'Administrator Pusat' : 'Guru Mengaji (Ustadz)';
-    addAudit('LOGIN_STAFF', 'users', found.id, `${roleTitle} ${found.name} berhasil masuk ke portal manajemen`);
+    setCurrentUser(foundGuru);
+    const roleTitle = 'Guru Mengaji (Ustadz)';
+    addAudit('LOGIN_STAFF', 'users', foundGuru.id, `${roleTitle} ${foundGuru.name} berhasil masuk ke portal manajemen`);
     return {
       success: true,
-      message: `Alhamdulillah! Selamat datang, ${found.name} (${roleTitle}).`,
-      user: found
+      message: `Alhamdulillah! Selamat datang, ${foundGuru.name} (${roleTitle}).`,
+      user: foundGuru
     };
   };
 
@@ -374,11 +469,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const switchUser = (userId: string) => {
     const user = users.find(u => u.id === userId);
     if (user) {
+      // Prevent unauthorized bypass to admin role
+      if (user.role === 'admin' && currentUser?.role !== 'admin') {
+        return;
+      }
       setCurrentUser(user);
     }
   };
 
   const quickSwitchRole = (role: UserRole) => {
+    if (role === 'admin') {
+      return; // Admin role cannot be assumed without credentials
+    }
     const firstUserWithRole = users.find(u => u.role === role);
     if (firstUserWithRole) {
       setCurrentUser(firstUserWithRole);
@@ -640,7 +742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetAllData = () => {
     setUsers(INITIAL_USERS);
-    setCurrentUser(INITIAL_USERS[0]);
+    setCurrentUser(null);
     setShelters(INITIAL_SHELTERS);
     setTeachers(INITIAL_TEACHERS);
     setParticipants(INITIAL_PARTICIPANTS);

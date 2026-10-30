@@ -90,10 +90,14 @@ npm run dev
 
 Buka browser dan akses: `http://localhost:3000`
 
-### 3. Mode Simulasi Interaktif:
-Di bagian atas halaman aplikasi, tersedia **Role Switcher** instan:
-* Klik **Admin** untuk masuk sebagai Administrator Pusat.
-* Klik **Guru Mengaji** untuk masuk sebagai Ust. Ahmad Fauzi.
-* Klik **Peserta Ojol** untuk masuk sebagai Rian Hidayat (Driver Gojek).
-* Terdapat juga dropdown untuk memilih akun driver / ustadz lainnya.
+### 3. Kredensial Akses Pengelola:
+* **Administrator Pusat**:
+  * **Email**: `admin@ojolmengaji.id`
+  * **Password**: `OjolMengaji_Admin123`
+  * *(Catatan: Khusus role Administrator Pusat hanya dapat diakses dengan email dan password resmi di atas)*
+* **Dewan Guru (Ustadz)**:
+  * **Email**: `ahmad.fauzi@ojolmengaji.id` (Password: `guru`)
+  * **Email**: `ridwan@ojolmengaji.id` (Password: `guru`)
+* **Mitra Driver Ojol**:
+  * Pendaftaran mandiri via halaman utama atau masuk dengan nomor WA / email terdaftar.
 

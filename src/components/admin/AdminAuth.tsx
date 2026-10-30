@@ -171,8 +171,9 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
                   className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition"
                 />
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Contoh: <span className="font-mono text-purple-700">admin@ojolmengaji.id</span>
+              <p className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center justify-between gap-1">
+                <span>Email Admin: <span className="font-mono text-purple-700 font-semibold">admin@ojolmengaji.id</span></span>
+                <span>Ustadz: <span className="font-mono text-emerald-700 font-semibold">ahmad.fauzi@ojolmengaji.id</span></span>
               </p>
             </div>
 

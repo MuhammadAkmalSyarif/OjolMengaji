@@ -19,7 +19,8 @@ import {
   CheckCircle2, 
   Volume2,
   FileCheck,
-  LogOut
+  LogOut,
+  Lock
 } from 'lucide-react';
 import { UserRole } from '@/types';
 
@@ -55,13 +56,14 @@ export default function AdminPage() {
 
   // When managementTab switches, adjust currentUser accordingly if appropriate
   const handleTabChange = (tab: 'admin' | 'guru') => {
-    setManagementTab(tab);
-    if (tab === 'admin' && currentUser?.role !== 'admin') {
-      const adminUser = users.find(u => u.role === 'admin');
-      if (adminUser) switchUser(adminUser.id);
-    } else if (tab === 'guru' && currentUser?.role !== 'guru') {
-      const guruUser = users.find(u => u.role === 'guru');
-      if (guruUser) switchUser(guruUser.id);
+    if (tab === 'admin') {
+      if (currentUser?.role !== 'admin') {
+        alert('Akses Terbatas: Hanya Administrator Pusat dengan akun admin@ojolmengaji.id yang dapat mengakses Portal Administrator.');
+        return;
+      }
+      setManagementTab('admin');
+    } else if (tab === 'guru') {
+      setManagementTab('guru');
     }
   };
 
@@ -222,19 +224,30 @@ export default function AdminPage() {
             <div className="inline-flex p-1 rounded-xl bg-slate-200/80 border border-slate-300 shadow-inner">
               <button
                 onClick={() => handleTabChange('admin')}
+                disabled={currentUser?.role !== 'admin'}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
                   managementTab === 'admin'
                     ? 'bg-purple-700 text-white shadow-md ring-2 ring-purple-300'
+                    : currentUser?.role !== 'admin'
+                    ? 'text-slate-400 opacity-60 cursor-not-allowed'
                     : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
                 }`}
+                title={currentUser?.role !== 'admin' ? 'Akses Terbatas: Hanya Akun Administrator (admin@ojolmengaji.id)' : 'Portal Administrator Pusat'}
               >
                 <Shield className="w-4 h-4" />
                 <span>Portal Administrator Pusat</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  managementTab === 'admin' ? 'bg-purple-900/60 text-purple-100' : 'bg-slate-300 text-slate-700'
-                }`}>
-                  Master Data
-                </span>
+                {currentUser?.role !== 'admin' ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-300 text-slate-600 flex items-center gap-1 font-semibold">
+                    <Lock className="w-2.5 h-2.5 text-slate-600" />
+                    Terkunci
+                  </span>
+                ) : (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    managementTab === 'admin' ? 'bg-purple-900/60 text-purple-100' : 'bg-slate-300 text-slate-700'
+                  }`}>
+                    Master Data
+                  </span>
+                )}
               </button>
 
               <button
