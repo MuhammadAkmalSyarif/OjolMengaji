@@ -57,9 +57,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // List of existing ojol drivers for quick simulation login
-  const existingDrivers = users.filter(u => u.role === 'ojol');
-
   // Handle Registration
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,19 +130,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     }, 500);
   };
 
-  // Handle Quick Login for testing
-  const handleQuickLogin = (driverUser: (typeof users)[0]) => {
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    setLoginIdentifier(driverUser.phone || driverUser.email);
-    setLoginPassword(driverUser.password || '123');
-    const res = loginDriver(driverUser.email, driverUser.password || '123');
-    if (res.success) {
-      setSuccessMsg(res.message);
-      if (onSuccess) onSuccess();
-    }
-  };
-
   return (
     <div className="max-w-2xl mx-auto py-4 px-2 sm:px-4">
       {/* Hero Header */}
@@ -154,6 +138,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
           <img
             src="/logo-ojol-mengaji.png"
             alt="Logo Ojol Mengaji"
+            style={{ width: '64px', height: '64px', objectFit: 'contain' }}
             className="w-full h-full object-contain"
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
@@ -161,7 +146,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
           />
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Portal Santri <span className="text-emerald-700">Ojol Mengaji</span>
+          Portal <span className="text-emerald-700">Ojol Mengaji</span>
         </h1>
         <p className="mt-1 text-sm text-slate-600 max-w-md mx-auto">
           Program Pembinaan Al-Qur&apos;an &amp; Presensi Kehadiran Khusus Mitra Driver Ojol Berbasis Shelter Se-Jabodetabek
@@ -186,7 +171,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
             }`}
           >
             <UserPlus className="w-4 h-4" />
-            <span>Daftar Santri Driver Baru</span>
+            <span>Daftar Driver Baru</span>
           </button>
 
           <button
@@ -227,7 +212,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <p className="font-bold">Alhamdulillah Berhasil!</p>
                 <p>{successMsg}</p>
                 <p className="text-[11px] text-emerald-700 mt-1 font-medium">
-                  Anda sedang dialihkan ke Dashboard Santri Driver...
+                  Anda sedang dialihkan ke Dashboard Driver...
                 </p>
               </div>
             </div>
@@ -239,7 +224,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
                 <h2 className="text-sm font-bold text-slate-800">
-                  Formulir Pendaftaran Santri Ojol
+                  Formulir Pendaftaran Driver Ojol
                 </h2>
                 <span className="text-[11px] text-emerald-600 ml-auto font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   Gratis 100%
@@ -449,7 +434,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 </div>
               </div>
 
-              {/* Komitmen Santri */}
+              {/* Komitmen Driver */}
               <div className="pt-1">
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
@@ -472,7 +457,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 shadow-md shadow-emerald-700/20 active:scale-[0.99] transition disabled:opacity-60"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Mendaftarkan Akun Driver...' : 'Daftar Sekarang Sebagai Santri Driver'}</span>
+                  <span>{isSubmitting ? 'Mendaftarkan Akun Driver...' : 'Daftar Sekarang Sebagai Driver'}</span>
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </button>
               </div>
@@ -501,7 +486,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                   <LogIn className="w-4 h-4 text-emerald-600" />
                   <h2 className="text-sm font-bold text-slate-800">
-                    Masuk ke Akun Santri Driver
+                    Masuk ke Akun Driver
                   </h2>
                 </div>
 
@@ -569,7 +554,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
 
                 {/* Switch to register */}
                 <p className="text-center text-xs text-slate-500 pt-1">
-                  Belum punya akun santri?{' '}
+                  Belum punya akun driver?{' '}
                   <button
                     type="button"
                     onClick={() => {
@@ -582,43 +567,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   </button>
                 </p>
               </form>
-
-              {/* Quick Simulation / Demo Driver Accounts */}
-              {existingDrivers.length > 0 && (
-                <div className="pt-4 border-t border-slate-200">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2.5">
-                    <Bike className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Uji Coba Cepat dengan Akun Driver Terdaftar:</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {existingDrivers.map((driver) => {
-                      return (
-                        <button
-                          key={driver.id}
-                          type="button"
-                          onClick={() => handleQuickLogin(driver)}
-                          className="text-left p-2.5 rounded-xl border border-slate-200 hover:border-emerald-300 bg-slate-50 hover:bg-emerald-50/50 transition-all flex items-center gap-2.5 group"
-                        >
-                          <img
-                            src={driver.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
-                            alt={driver.name}
-                            className="w-8 h-8 rounded-full border border-emerald-400 object-cover shrink-0"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-800 truncate">
-                              {driver.name}
-                            </div>
-                            <div className="text-[11px] text-slate-500 truncate">
-                              {driver.phone || driver.email}
-                            </div>
-                          </div>
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 shrink-0" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

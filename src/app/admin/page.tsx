@@ -220,7 +220,7 @@ export default function AdminPage() {
                   <Shield className="w-3.5 h-3.5 text-purple-600" />
                   <span className="font-semibold">Akses Administrator Penuh:</span>
                   <span className="text-purple-700">
-                    {shelters.length} Shelter • {teachers.length} Guru • {participants.length} Santri Ojol
+                    {shelters.length} Shelter • {teachers.length} Guru • {participants.length} Driver Ojol
                   </span>
                 </div>
               )}

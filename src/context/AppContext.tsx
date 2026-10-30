@@ -215,7 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!found) {
       return {
         success: false,
-        message: 'Akun santri driver tidak ditemukan dengan data tersebut. Silakan lakukan pendaftaran terlebih dahulu.'
+        message: 'Akun driver tidak ditemukan dengan data tersebut. Silakan lakukan pendaftaran terlebih dahulu.'
       };
     }
 
@@ -294,7 +294,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(newUser);
 
     const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
-    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran santri driver baru "${data.name}" (${data.ojolPlatform} - ${data.vehiclePlate}) di ${shelterName}`);
+    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran driver baru "${data.name}" (${data.ojolPlatform} - ${data.vehiclePlate}) di ${shelterName}`);
 
     return {
       success: true,

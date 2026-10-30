@@ -53,7 +53,7 @@ export default function Home() {
           <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-2">
             <span>Dirancang dengan standar SRS / PRD Resmi Ojol Mengaji</span>
             <span>•</span>
-            <span>Aplikasi Pembinaan Al-Qur&apos;an Santri Driver</span>
+            <span>Aplikasi Pembinaan Al-Qur&apos;an Driver Ojol</span>
             <span>•</span>
             <span>Responsive Web &amp; Progressive Web App (PWA)</span>
           </div>

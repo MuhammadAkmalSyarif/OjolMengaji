@@ -32,6 +32,7 @@ export const Navbar: React.FC = () => {
               <img
                 src="/logo-ojol-mengaji.png"
                 alt="Logo Ojol Mengaji"
+                style={{ width: '48px', height: '48px', objectFit: 'contain' }}
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-contain bg-white p-1 shadow-md border border-emerald-200 group-hover:scale-105 transition-transform"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
@@ -107,7 +108,7 @@ export const Navbar: React.FC = () => {
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80">
                 <Bike className="w-4 h-4 text-emerald-600" />
-                <span>Portal Santri Driver</span>
+                <span>Portal Driver</span>
               </div>
             )}
           </div>
