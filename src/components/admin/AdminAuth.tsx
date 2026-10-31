@@ -14,7 +14,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   ArrowLeft, 
-  Bike, 
   Info,
   KeyRound
 } from 'lucide-react';
@@ -165,16 +164,12 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
                 <input
                   type="text"
                   required
-                  placeholder="admin@ojolmengaji.id atau ahmad.fauzi@ojolmengaji.id"
+                  placeholder="Masukkan email atau no. WhatsApp"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition"
                 />
               </div>
-              <p className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center justify-between gap-1">
-                <span>Email Admin: <span className="font-mono text-purple-700 font-semibold">admin@ojolmengaji.id</span></span>
-                <span>Ustadz: <span className="font-mono text-emerald-700 font-semibold">ahmad.fauzi@ojolmengaji.id</span></span>
-              </p>
             </div>
 
             {/* Password */}
@@ -201,7 +196,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -218,20 +213,6 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Card Footer: Ojol Driver reminder */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <Bike className="w-4 h-4 text-emerald-600" />
-            <span>Apakah Anda peserta mitra driver ojol?</span>
-          </div>
-          <Link
-            href="/"
-            className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
-          >
-            Buka Pendaftaran &amp; Login Driver &rarr;
-          </Link>
         </div>
       </div>
     </div>
