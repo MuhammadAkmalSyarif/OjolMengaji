@@ -69,6 +69,18 @@
 
 ---
 
+## 🌐 Tiga Halaman Utama (Terpisah)
+
+Platform kini memiliki **3 halaman mandiri yang terpisah secara spesifik**:
+
+| No | Halaman | URL Route | Pengguna | Fitur Utama |
+|---|---|---|---|---|
+| **1** | **Halaman User** | [`/`](http://localhost:3000) | Mitra Driver Ojol / Santri | Presensi mandiri GPS/QR, Jadwal Binaan, Rubrik Nilai 6 Aspek, Setoran Audio Rekaman |
+| **2** | **Halaman Admin** | [`/admin`](http://localhost:3000/admin) | Administrator Pusat | Master Data Shelter, Guru, Peserta, Jadwal, Monitoring Presensi & Koreksi, Laporan CSV, Audit Log |
+| **3** | **Halaman Guru** | [`/guru`](http://localhost:3000/guru) | Dewan Guru (Ustadz) | Halaqah Binaan Shelter, Verifikasi & Presensi Manual, Pengisian Rubrik Nilai 6 Aspek, Koreksi Tugas Audio |
+
+---
+
 ## 🚀 Cara Menjalankan Project
 
 ### 1. Masuk ke direktori project:

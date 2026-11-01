@@ -6,9 +6,11 @@ import { useApp } from '@/context/AppContext';
 import { 
   BookOpen, 
   Bike, 
-  Sparkles,
-  LogOut,
-  UserCheck
+  Sparkles, 
+  LogOut, 
+  UserCheck,
+  Shield,
+  GraduationCap
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -55,7 +57,7 @@ export const Navbar: React.FC = () => {
                 </span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
                   <Sparkles className="w-3 h-3 text-emerald-500" />
-                  Peserta Ojol
+                  Halaman 1: Peserta Ojol
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
@@ -64,17 +66,37 @@ export const Navbar: React.FC = () => {
             </div>
           </Link>
 
-          {/* Right: Driver Status & Logout (No Admin portal link, No simulation switcher) */}
-          <div className="flex items-center gap-3">
+          {/* Right: Driver Status, Quick Navigation to Admin & Guru, & Logout */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick buttons to Admin and Guru pages */}
+            <div className="hidden sm:flex items-center gap-1.5 mr-1">
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors shadow-2xs"
+                title="Buka Halaman 2: Administrator Pusat"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Admin</span>
+              </Link>
+              <Link
+                href="/guru"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors shadow-2xs"
+                title="Buka Halaman 3: Guru Mengaji (Ustadz)"
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Guru</span>
+              </Link>
+            </div>
+
             {isDriverLoggedIn && currentUser ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 {/* Current Ojol Participant Info */}
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <div className="text-right hidden sm:block">
-                    <div className="text-sm font-semibold text-slate-800 leading-tight">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800 leading-tight">
                       {currentUser.name}
                     </div>
-                    <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-emerald-700 font-medium">
+                    <div className="mt-0.5 flex items-center justify-end gap-1 text-[10px] sm:text-[11px] text-emerald-700 font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       <span>{activeShelter ? activeShelter.name.split('(')[0].trim() : 'Peserta Ojol'}</span>
                     </div>
@@ -84,9 +106,9 @@ export const Navbar: React.FC = () => {
                     <img
                       src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
                       alt={currentUser.name}
-                      className="w-10 h-10 rounded-full border-2 border-emerald-500 object-cover shadow-xs ring-2 ring-emerald-100"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-emerald-500 object-cover shadow-xs ring-2 ring-emerald-100"
                     />
-                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
                   </div>
                 </div>
 
@@ -98,7 +120,7 @@ export const Navbar: React.FC = () => {
                       logout();
                     }
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs"
                   title="Keluar dari akun driver"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -108,7 +130,7 @@ export const Navbar: React.FC = () => {
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80">
                 <Bike className="w-4 h-4 text-emerald-600" />
-                <span>Portal Driver</span>
+                <span>Halaman Driver</span>
               </div>
             )}
           </div>
