@@ -1,5 +1,51 @@
 export type UserRole = 'admin' | 'guru' | 'ojol';
 
+export type ParticipantLevel = 
+  | 'Belum Dinilai'
+  | 'Iqro 1-3' 
+  | 'Iqro 4-6' 
+  | 'Al-Qur\'an Dasar' 
+  | 'Al-Qur\'an Mahir / Tajwid';
+
+export interface LevelOption {
+  id: 'Iqro 1-3' | 'Iqro 4-6' | 'Al-Qur\'an Dasar' | 'Al-Qur\'an Mahir / Tajwid';
+  title: string;
+  badge: string;
+  desc: string;
+  icon: string;
+}
+
+export const LEVEL_OPTIONS: LevelOption[] = [
+  {
+    id: 'Iqro 1-3',
+    title: 'Iqro 1 - 3',
+    badge: 'Pemula Dasar',
+    desc: 'Mengenal huruf hijaiyah tunggal & harakat dasar',
+    icon: '🌱',
+  },
+  {
+    id: 'Iqro 4-6',
+    title: 'Iqro 4 - 6',
+    badge: 'Menengah',
+    desc: 'Menyambung huruf, tanda sukun, tasydid, & mad panjang',
+    icon: '🌿',
+  },
+  {
+    id: 'Al-Qur\'an Dasar',
+    title: 'Al-Qur\'an Dasar',
+    badge: 'Lancar Mushaf',
+    desc: 'Mulai tilawah membaca langsung dari mushaf Al-Qur\'an',
+    icon: '📖',
+  },
+  {
+    id: 'Al-Qur\'an Mahir / Tajwid',
+    title: 'Tahsin & Tajwid',
+    badge: 'Tingkat Mahir',
+    desc: 'Pendalaman makharijul huruf, hukum tajwid & waqaf',
+    icon: '🌟',
+  },
+];
+
 export interface User {
   id: string;
   name: string;
@@ -17,9 +63,10 @@ export interface RegisterDriverData {
   phone: string;
   password?: string;
   ojolPlatform: 'Gojek' | 'Grab' | 'Maxim' | 'InDrive' | 'ShopeeFood';
-  vehiclePlate: string;
+  nik?: string;
+  vehiclePlate?: string;
   shelterId: string;
-  currentLevel: 'Iqro 1-3' | 'Iqro 4-6' | 'Al-Qur\'an Dasar' | 'Al-Qur\'an Mahir / Tajwid';
+  currentLevel?: ParticipantLevel;
 }
 
 export interface Shelter {
@@ -53,9 +100,10 @@ export interface Participant {
   email: string;
   avatar: string;
   ojolPlatform: 'Gojek' | 'Grab' | 'Maxim' | 'InDrive' | 'ShopeeFood';
+  nik?: string;
   vehiclePlate: string;
   shelterId: string;
-  currentLevel: 'Iqro 1-3' | 'Iqro 4-6' | 'Al-Qur\'an Dasar' | 'Al-Qur\'an Mahir / Tajwid';
+  currentLevel: ParticipantLevel;
   joinedDate: string;
   isActive: boolean;
 }
@@ -104,6 +152,7 @@ export interface ReadingAssessment {
   assessmentDate: string;
   material: string; // e.g. "Surah Al-Mulk: 1-10" or "Iqro 4 Hal. 12"
   scores: RubricScores;
+  assessedLevel?: ParticipantLevel;
   strengths: string;
   improvements: string;
   recommendations: string;

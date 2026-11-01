@@ -7,6 +7,7 @@ import {
   Shelter, 
   Teacher, 
   Participant, 
+  ParticipantLevel,
   Schedule, 
   AttendanceRecord, 
   AttendanceStatus,
@@ -68,6 +69,7 @@ interface AppContextType {
   // Participants
   addParticipant: (participant: Omit<Participant, 'id' | 'userId' | 'email'>, email: string) => void;
   updateParticipant: (participant: Participant) => void;
+  updateParticipantLevel: (participantId: string, newLevel: ParticipantLevel, notes?: string) => void;
   
   // Schedules
   addSchedule: (schedule: Omit<Schedule, 'id'>) => void;
@@ -429,6 +431,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isActive: true,
     };
 
+    const nikVal = data.nik?.trim() || data.vehiclePlate?.trim() || '';
     const newParticipant: Participant = {
       id: partId,
       userId,
@@ -437,9 +440,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email: cleanEmail || `${cleanPhone}@ojolmengaji.id`,
       avatar: avatarUrl,
       ojolPlatform: data.ojolPlatform,
-      vehiclePlate: data.vehiclePlate.trim().toUpperCase(),
+      nik: nikVal,
+      vehiclePlate: data.vehiclePlate?.trim().toUpperCase() || nikVal || '-',
       shelterId: data.shelterId,
-      currentLevel: data.currentLevel,
+      currentLevel: data.currentLevel || 'Belum Dinilai',
       joinedDate: new Date().toISOString().split('T')[0],
       isActive: true,
     };
@@ -449,7 +453,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(newUser);
 
     const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
-    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran driver baru "${data.name}" (${data.ojolPlatform} - ${data.vehiclePlate}) di ${shelterName}`);
+    const idInfo = nikVal ? `NIK: ${nikVal}` : (data.vehiclePlate || '-');
+    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran driver baru "${data.name}" (${data.ojolPlatform} - ${idInfo}) di ${shelterName}`);
 
     return {
       success: true,
@@ -572,6 +577,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAudit('UPDATE_PARTICIPANT', 'participants', updated.id, `Memperbarui data peserta ojol "${updated.name}"`);
   };
 
+  const updateParticipantLevel = (participantId: string, newLevel: ParticipantLevel, notes?: string) => {
+    setParticipants(prev => prev.map(p => {
+      if (p.id === participantId) {
+        return { ...p, currentLevel: newLevel };
+      }
+      return p;
+    }));
+    const target = participants.find(p => p.id === participantId);
+    const teacherName = currentUser?.name || 'Ustadz Pembimbing';
+    addAudit(
+      'UPDATE_LEVEL',
+      'participants',
+      participantId,
+      `Guru ${teacherName} menetapkan tingkat kemampuan "${target?.name || participantId}" menjadi "${newLevel}"${notes ? ` (Catatan: ${notes})` : ''}`
+    );
+  };
+
   // Schedules
   const addSchedule = (data: Omit<Schedule, 'id'>) => {
     const id = 'sched-' + Date.now();
@@ -647,8 +669,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const id = 'eval-' + Date.now();
     const newAssessment: ReadingAssessment = { ...data, id };
     setAssessments(prev => [newAssessment, ...prev]);
+    if (data.assessedLevel) {
+      setParticipants(prev => prev.map(p => p.id === data.participantId ? { ...p, currentLevel: data.assessedLevel! } : p));
+    }
     const p = participants.find(part => part.id === data.participantId);
-    addAudit('ADD_ASSESSMENT', 'reading_assessments', id, `Evaluasi membaca untuk ${p?.name || data.participantId} (${data.material})`);
+    addAudit('ADD_ASSESSMENT', 'reading_assessments', id, `Evaluasi membaca untuk ${p?.name || data.participantId} (${data.material}) - Level: ${data.assessedLevel || p?.currentLevel}`);
   };
 
   // Tasks
@@ -783,6 +808,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateTeacher,
       addParticipant,
       updateParticipant,
+      updateParticipantLevel,
       addSchedule,
       updateSchedule,
       deleteSchedule,

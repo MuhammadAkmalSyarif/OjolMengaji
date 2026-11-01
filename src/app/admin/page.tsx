@@ -29,8 +29,6 @@ export default function AdminPage() {
     currentUser, 
     users, 
     teachers, 
-    submissions, 
-    tasks, 
     shelters, 
     participants, 
     switchUser, 
@@ -69,9 +67,6 @@ export default function AdminPage() {
 
   // Find active teacher profile for guru view
   const currentTeacher = teachers.find(t => t.userId === currentUser?.id) || teachers[0];
-
-  // Count pending submissions waiting for review
-  const pendingSubmissionsCount = submissions.filter(s => s.status === 'menunggu_pemeriksaan').length;
 
   // If not logged in as staff (admin or guru), show AdminAuth
   if (!isStaffLoggedIn) {
@@ -260,17 +255,11 @@ export default function AdminPage() {
               >
                 <GraduationCap className="w-4 h-4" />
                 <span>Portal Guru Mengaji (Ustadz)</span>
-                {pendingSubmissionsCount > 0 ? (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 font-black animate-pulse">
-                    {pendingSubmissionsCount} Tugas
-                  </span>
-                ) : (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    managementTab === 'guru' ? 'bg-emerald-900/60 text-emerald-100' : 'bg-slate-300 text-slate-700'
-                  }`}>
-                    Evaluasi
-                  </span>
-                )}
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  managementTab === 'guru' ? 'bg-emerald-900/60 text-emerald-100' : 'bg-slate-300 text-slate-700'
+                }`}>
+                  Evaluasi
+                </span>
               </button>
             </div>
 

@@ -37,8 +37,6 @@ export const AdminPortal: React.FC = () => {
     schedules, 
     attendance, 
     assessments, 
-    tasks, 
-    submissions, 
     announcements, 
     auditLogs,
     addShelter,
@@ -118,6 +116,7 @@ export const AdminPortal: React.FC = () => {
 
   // Level Distribution
   const levelCounts = {
+    'Belum Dinilai': participants.filter(p => p.currentLevel === 'Belum Dinilai').length,
     'Iqro 1-3': participants.filter(p => p.currentLevel === 'Iqro 1-3').length,
     'Iqro 4-6': participants.filter(p => p.currentLevel === 'Iqro 4-6').length,
     'Al-Qur\'an Dasar': participants.filter(p => p.currentLevel === 'Al-Qur\'an Dasar').length,
@@ -666,7 +665,11 @@ export const AdminPortal: React.FC = () => {
                       <td className="py-3 px-4 font-mono font-semibold text-slate-700">{part.vehiclePlate}</td>
                       <td className="py-3 px-4 text-slate-700">{sh?.name}</td>
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-medium">
+                        <span className={`px-2 py-0.5 rounded border text-[11px] font-medium ${
+                          part.currentLevel === 'Belum Dinilai'
+                            ? 'bg-amber-50 text-amber-800 border-amber-300 font-semibold'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}>
                           {part.currentLevel}
                         </span>
                       </td>

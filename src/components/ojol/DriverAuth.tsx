@@ -47,9 +47,10 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     email: '',
     password: '',
     ojolPlatform: 'Gojek',
+    nik: '',
     vehiclePlate: '',
     shelterId: shelters[0]?.id || '',
-    currentLevel: 'Iqro 1-3',
+    currentLevel: 'Belum Dinilai',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(true);
@@ -70,38 +71,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     { id: 'Maxim', label: 'Maxim', color: 'border-amber-500 text-amber-900 bg-amber-50 hover:bg-amber-100 ring-amber-500' },
     { id: 'InDrive', label: 'InDrive', color: 'border-cyan-600 text-cyan-800 bg-cyan-50 hover:bg-cyan-100 ring-cyan-600' },
     { id: 'ShopeeFood', label: 'ShopeeFood', color: 'border-orange-500 text-orange-800 bg-orange-50 hover:bg-orange-100 ring-orange-500' },
-  ] as const;
-
-  // Level definitions with descriptions
-  const levelOptions = [
-    {
-      id: 'Iqro 1-3',
-      title: 'Iqro 1 - 3',
-      badge: 'Pemula Dasar',
-      desc: 'Mengenal huruf hijaiyah tunggal & harakat dasar',
-      icon: '🌱',
-    },
-    {
-      id: 'Iqro 4-6',
-      title: 'Iqro 4 - 6',
-      badge: 'Menengah',
-      desc: 'Menyambung huruf, tanda sukun, tasydid, & mad panjang',
-      icon: '🌿',
-    },
-    {
-      id: 'Al-Qur\'an Dasar',
-      title: 'Al-Qur\'an Dasar',
-      badge: 'Lancar Mushaf',
-      desc: 'Mulai tilawah membaca langsung dari mushaf Al-Qur\'an',
-      icon: '📖',
-    },
-    {
-      id: 'Al-Qur\'an Mahir / Tajwid',
-      title: 'Tahsin & Tajwid',
-      badge: 'Tingkat Mahir',
-      desc: 'Pendalaman makharijul huruf, hukum tajwid & waqaf',
-      icon: '🌟',
-    },
   ] as const;
 
   // Password Strength Calculator
@@ -129,8 +98,13 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       setErrorMsg('Nomor WhatsApp aktif wajib diisi (minimal 9 digit).');
       return;
     }
-    if (!regForm.vehiclePlate.trim()) {
-      setErrorMsg('Nomor plat kendaraan wajib diisi (contoh: B 3456 KKL).');
+    const cleanNik = (regForm.nik || regForm.vehiclePlate || '').replace(/\D/g, '');
+    if (!cleanNik) {
+      setErrorMsg('NIK (Nomor Induk Kependudukan) wajib diisi sesuai KTP.');
+      return;
+    }
+    if (cleanNik.length !== 16) {
+      setErrorMsg('NIK harus terdiri dari 16 digit angka sesuai KTP.');
       return;
     }
     if (!regForm.shelterId) {
@@ -351,7 +325,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Identitas Pribadi Driver
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 1 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 1 dari 3</span>
               </div>
 
               {/* Nama Lengkap */}
@@ -430,7 +404,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Armada Ojol &amp; Shelter Pilihan
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 2 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 2 dari 3</span>
               </div>
 
               {/* Platform Ojol Visual Selector Buttons */}
@@ -460,21 +434,26 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 </div>
               </div>
 
-              {/* Plat Motor & Shelter */}
+              {/* NIK KTP & Shelter */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Plat Nomor Motor <span className="text-rose-500">*</span>
+                    NIK (Nomor Induk Kependudukan) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    maxLength={16}
                     required
-                    placeholder="Contoh: B 3456 KKL"
-                    value={regForm.vehiclePlate}
-                    onChange={(e) => setRegForm({ ...regForm, vehiclePlate: e.target.value.toUpperCase() })}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold uppercase"
+                    placeholder="CONTOH: 3171012345670001"
+                    value={regForm.nik || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 16);
+                      setRegForm({ ...regForm, nik: val, vehiclePlate: val });
+                    }}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">Sesuai motor yang digunakan narik</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Sesuai NIK pada KTP (16 digit)</p>
                 </div>
 
                 <div>
@@ -500,65 +479,26 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   <p className="text-[11px] text-slate-400 mt-1">Lokasi pangkalan presensi &amp; belajar</p>
                 </div>
               </div>
+
+              {/* Informative Note: Kemampuan Mengaji Dinilai Ustadz */}
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5">
+                <Sparkles className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-bold">Penilaian Kemampuan oleh Ustadz:</span> Anda tidak perlu khawatir menentukan tingkat membaca Al-Qur&apos;an saat mendaftar. Ustadz pembimbing di shelter akan melakukan talaqqi &amp; tes bacaan santai untuk menilai kemampuan mengaji Anda secara objektif.
+                </div>
+              </div>
             </div>
 
-            {/* Section 3: Tingkat Kemampuan Mengaji */}
-            <div className="space-y-3 pt-2">
+            {/* Section 3: Buat Kata Sandi */}
+            <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
                   3
                 </div>
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
-                  Tingkat Kemampuan Mengaji Saat Ini
-                </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 3 dari 4</span>
-              </div>
-
-              <p className="text-xs text-slate-600">
-                Pilih perkiraan kemampuan membaca Al-Qur&apos;an Anda saat ini (tidak perlu malu, ustadz akan membimbing dari dasar):
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {levelOptions.map((lvl) => {
-                  const isSelected = regForm.currentLevel === lvl.id;
-                  return (
-                    <div
-                      key={lvl.id}
-                      onClick={() => setRegForm({ ...regForm, currentLevel: lvl.id })}
-                      className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{lvl.icon}</span>
-                          <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {lvl.badge}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Section 4: Buat Kata Sandi */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
-                  4
-                </div>
-                <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Keamanan Akun &amp; Kata Sandi
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 4 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 3 dari 3</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -865,7 +805,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p className="font-bold text-slate-900 mb-1">Lupa Kata Sandi (Password)?</p>
                 <p className="leading-relaxed">
-                  Jika Anda lupa kata sandi akun, Anda dapat menghubungi <strong className="text-emerald-700">Koordinator Shelter</strong> atau admin pusat dengan mengirim pesan WhatsApp. Admin akan melakukan verifikasi nomor WhatsApp dan plat nomor kendaraan Anda.
+                  Jika Anda lupa kata sandi akun, Anda dapat menghubungi <strong className="text-emerald-700">Koordinator Shelter</strong> atau admin pusat dengan mengirim pesan WhatsApp. Admin akan melakukan verifikasi nomor WhatsApp dan NIK KTP Anda.
                 </p>
               </div>
 

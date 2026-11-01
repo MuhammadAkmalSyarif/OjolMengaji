@@ -6,26 +6,19 @@ import {
   Bike, 
   MapPin, 
   CheckCircle2, 
-  Clock, 
   BookOpen, 
   Award, 
   AlertCircle, 
   Calendar, 
-  Upload, 
-  Mic, 
-  QrCode, 
   Navigation, 
   ChevronRight, 
   Sparkles, 
-  FileText,
-  Volume2,
   TrendingUp,
   ShieldCheck,
   Send,
   UserCheck,
   LogOut
 } from 'lucide-react';
-import { TaskStatus } from '@/types';
 
 export const OjolPortal: React.FC = () => {
   const { 
@@ -36,11 +29,8 @@ export const OjolPortal: React.FC = () => {
     schedules, 
     attendance, 
     assessments, 
-    tasks, 
-    submissions, 
     announcements,
     recordAttendance,
-    submitTask,
     getParticipantAttendanceStats
   } = useApp();
 
@@ -50,25 +40,17 @@ export const OjolPortal: React.FC = () => {
   const participantSchedules = schedules.filter(s => s.shelterId === shelter.id);
 
   // States
-  const [activeTab, setActiveTab] = useState<'beranda' | 'presensi' | 'progres' | 'tugas' | 'pengumuman' | 'profil'>('beranda');
+  const [activeTab, setActiveTab] = useState<'beranda' | 'presensi' | 'progres' | 'pengumuman' | 'profil'>('beranda');
   
   // Interactive GPS & Presensi State
   const [gpsSimulatedDistance, setGpsSimulatedDistance] = useState<number>(18);
   const [isSimulatingGps, setIsSimulatingGps] = useState(false);
   const [presensiFeedback, setPresensiFeedback] = useState<{ success: boolean; message: string } | null>(null);
-  const [showQrScanner, setShowQrScanner] = useState(false);
-
-  // Task submission modal state
-  const [selectedTaskToSubmit, setSelectedTaskToSubmit] = useState<string | null>(null);
-  const [taskNotes, setTaskNotes] = useState('');
-  const [taskAudioRecorded, setTaskAudioRecorded] = useState(false);
-  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
   // Filtered data for this participant
   const myAttendance = attendance.filter(a => a.participantId === participant.id);
   const myAssessments = assessments.filter(a => a.participantId === participant.id && a.isPublished);
   const latestAssessment = myAssessments[0];
-  const mySubmissions = submissions.filter(s => s.participantId === participant.id);
 
   // Stats
   const { totalSessions, attendedSessions, rate } = getParticipantAttendanceStats(participant.id);
@@ -98,56 +80,6 @@ export const OjolPortal: React.FC = () => {
         });
       }
     }, 900);
-  };
-
-  // Handle QR Check-in
-  const handleQrCheckIn = () => {
-    const result = recordAttendance(
-      participant.id,
-      shelter.id,
-      'qr',
-      'hadir',
-      8,
-      'Presensi berhasil via Scan QR Code resmi Shelter'
-    );
-    setPresensiFeedback(result);
-    setShowQrScanner(false);
-  };
-
-  // Handle Submit Task
-  const handleSendTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTaskToSubmit) return;
-    setIsSubmittingTask(true);
-
-    setTimeout(() => {
-      submitTask(
-        selectedTaskToSubmit,
-        participant.id,
-        taskNotes || 'Setoran bacaan via portal ojol',
-        taskAudioRecorded ? `setoran_${participant.name.toLowerCase().replace(/\s+/g, '_')}_audio.mp3` : undefined
-      );
-      setIsSubmittingTask(false);
-      setSelectedTaskToSubmit(null);
-      setTaskNotes('');
-      setTaskAudioRecorded(false);
-      alert('Tugas berhasil dikirimkan ke Ustadz pembimbing!');
-    }, 600);
-  };
-
-  const getStatusBadge = (status: TaskStatus) => {
-    switch (status) {
-      case 'selesai':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Selesai (Dinilai)</span>;
-      case 'menunggu_pemeriksaan':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Menunggu Ustadz</span>;
-      case 'sedang_dikerjakan':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Sedang Dikerjakan</span>;
-      case 'perlu_perbaikan':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">Perlu Perbaikan</span>;
-      default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">Belum Dikerjakan</span>;
-    }
   };
 
   const renderRubricScore = (score: number, label: string) => {
@@ -206,9 +138,9 @@ export const OjolPortal: React.FC = () => {
           <div className="flex-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-900/60 border border-emerald-500/40 text-emerald-200 mb-1">
               <Bike className="w-3 h-3 text-emerald-300" />
-              <span>{participant.vehiclePlate}</span>
+              <span>{participant.nik ? `NIK: ${participant.nik}` : participant.vehiclePlate}</span>
               <span className="text-emerald-400">•</span>
-              <span>{participant.currentLevel}</span>
+              <span>{participant.currentLevel === 'Belum Dinilai' ? 'Level: Menunggu Penilaian Guru' : participant.currentLevel}</span>
             </div>
             <h1 className="text-lg sm:text-2xl font-bold tracking-tight">{participant.name}</h1>
             <p className="text-xs sm:text-sm text-emerald-100 flex items-center gap-1 mt-0.5">
@@ -219,7 +151,7 @@ export const OjolPortal: React.FC = () => {
         </div>
 
         {/* Quick Highlights / Mini Stats */}
-        <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-emerald-600/50">
+        <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-emerald-600/50">
           <div className="bg-emerald-900/50 backdrop-blur-xs rounded-xl p-2.5 text-center">
             <span className="text-[10px] uppercase font-semibold text-emerald-200">Kehadiran</span>
             <div className="text-lg sm:text-xl font-extrabold text-amber-300 mt-0.5">{rate}%</div>
@@ -233,14 +165,6 @@ export const OjolPortal: React.FC = () => {
             </div>
             <span className="text-[10px] text-emerald-300">Terverifikasi</span>
           </div>
-
-          <div className="bg-emerald-900/50 backdrop-blur-xs rounded-xl p-2.5 text-center">
-            <span className="text-[10px] uppercase font-semibold text-emerald-200">Tugas Aktif</span>
-            <div className="text-lg sm:text-xl font-extrabold text-white mt-0.5">
-              {tasks.length - mySubmissions.filter(s => s.status === 'selesai').length}
-            </div>
-            <span className="text-[10px] text-emerald-300">Harus Selesai</span>
-          </div>
         </div>
       </div>
 
@@ -250,7 +174,6 @@ export const OjolPortal: React.FC = () => {
           { id: 'beranda', label: 'Beranda' },
           { id: 'presensi', label: 'Presensi GPS' },
           { id: 'progres', label: 'Progres Al-Qur\'an' },
-          { id: 'tugas', label: 'Tugas Mengaji' },
           { id: 'pengumuman', label: 'Pengumuman' },
           { id: 'profil', label: 'Profil Saya' },
         ].map(tab => (
@@ -319,28 +242,18 @@ export const OjolPortal: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                onClick={handleGpsCheckIn}
-                disabled={isSimulatingGps}
-                className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
-              >
-                {isSimulatingGps ? (
-                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                ) : (
-                  <Navigation className="w-4 h-4" />
-                )}
-                <span>Presensi via GPS Sekarang</span>
-              </button>
-
-              <button
-                onClick={() => setShowQrScanner(true)}
-                className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.99] shadow-md transition-all flex items-center justify-center gap-2"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Scan QR Code Shelter</span>
-              </button>
-            </div>
+            <button
+              onClick={handleGpsCheckIn}
+              disabled={isSimulatingGps}
+              className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+            >
+              {isSimulatingGps ? (
+                <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              ) : (
+                <Navigation className="w-4 h-4" />
+              )}
+              <span>Presensi via GPS Sekarang</span>
+            </button>
 
             {/* GPS Distance Adjustment Slider for Demo Testing */}
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -403,57 +316,6 @@ export const OjolPortal: React.FC = () => {
               </button>
             </div>
           )}
-
-          {/* Active Tasks Highlight */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-lg bg-blue-100 text-blue-700">
-                  <FileText className="w-5 h-5" />
-                </span>
-                <div>
-                  <h2 className="text-base font-bold text-slate-800">Tugas Mengaji untuk Anda</h2>
-                  <p className="text-xs text-slate-500">Kirim setoran hafalan / rekaman suara sebelum tenggat</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {tasks.slice(0, 2).map(task => {
-                const sub = mySubmissions.find(s => s.taskId === task.id);
-                return (
-                  <div key={task.id} className="p-4 rounded-xl border border-slate-200 hover:border-emerald-300 transition-colors bg-slate-50/50">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-900">{task.title}</h4>
-                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">{task.description}</p>
-                      </div>
-                      <div>
-                        {getStatusBadge(sub ? sub.status : 'belum_dikerjakan')}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-200/80 text-xs">
-                      <span className="text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        Tenggat: {task.dueDate}
-                      </span>
-
-                      <button
-                        onClick={() => {
-                          setSelectedTaskToSubmit(task.id);
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors flex items-center gap-1"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>{sub ? 'Kirim Ulang / Perbarui' : 'Setor Tugas Sekarang'}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       )}
 
@@ -584,8 +446,12 @@ export const OjolPortal: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-800">Perkembangan Membaca Al-Qur&apos;an</h2>
                 <p className="text-xs text-slate-500">Evaluasi terverifikasi oleh Ustadz pembimbing sesuai rubrik standar</p>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                {participant.currentLevel}
+              <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                participant.currentLevel === 'Belum Dinilai'
+                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                  : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+              }`}>
+                {participant.currentLevel === 'Belum Dinilai' ? 'Menunggu Penilaian Ustadz' : participant.currentLevel}
               </span>
             </div>
 
@@ -644,83 +510,6 @@ export const OjolPortal: React.FC = () => {
         </div>
       )}
 
-      {/* TAB CONTENT: TUGAS MENGAJI */}
-      {activeTab === 'tugas' && (
-        <div className="space-y-5">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-1">Daftar Tugas &amp; Setoran Bacaan</h2>
-            <p className="text-xs text-slate-500 mb-4">
-              Kirim rekaman suara hafalan atau catatan pengerjaan tugas mandiri Anda kepada Ustadz pembimbing.
-            </p>
-
-            <div className="space-y-4">
-              {tasks.map(task => {
-                const sub = mySubmissions.find(s => s.taskId === task.id);
-                return (
-                  <div key={task.id} className="p-5 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all bg-white shadow-xs">
-                    <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                      <div>
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded">
-                          {task.surahOrTopic}
-                        </span>
-                        <h3 className="font-bold text-base text-slate-900 mt-1">{task.title}</h3>
-                      </div>
-                      <div>
-                        {getStatusBadge(sub ? sub.status : 'belum_dikerjakan')}
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-600 mb-3 leading-relaxed">{task.description}</p>
-
-                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
-                      <span>Dibuat: {task.createdDate}</span>
-                      <span>•</span>
-                      <span className="font-semibold text-rose-600">Tenggat: {task.dueDate}</span>
-                    </div>
-
-                    {/* If submission exists, show status and feedback */}
-                    {sub && (
-                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs mb-3 space-y-1.5">
-                        <div className="flex justify-between font-semibold text-slate-700">
-                          <span>Status Terakhir:</span>
-                          <span className="capitalize">{sub.status.replace('_', ' ')}</span>
-                        </div>
-                        {sub.submittedAt && (
-                          <div className="text-slate-500">Waktu Kirim: {sub.submittedAt}</div>
-                        )}
-                        {sub.submissionNotes && (
-                          <div className="text-slate-600 italic">&ldquo;{sub.submissionNotes}&rdquo;</div>
-                        )}
-                        {sub.audioFileName && (
-                          <div className="flex items-center gap-2 text-emerald-700 font-medium pt-1">
-                            <Volume2 className="w-4 h-4" />
-                            <span>Audio Lampiran: {sub.audioFileName} ({sub.audioDurationSeconds} detik)</span>
-                          </div>
-                        )}
-                        {sub.teacherFeedback && (
-                          <div className="mt-2 pt-2 border-t border-slate-200 bg-amber-50/70 p-2.5 rounded-lg text-amber-900">
-                            <span className="font-bold block">Umpan Balik Ustadz (Nilai: {sub.score || '90'}/100):</span>
-                            <span>{sub.teacherFeedback}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => setSelectedTaskToSubmit(task.id)}
-                      className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>{sub ? 'Kirim Pembaruan / Setoran Ulang' : 'Kirim Setoran Tugas'}</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TAB CONTENT: PENGUMUMAN */}
       {activeTab === 'pengumuman' && (
         <div className="space-y-4">
@@ -762,8 +551,8 @@ export const OjolPortal: React.FC = () => {
                 <span className="font-bold text-emerald-700">{participant.ojolPlatform}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
-                <span className="text-slate-500">Nomor Plat Kendaraan</span>
-                <span className="font-bold text-slate-800">{participant.vehiclePlate}</span>
+                <span className="text-slate-500">{participant.nik ? 'Nomor Induk Kependudukan (NIK)' : 'Nomor Plat Kendaraan'}</span>
+                <span className="font-bold text-slate-800">{participant.nik || participant.vehiclePlate}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">No. WhatsApp / HP</span>
@@ -775,7 +564,9 @@ export const OjolPortal: React.FC = () => {
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Level Pembelajaran</span>
-                <span className="font-bold text-emerald-800">{participant.currentLevel}</span>
+                <span className={`font-bold ${participant.currentLevel === 'Belum Dinilai' ? 'text-amber-700' : 'text-emerald-800'}`}>
+                  {participant.currentLevel === 'Belum Dinilai' ? 'Belum Dinilai (Menunggu Ustadz)' : participant.currentLevel}
+                </span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Tanggal Bergabung</span>
@@ -795,111 +586,6 @@ export const OjolPortal: React.FC = () => {
               >
                 <LogOut className="w-4 h-4" />
                 <span>Keluar dari Akun Driver</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: SUBMIT TASK */}
-      {selectedTaskToSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Kirim Setoran Tugas Mengaji</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              {tasks.find(t => t.id === selectedTaskToSubmit)?.title}
-            </p>
-
-            <form onSubmit={handleSendTask} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Catatan Setoran / Keterangan Pembelajaran
-                </label>
-                <textarea
-                  rows={3}
-                  value={taskNotes}
-                  onChange={(e) => setTaskNotes(e.target.value)}
-                  placeholder="Contoh: Alhamdulillah sudah membaca surah ini sebanyak 3x di shelter..."
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  required
-                />
-              </div>
-
-              {/* Audio Voice Recording Simulation */}
-              <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-emerald-900 flex items-center gap-1.5">
-                    <Mic className="w-4 h-4 text-emerald-700" />
-                    Rekaman Suara Bacaan (Voice Note)
-                  </span>
-                  {taskAudioRecorded && (
-                    <span className="text-emerald-700 font-bold">Terekam (01:18) ✓</span>
-                  )}
-                </div>
-                <p className="text-slate-600 text-[11px] mb-3">
-                  Anda dapat menyertakan rekaman bacaan Al-Qur&apos;an untuk disimak langsung oleh Ustadz.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setTaskAudioRecorded(!taskAudioRecorded)}
-                  className={`w-full py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 ${
-                    taskAudioRecorded
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                  }`}
-                >
-                  <Mic className="w-3.5 h-3.5" />
-                  <span>{taskAudioRecorded ? 'Ganti Rekaman Suara' : 'Mulai Rekam Suara Bacaan (Simulasi)'}</span>
-                </button>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTaskToSubmit(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingTask}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-md shadow-emerald-600/20"
-                >
-                  {isSubmittingTask ? 'Mengirim...' : 'Kirim ke Ustadz'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: QR CODE SCANNER SIMULATOR */}
-      {showQrScanner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900 mb-1">Scan QR Code Shelter</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Arahkan kamera ke QR Code resmi yang tertempel di banner {shelter.name}
-            </p>
-
-            <div className="relative w-48 h-48 mx-auto bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center border-4 border-emerald-500 mb-4 shadow-inner">
-              <QrCode className="w-24 h-24 text-white opacity-80" />
-              <div className="absolute inset-x-0 h-1 bg-emerald-400 animate-bounce" />
-            </div>
-
-            <div className="space-y-2">
-              <button
-                onClick={handleQrCheckIn}
-                className="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-              >
-                Simulasi Berhasil Scan QR
-              </button>
-              <button
-                onClick={() => setShowQrScanner(false)}
-                className="w-full py-2 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                Tutup
               </button>
             </div>
           </div>

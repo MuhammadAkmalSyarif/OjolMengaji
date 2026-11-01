@@ -10,12 +10,10 @@ import {
   CheckCircle2, 
   Award, 
   BookOpen, 
-  FileText, 
   Clock, 
   Plus, 
   Search, 
   Filter, 
-  Volume2, 
   MessageSquare,
   AlertCircle,
   TrendingUp,
@@ -23,13 +21,15 @@ import {
   Check,
   ChevronRight,
   Send,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { 
   Participant, 
+  ParticipantLevel,
+  LEVEL_OPTIONS,
   ReadingAssessment, 
   RubricScores, 
-  TaskStatus, 
   AttendanceStatus 
 } from '@/types';
 
@@ -42,15 +42,12 @@ export const GuruPortal: React.FC = () => {
     schedules, 
     attendance, 
     assessments, 
-    tasks, 
-    submissions, 
     announcements,
     recordAttendance,
     correctAttendance,
     addAssessment,
-    createTask,
-    evaluateSubmission,
-    getParticipantAttendanceStats
+    getParticipantAttendanceStats,
+    updateParticipantLevel
   } = useApp();
 
   // Find active teacher profile
@@ -64,8 +61,11 @@ export const GuruPortal: React.FC = () => {
   const myParticipants = participants.filter(p => myShelterIds.includes(p.shelterId));
   const mySchedules = schedules.filter(s => myShelterIds.includes(s.shelterId));
 
+  // Count unassessed participants
+  const unassessedParticipants = myParticipants.filter(p => p.currentLevel === 'Belum Dinilai');
+
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'peserta' | 'presensi' | 'penilaian' | 'tugas' | 'laporan'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'peserta' | 'presensi' | 'penilaian' | 'laporan'>('dashboard');
 
   // Filter shelter selection
   const [selectedShelterId, setSelectedShelterId] = useState<string>('all');
@@ -76,6 +76,7 @@ export const GuruPortal: React.FC = () => {
   // Assessment Modal state
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [evalParticipantId, setEvalParticipantId] = useState<string>(myParticipants[0]?.id || '');
+  const [evalAssignedLevel, setEvalAssignedLevel] = useState<ParticipantLevel>('Iqro 1-3');
   const [evalMaterial, setEvalMaterial] = useState('');
   const [evalScores, setEvalScores] = useState<RubricScores>({
     hijaiyah: 3,
@@ -89,19 +90,11 @@ export const GuruPortal: React.FC = () => {
   const [evalImprovements, setEvalImprovements] = useState('');
   const [evalRecommendations, setEvalRecommendations] = useState('');
 
-  // Task Creation Modal state
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [taskTitle, setTaskTitle] = useState('');
-  const [taskDescription, setTaskDescription] = useState('');
-  const [taskSurahOrTopic, setTaskSurahOrTopic] = useState('');
-  const [taskDueDate, setTaskDueDate] = useState('');
-  const [taskShelterId, setTaskShelterId] = useState<string>(myShelters[0]?.id || '');
-
-  // Evaluate Task Submission Modal state
-  const [evaluatingSubmissionId, setEvaluatingSubmissionId] = useState<string | null>(null);
-  const [evalSubScore, setEvalSubScore] = useState<number>(90);
-  const [evalSubStatus, setEvalSubStatus] = useState<TaskStatus>('selesai');
-  const [evalSubFeedback, setEvalSubFeedback] = useState('');
+  // Dedicated Level Assessment Modal state
+  const [showLevelModal, setShowLevelModal] = useState(false);
+  const [selectedParticipantForLevel, setSelectedParticipantForLevel] = useState<Participant | null>(null);
+  const [newAssignedLevel, setNewAssignedLevel] = useState<ParticipantLevel>('Iqro 1-3');
+  const [levelEvaluationNote, setLevelEvaluationNote] = useState('');
 
   // Manual Attendance modal state
   const [manualAttModal, setManualAttModal] = useState(false);
@@ -110,17 +103,12 @@ export const GuruPortal: React.FC = () => {
   const [manualStatus, setManualStatus] = useState<AttendanceStatus>('hadir');
   const [manualNotes, setManualNotes] = useState('');
 
-  // Compute tasks waiting for grading
-  const pendingSubmissions = submissions.filter(sub => {
-    const task = tasks.find(t => t.id === sub.taskId);
-    return task && (task.teacherId === teacher.id || myShelterIds.includes(task.shelterId || '')) && sub.status === 'menunggu_pemeriksaan';
-  });
-
   // Filtered participants list
   const filteredParticipants = myParticipants.filter(p => {
     const matchShelter = selectedShelterId === 'all' || p.shelterId === selectedShelterId;
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        p.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase());
+                        (p.vehiclePlate && p.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                        (p.nik && p.nik.includes(searchQuery));
     return matchShelter && matchSearch;
   });
 
@@ -135,57 +123,35 @@ export const GuruPortal: React.FC = () => {
       assessmentDate: new Date().toISOString().substring(0, 10),
       material: evalMaterial,
       scores: evalScores,
+      assessedLevel: evalAssignedLevel,
       strengths: evalStrengths || 'Pemahaman huruf dan tanda baca sudah baik.',
       improvements: evalImprovements || 'Perhatikan dengung ghunnah dan panjang mad thabi\'i.',
       recommendations: evalRecommendations || 'Luangkan 10 menit sehabis Subuh untuk membaca mandiri.',
       isPublished: true,
     });
 
+    const targetPart = participants.find(p => p.id === evalParticipantId);
     setShowAssessmentModal(false);
     setEvalMaterial('');
     setEvalStrengths('');
     setEvalImprovements('');
     setEvalRecommendations('');
-    alert('Nilai evaluasi membaca Al-Qur\'an berhasil disimpan dan dipublikasikan ke driver!');
+    alert(`Alhamdulillah! Nilai evaluasi membaca & penetapan tingkat (${evalAssignedLevel}) untuk ${targetPart?.name || 'driver'} berhasil disimpan dan dipublikasikan!`);
   };
 
-  // Handle Create Task
-  const handleCreateTask = (e: React.FormEvent) => {
+  // Handle Save Direct Level Assessment
+  const handleSaveLevelAssessment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle || !taskDueDate) return;
+    if (!selectedParticipantForLevel) return;
 
-    createTask({
-      teacherId: teacher.id,
-      shelterId: taskShelterId,
-      title: taskTitle,
-      description: taskDescription,
-      surahOrTopic: taskSurahOrTopic || 'Tahsin Hafalan',
-      dueDate: taskDueDate,
-    });
-
-    setShowTaskModal(false);
-    setTaskTitle('');
-    setTaskDescription('');
-    setTaskSurahOrTopic('');
-    setTaskDueDate('');
-    alert('Tugas mengaji baru berhasil dibagikan ke peserta shelter!');
-  };
-
-  // Handle Evaluate Submission
-  const handleSaveTaskEvaluation = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!evaluatingSubmissionId) return;
-
-    evaluateSubmission(
-      evaluatingSubmissionId,
-      evalSubStatus,
-      evalSubScore,
-      evalSubFeedback || 'Alhamdulillah bacaan sangat baik. Terus pertahankan istiqomah mengaji.'
+    updateParticipantLevel(
+      selectedParticipantForLevel.id,
+      newAssignedLevel,
+      levelEvaluationNote.trim() || undefined
     );
 
-    setEvaluatingSubmissionId(null);
-    setEvalSubFeedback('');
-    alert('Penilaian tugas berhasil disimpan!');
+    setShowLevelModal(false);
+    alert(`Alhamdulillah! Tingkat kemampuan mengaji untuk ${selectedParticipantForLevel.name} berhasil ditetapkan sebagai "${newAssignedLevel}".`);
   };
 
   // Handle Manual Attendance
@@ -267,18 +233,32 @@ export const GuruPortal: React.FC = () => {
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap gap-2 sm:self-center">
             <button
-              onClick={() => setShowAssessmentModal(true)}
+              onClick={() => {
+                const target = unassessedParticipants[0] || myParticipants[0];
+                if (target) {
+                  setSelectedParticipantForLevel(target);
+                  setNewAssignedLevel(target.currentLevel === 'Belum Dinilai' ? 'Iqro 1-3' : target.currentLevel);
+                  setLevelEvaluationNote('');
+                  setShowLevelModal(true);
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-400/20 transition-all flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950" />
+              <span>Nilai Level Ojol</span>
+            </button>
+            <button
+              onClick={() => {
+                const targetId = evalParticipantId || myParticipants[0]?.id || '';
+                setEvalParticipantId(targetId);
+                const part = participants.find(p => p.id === targetId);
+                setEvalAssignedLevel(part && part.currentLevel !== 'Belum Dinilai' ? part.currentLevel : 'Iqro 1-3');
+                setShowAssessmentModal(true);
+              }}
               className="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5"
             >
               <Award className="w-4 h-4" />
               <span>Input Penilaian Baru</span>
-            </button>
-            <button
-              onClick={() => setShowTaskModal(true)}
-              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-white text-slate-900 hover:bg-slate-100 shadow-md transition-all flex items-center gap-1.5"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Beri Tugas Mengaji</span>
             </button>
           </div>
         </div>
@@ -291,7 +271,6 @@ export const GuruPortal: React.FC = () => {
           { id: 'peserta', label: 'Daftar Peserta Ojol', icon: Users, badge: myParticipants.length },
           { id: 'presensi', label: 'Presensi Sesi', icon: CheckCircle2 },
           { id: 'penilaian', label: 'Rubrik Evaluasi Al-Qur\'an', icon: Award },
-          { id: 'tugas', label: 'Tugas & Setoran', icon: FileText, badge: pendingSubmissions.length || undefined },
           { id: 'laporan', label: 'Rekap Kehadiran Binaan', icon: Calendar },
         ].map(tab => {
           const Icon = tab.icon;
@@ -323,7 +302,7 @@ export const GuruPortal: React.FC = () => {
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
           {/* Key Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-xs font-semibold uppercase">Total Peserta Binaan</span>
@@ -331,15 +310,6 @@ export const GuruPortal: React.FC = () => {
               </div>
               <div className="text-2xl font-black text-slate-900">{myParticipants.length}</div>
               <p className="text-xs text-slate-500 mt-1">Tersebar di {myShelters.length} shelter binaan</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between text-slate-500 mb-2">
-                <span className="text-xs font-semibold uppercase">Tugas Menunggu Koreksi</span>
-                <Clock className="w-4 h-4 text-amber-500" />
-              </div>
-              <div className="text-2xl font-black text-amber-600">{pendingSubmissions.length}</div>
-              <p className="text-xs text-slate-500 mt-1">Setoran audio &amp; catatan driver</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
@@ -363,28 +333,38 @@ export const GuruPortal: React.FC = () => {
             </div>
           </div>
 
-          {/* Pending Submissions Alert Banner */}
-          {pendingSubmissions.length > 0 && (
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+          {/* Unassessed Drivers Alert Banner */}
+          {unassessedParticipants.length > 0 && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border border-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800">
-                  <Volume2 className="w-5 h-5" />
+                <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-800 shrink-0">
+                  <Sparkles className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-amber-950">
-                    Ada {pendingSubmissions.length} setoran tugas baru dari driver binaan Anda!
+                  <h4 className="font-bold text-sm text-emerald-950 flex items-center gap-2">
+                    <span>Ada {unassessedParticipants.length} pengemudi baru yang belum dinilai tingkat kemampuannya!</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                      Perlu Penilaian
+                    </span>
                   </h4>
-                  <p className="text-xs text-amber-800">
-                    Dengarkan audio bacaan dan berikan catatan motivasi / umpan balik.
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    Lakukan tes talaqqi ramah di shelter binaan untuk menentukan level (Iqro 1-3, Iqro 4-6, Al-Qur&apos;an Dasar, atau Tahsin/Tajwid).
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={() => setActiveTab('tugas')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-600 transition-colors"
+                onClick={() => {
+                  const target = unassessedParticipants[0];
+                  setSelectedParticipantForLevel(target);
+                  setNewAssignedLevel('Iqro 1-3');
+                  setLevelEvaluationNote('');
+                  setShowLevelModal(true);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-colors whitespace-nowrap self-start sm:self-auto flex items-center gap-1.5"
               >
-                Periksa Sekarang
+                <Award className="w-3.5 h-3.5" />
+                <span>Tentukan Level Sekarang</span>
               </button>
             </div>
           )}
@@ -439,27 +419,54 @@ export const GuruPortal: React.FC = () => {
               </h3>
 
               <div className="divide-y divide-slate-100">
-                {myParticipants.slice(0, 4).map(part => {
+                {myParticipants.slice(0, 5).map(part => {
                   const ev = assessments.find(a => a.participantId === part.id);
                   return (
-                    <div key={part.id} className="py-3 flex items-center justify-between">
+                    <div key={part.id} className="py-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
-                        <img src={part.avatar} alt={part.name} className="w-9 h-9 rounded-full object-cover" />
+                        <img src={part.avatar} alt={part.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
                         <div>
                           <div className="font-bold text-xs text-slate-900">{part.name} ({part.ojolPlatform})</div>
-                          <div className="text-[11px] text-slate-500">Level: {part.currentLevel}</div>
+                          <div className="text-[11px] flex items-center gap-1.5 mt-0.5">
+                            <span className="text-slate-500">Tingkat:</span>
+                            <span className={`px-2 py-0.2 rounded text-[10px] font-bold border ${
+                              part.currentLevel === 'Belum Dinilai'
+                                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {part.currentLevel}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right flex items-center gap-2">
                         {ev ? (
-                          <div>
+                          <div className="hidden sm:block">
                             <span className="text-xs font-bold text-emerald-700">{ev.material}</span>
                             <div className="text-[10px] text-slate-400">Dinilai {ev.assessmentDate}</div>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">Belum dinilai</span>
+                          <span className="text-xs text-slate-400 italic hidden sm:inline">Belum dinilai</span>
                         )}
+
+                        <button
+                          onClick={() => {
+                            setSelectedParticipantForLevel(part);
+                            setNewAssignedLevel(part.currentLevel === 'Belum Dinilai' ? 'Iqro 1-3' : part.currentLevel);
+                            setLevelEvaluationNote('');
+                            setShowLevelModal(true);
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 ${
+                            part.currentLevel === 'Belum Dinilai'
+                              ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-600 shadow-xs'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                          }`}
+                          title="Tentukan Tingkat Kemampuan Mengaji"
+                        >
+                          <Sparkles className="w-3 h-3 text-current" />
+                          <span>{part.currentLevel === 'Belum Dinilai' ? 'Nilai Level' : 'Ubah'}</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -544,8 +551,15 @@ export const GuruPortal: React.FC = () => {
                       </td>
 
                       <td className="py-3 px-4">
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {part.currentLevel}
+                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border inline-flex items-center gap-1.5 ${
+                          part.currentLevel === 'Belum Dinilai'
+                            ? 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}>
+                          {part.currentLevel === 'Belum Dinilai' && (
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          )}
+                          <span>{part.currentLevel}</span>
                         </span>
                       </td>
 
@@ -560,7 +574,26 @@ export const GuruPortal: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => {
+                              setSelectedParticipantForLevel(part);
+                              setNewAssignedLevel(part.currentLevel === 'Belum Dinilai' ? 'Iqro 1-3' : part.currentLevel);
+                              setLevelEvaluationNote('');
+                              setShowLevelModal(true);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 transition-all ${
+                              part.currentLevel === 'Belum Dinilai'
+                                ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500 shadow-sm ring-2 ring-amber-300/40'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                            }`}
+                            title="Penilaian Tingkat Kemampuan Mengaji Driver"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-current" />
+                            <span>{part.currentLevel === 'Belum Dinilai' ? 'Tentukan Level' : 'Ubah Level'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
                               setEvalParticipantId(part.id);
+                              setEvalAssignedLevel(part.currentLevel !== 'Belum Dinilai' ? part.currentLevel : 'Iqro 1-3');
                               setShowAssessmentModal(true);
                             }}
                             className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold border border-emerald-200 flex items-center gap-1"
@@ -692,13 +725,37 @@ export const GuruPortal: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => setShowAssessmentModal(true)}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Input Penilaian Baru</span>
-            </button>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => {
+                  const target = unassessedParticipants[0] || myParticipants[0];
+                  if (target) {
+                    setSelectedParticipantForLevel(target);
+                    setNewAssignedLevel(target.currentLevel === 'Belum Dinilai' ? 'Iqro 1-3' : target.currentLevel);
+                    setLevelEvaluationNote('');
+                    setShowLevelModal(true);
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" />
+                <span>Penilaian Level Driver</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const targetId = evalParticipantId || myParticipants[0]?.id || '';
+                  setEvalParticipantId(targetId);
+                  const part = participants.find(p => p.id === targetId);
+                  setEvalAssignedLevel(part && part.currentLevel !== 'Belum Dinilai' ? part.currentLevel : 'Iqro 1-3');
+                  setShowAssessmentModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Input Penilaian Baru</span>
+              </button>
+            </div>
           </div>
 
           {/* Assessment Cards */}
@@ -714,7 +771,11 @@ export const GuruPortal: React.FC = () => {
                         <img src={part?.avatar} alt={part?.name} className="w-8 h-8 rounded-full object-cover" />
                         <div>
                           <h4 className="font-bold text-sm text-slate-900">{part?.name}</h4>
-                          <span className="text-[11px] text-slate-500">{evalItem.assessmentDate}</span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <span>{evalItem.assessmentDate}</span>
+                            <span>•</span>
+                            <span className="font-semibold text-emerald-700">{part?.currentLevel}</span>
+                          </div>
                         </div>
                       </div>
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
@@ -744,101 +805,6 @@ export const GuruPortal: React.FC = () => {
                   </div>
                 );
               })}
-          </div>
-        </div>
-      )}
-
-      {/* TAB CONTENT: TUGAS & SETORAN */}
-      {activeTab === 'tugas' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Pemberian Tugas &amp; Evaluasi Setoran</h2>
-              <p className="text-xs text-slate-500">
-                Pemeriksaan rekaman suara / bukti tugas mengaji dari driver ojol
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowTaskModal(true)}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Buat Tugas Baru</span>
-            </button>
-          </div>
-
-          {/* Submissions List */}
-          <div className="space-y-4">
-            <h3 className="font-bold text-sm text-slate-900">Setoran Tugas yang Masuk</h3>
-            {submissions.map(sub => {
-              const task = tasks.find(t => t.id === sub.taskId);
-              const part = participants.find(p => p.id === sub.participantId);
-
-              return (
-                <div key={sub.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors">
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-slate-900">{task?.title}</h4>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
-                          {task?.surahOrTopic}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-1">
-                        Dikirim oleh: <strong className="text-slate-900">{part?.name} ({part?.ojolPlatform})</strong> pada {sub.submittedAt || '-'}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                        sub.status === 'selesai' ? 'bg-emerald-100 text-emerald-800' :
-                        sub.status === 'menunggu_pemeriksaan' ? 'bg-blue-100 text-blue-800' :
-                        'bg-amber-100 text-amber-800'
-                      }`}>
-                        {sub.status.toUpperCase().replace('_', ' ')}
-                      </span>
-
-                      <button
-                        onClick={() => {
-                          setEvaluatingSubmissionId(sub.id);
-                          setEvalSubScore(sub.score || 90);
-                          setEvalSubFeedback(sub.teacherFeedback || '');
-                        }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1"
-                      >
-                        <span>{sub.status === 'selesai' ? 'Ubah Nilai' : 'Periksa & Nilai'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Submission Notes & Audio */}
-                  <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1.5 mt-3">
-                    <div className="text-slate-700">
-                      <strong>Catatan Peserta:</strong> {sub.submissionNotes || 'Tidak ada catatan khusus.'}
-                    </div>
-                    {sub.audioFileName && (
-                      <div className="flex items-center gap-2 text-emerald-700 font-semibold pt-1">
-                        <Volume2 className="w-4 h-4 text-emerald-600" />
-                        <span>File Suara: {sub.audioFileName} ({sub.audioDurationSeconds}s)</span>
-                        <button
-                          type="button"
-                          onClick={() => alert(`Memutar audio simulasi setoran ${part?.name}...`)}
-                          className="px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-[10px] text-emerald-900"
-                        >
-                          Putar Audio
-                        </button>
-                      </div>
-                    )}
-                    {sub.teacherFeedback && (
-                      <div className="mt-2 pt-2 border-t border-slate-100 text-amber-900">
-                        <strong>Umpan Balik Guru ({sub.score}/100):</strong> {sub.teacherFeedback}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
@@ -912,12 +878,19 @@ export const GuruPortal: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Peserta Ojol</label>
                   <select
                     value={evalParticipantId}
-                    onChange={(e) => setEvalParticipantId(e.target.value)}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setEvalParticipantId(newId);
+                      const p = participants.find(part => part.id === newId);
+                      if (p && p.currentLevel !== 'Belum Dinilai') {
+                        setEvalAssignedLevel(p.currentLevel);
+                      }
+                    }}
                     className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
                   >
                     {myParticipants.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.name} ({p.ojolPlatform} - {p.vehiclePlate})
+                        {p.name} ({p.ojolPlatform} - {p.vehiclePlate}) - {p.currentLevel}
                       </option>
                     ))}
                   </select>
@@ -933,6 +906,63 @@ export const GuruPortal: React.FC = () => {
                     onChange={(e) => setEvalMaterial(e.target.value)}
                     className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
+                </div>
+              </div>
+
+              {/* Tingkat Kemampuan Mengaji Driver (Moved from User Registration) */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Tingkat Kemampuan Mengaji Driver (Penilaian Guru)</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Tentukan / sesuaikan jenjang pembelajaran driver berdasarkan bacaan saat ini:
+                    </p>
+                  </div>
+                  {(() => {
+                    const currentPart = participants.find(p => p.id === evalParticipantId);
+                    return (
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border self-start sm:self-auto ${
+                        currentPart?.currentLevel === 'Belum Dinilai'
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                      }`}>
+                        Level Saat Ini: {currentPart?.currentLevel || 'Belum Dinilai'}
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {LEVEL_OPTIONS.map((lvl) => {
+                    const isSelected = evalAssignedLevel === lvl.id;
+                    return (
+                      <div
+                        key={lvl.id}
+                        onClick={() => setEvalAssignedLevel(lvl.id)}
+                        className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{lvl.icon}</span>
+                            <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {lvl.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1026,157 +1056,136 @@ export const GuruPortal: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: CREATE TASK */}
-      {showTaskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Buat Tugas Mengaji Baru</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Tugas akan muncul di beranda ponsel pengemudi ojol yang terdaftar
-            </p>
-
-            <form onSubmit={handleCreateTask} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Shelter Sasaran</label>
-                <select
-                  value={taskShelterId}
-                  onChange={(e) => setTaskShelterId(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-semibold"
-                >
-                  {myShelters.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+      {/* MODAL: PENILAIAN TINGKAT KEMAMPUAN MENGAJI DRIVER */}
+      {showLevelModal && selectedParticipantForLevel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl my-8 border border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <Sparkles className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">
+                    Penilaian Tingkat Kemampuan Mengaji Driver
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Uji kemampuan membaca Al-Qur&apos;an &amp; tetapkan jenjang belajar ojol
+                  </p>
+                </div>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setShowLevelModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLevelAssessment} className="space-y-4">
+              {/* Driver Summary Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedParticipantForLevel.avatar}
+                    alt={selectedParticipantForLevel.name}
+                    className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/20"
+                  />
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900">
+                      {selectedParticipantForLevel.name}
+                    </h4>
+                    <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                      <span className="font-semibold text-emerald-700">{selectedParticipantForLevel.ojolPlatform}</span>
+                      <span>•</span>
+                      <span>{selectedParticipantForLevel.vehiclePlate}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Level Saat Ini</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                    selectedParticipantForLevel.currentLevel === 'Belum Dinilai'
+                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                  }`}>
+                    {selectedParticipantForLevel.currentLevel}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Cards: Tingkat Kemampuan Mengaji (From Screenshot) */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Pilih Tingkat Kemampuan Mengaji Hasil Penilaian Ustadz:
+                </label>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Pilih perkiraan kemampuan membaca Al-Qur&apos;an peserta berdasarkan hasil tes bacaan / talaqqi di shelter:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {LEVEL_OPTIONS.map((lvl) => {
+                    const isSelected = newAssignedLevel === lvl.id;
+                    return (
+                      <div
+                        key={lvl.id}
+                        onClick={() => setNewAssignedLevel(lvl.id)}
+                        className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{lvl.icon}</span>
+                            <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {lvl.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Catatan Observasi Guru */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Judul Tugas</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Catatan Hasil Tes / Observasi Guru (Opsional)
+                </label>
                 <input
                   type="text"
-                  required
-                  placeholder="Contoh: Setoran Bacaan Surah Al-Mulk ayat 1-10"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  value={levelEvaluationNote}
+                  onChange={(e) => setLevelEvaluationNote(e.target.value)}
+                  placeholder="Contoh: Sudah hafal makhraj huruf dasar, ditempatkan di Iqro 4..."
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Materi / Surah</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Surah Al-Mulk"
-                    value={taskSurahOrTopic}
-                    onChange={(e) => setTaskSurahOrTopic(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tenggat Waktu</label>
-                  <input
-                    type="date"
-                    required
-                    value={taskDueDate}
-                    onChange={(e) => setTaskDueDate(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Instruksi Tugas</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Jelaskan instruksi, target ayat, dan hal-hal yang perlu diperhatikan..."
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2">
+              {/* Action Buttons */}
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowTaskModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  onClick={() => setShowLevelModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Bagikan Tugas
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EVALUATE SUBMISSION */}
-      {evaluatingSubmissionId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Periksa &amp; Beri Umpan Balik Setoran</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Nilai dan catatan akan langsung tersampaikan ke aplikasi driver
-            </p>
-
-            <form onSubmit={handleSaveTaskEvaluation} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status Pengerjaan</label>
-                  <select
-                    value={evalSubStatus}
-                    onChange={(e) => setEvalSubStatus(e.target.value as any)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-bold"
-                  >
-                    <option value="selesai">Selesai (Diterima)</option>
-                    <option value="perlu_perbaikan">Perlu Perbaikan</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nilai (Skala 1 - 100)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={evalSubScore}
-                    onChange={(e) => setEvalSubScore(Number(e.target.value))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-bold text-emerald-700"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Umpan Balik &amp; Motivasi Guru</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Contoh: Masya Allah bacaan tartil dan makhraj fasih! Teruskan istiqomah..."
-                  value={evalSubFeedback}
-                  onChange={(e) => setEvalSubFeedback(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEvaluatingSubmissionId(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
-                >
-                  Kirim Nilai &amp; Ulasan
+                  <Check className="w-4 h-4" />
+                  <span>Simpan &amp; Tetapkan Tingkat Kemampuan</span>
                 </button>
               </div>
             </form>

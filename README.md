@@ -22,17 +22,13 @@
   * Makhraj & Pelafalan Huruf (Skala 1–4)
   * Kemandirian Membaca (Skala 1–4)
   * Catatan kelebihan & rekomendasi latihan mandiri dari Ustadz.
-* **Tugas Mengaji & Setoran Bacaan**:
-  * Notifikasi tugas dengan batas tenggat (*due date*).
-  * Pengiriman catatan setoran dan simulasi **Voice Note Audio** bacaan.
-  * Umpan balik serta penilaian langsung dari Ustadz pembimbing.
 
 ---
 
 ### 2. 👳‍♂️ Portal Guru Mengaji (Ustadz Pembimbing)
 * **Dashboard Kelas Binaan**:
   * Informasi jadwal mengajar dan shelter tanggung jawab.
-  * Alert otomatis tugas yang menunggu penilaian & evaluasi yang belum diisi.
+  * Evaluasi capaian santri binaan.
 * **Manajemen Presensi Sesi Kelas**:
   * Verifikasi kehadiran driver secara *real-time*.
   * Fitur presensi manual oleh guru jika terjadi kendala teknis pada HP driver.
@@ -40,9 +36,6 @@
 * **Pengisian Rubrik Evaluasi Al-Qur'an**:
   * Form terstruktur untuk mencatat capaian 6 aspek rubrik.
   * Kemampuan mempublikasikan hasil agar dapat langsung dipantau oleh driver.
-* **Pemberian & Koreksi Tugas Mengaji**:
-  * Membuat instruksi tugas (surah target, ayat, materi).
-  * Memeriksa setoran suara, memberikan skor 1-100, dan menuliskan catatan motivasi.
 
 ---
 
