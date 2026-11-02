@@ -1,12 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { 
   GraduationCap, 
-  Shield, 
-  Bike, 
   Lock, 
   Mail, 
   Eye, 
@@ -14,11 +11,7 @@ import {
   LogIn, 
   AlertCircle, 
   CheckCircle2, 
-  ArrowLeft, 
-  Info,
-  BookOpen,
-  Sparkles,
-  UserCheck
+  BookOpen
 } from 'lucide-react';
 
 interface GuruAuthProps {
@@ -26,7 +19,7 @@ interface GuruAuthProps {
 }
 
 export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
-  const { loginStaff, currentUser, users } = useApp();
+  const { loginStaff, currentUser } = useApp();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -35,25 +28,19 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter guru accounts for quick login help
-  const guruUsers = users.filter(u => u.role === 'guru');
-
-  const handleLogin = (e?: React.FormEvent, customId?: string, customPass?: string) => {
+  const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const loginId = customId !== undefined ? customId : identifier;
-    const loginPass = customPass !== undefined ? customPass : password;
-
-    if (!loginId.trim()) {
+    if (!identifier.trim()) {
       setErrorMsg('Silakan masukkan email atau nomor WhatsApp Ustadz.');
       return;
     }
 
     setIsSubmitting(true);
     setTimeout(() => {
-      const res = loginStaff(loginId, loginPass);
+      const res = loginStaff(identifier, password);
       setIsSubmitting(false);
 
       if (res.success) {
@@ -69,27 +56,13 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
     }, 400);
   };
 
-  const handleQuickGuruLogin = (email: string) => {
-    setIdentifier(email);
-    setPassword('guru');
-    handleLogin(undefined, email, 'guru');
-  };
-
   return (
     <div className="max-w-xl mx-auto py-4 px-2 sm:px-4">
-      {/* Top back navigation */}
-      <div className="mb-4 flex items-center justify-between">
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-emerald-700 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali ke Halaman Driver</span>
-        </Link>
-
+      {/* Top badge */}
+      <div className="mb-4 flex items-center justify-end">
         <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-teal-100 text-teal-900 px-2.5 py-1 rounded-md border border-teal-200">
           <GraduationCap className="w-3.5 h-3.5 text-teal-700" />
-          Halaman 3: Portal Guru Mengaji
+          Portal Guru Mengaji
         </span>
       </div>
 
@@ -125,37 +98,6 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
         </div>
 
         <div className="p-5 sm:p-7 space-y-5">
-          {/* Quick 1-Click Guru Demo Buttons */}
-          <div className="p-3.5 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-950 text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-teal-900 mb-2">
-              <Sparkles className="w-4 h-4 text-teal-600" />
-              <span>Pilih Cepat Akun Ustadz (Demo / Simulasi):</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-              {guruUsers.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => handleQuickGuruLogin(g.email)}
-                  className="flex items-center gap-2.5 p-2 rounded-lg bg-white hover:bg-teal-100/60 border border-teal-200 text-left transition shadow-2xs group"
-                >
-                  <img
-                    src={g.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'}
-                    alt={g.name}
-                    className="w-8 h-8 rounded-full object-cover border border-teal-300"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-800 text-[11px] truncate group-hover:text-teal-900">
-                      {g.name}
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate">{g.email}</p>
-                  </div>
-                  <UserCheck className="w-3.5 h-3.5 text-teal-600 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Current Ojol notice if logged in as ojol */}
           {currentUser && currentUser.role === 'ojol' && (
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
@@ -256,25 +198,6 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
               </button>
             </div>
           </form>
-
-          {/* Links to Other Pages */}
-          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <Link 
-              href="/admin" 
-              className="inline-flex items-center gap-1.5 text-purple-700 hover:text-purple-800 font-semibold transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Ke Halaman 2: Admin Pusat &rarr;</span>
-            </Link>
-
-            <Link 
-              href="/" 
-              className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 font-semibold transition-colors"
-            >
-              <Bike className="w-3.5 h-3.5" />
-              <span>Ke Halaman 1: User / Driver &rarr;</span>
-            </Link>
-          </div>
         </div>
       </div>
     </div>

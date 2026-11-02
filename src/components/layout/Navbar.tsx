@@ -8,9 +8,7 @@ import {
   Bike, 
   Sparkles, 
   LogOut, 
-  UserCheck,
-  Shield,
-  GraduationCap
+  UserCheck
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -29,7 +27,7 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Logo & Brand */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/user" className="flex items-center gap-3 group">
             <div className="relative flex items-center justify-center">
               <img
                 src="/logo-ojol-mengaji.png"
@@ -57,7 +55,7 @@ export const Navbar: React.FC = () => {
                 </span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
                   <Sparkles className="w-3 h-3 text-emerald-500" />
-                  Halaman 1: Peserta Ojol
+                  Halaman User: Driver
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
@@ -66,28 +64,8 @@ export const Navbar: React.FC = () => {
             </div>
           </Link>
 
-          {/* Right: Driver Status, Quick Navigation to Admin & Guru, & Logout */}
+          {/* Right: Driver Status & Logout */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Quick buttons to Admin and Guru pages */}
-            <div className="hidden sm:flex items-center gap-1.5 mr-1">
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors shadow-2xs"
-                title="Buka Halaman 2: Administrator Pusat"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Admin</span>
-              </Link>
-              <Link
-                href="/guru"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors shadow-2xs"
-                title="Buka Halaman 3: Guru Mengaji (Ustadz)"
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Guru</span>
-              </Link>
-            </div>
-
             {isDriverLoggedIn && currentUser ? (
               <div className="flex items-center gap-2.5">
                 {/* Current Ojol Participant Info */}

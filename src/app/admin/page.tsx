@@ -5,11 +5,9 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { AdminPortal } from '@/components/admin/AdminPortal';
 import { AdminAuth } from '@/components/admin/AdminAuth';
-import { PortalSwitcher } from '@/components/layout/PortalSwitcher';
 import { 
   Shield, 
   GraduationCap, 
-  Bike, 
   RotateCcw, 
   ArrowLeft, 
   BookOpen, 
@@ -54,28 +52,8 @@ export default function AdminPage() {
                 </div>
               </div>
             </Link>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors shadow-2xs"
-              >
-                <Bike className="w-3.5 h-3.5" />
-                <span>Halaman Driver</span>
-              </Link>
-              <Link
-                href="/guru"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors shadow-2xs"
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Halaman Guru</span>
-              </Link>
-            </div>
           </div>
         </header>
-
-        {/* 3-Page Switcher */}
-        <PortalSwitcher activePortal="admin" />
 
         {/* Special banner if logged in as guru */}
         {currentUser?.role === 'guru' && (
@@ -134,7 +112,7 @@ export default function AdminPage() {
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded-md border border-purple-200">
                       <Shield className="w-3 h-3 text-purple-700" />
-                      Halaman 2: Admin Pusat
+                      Portal Admin Pusat
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 hidden sm:block">
@@ -204,9 +182,6 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-
-        {/* 3-Page Switcher Bar */}
-        <PortalSwitcher activePortal="admin" />
       </header>
 
       {/* Main Content Area */}
@@ -219,27 +194,9 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-purple-600" />
-            <span className="font-semibold text-slate-700">Halaman 2: Portal Administrator Pusat Ojol Mengaji</span>
+            <span className="font-semibold text-slate-700">Halaman Admin: Portal Administrator Pusat Ojol Mengaji</span>
             <span>—</span>
             <span>Kewenangan Tunggal Master Data &amp; Tata Kelola</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link 
-              href="/" 
-              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 transition-colors"
-            >
-              <Bike className="w-3.5 h-3.5" />
-              Ke Halaman 1: Driver
-            </Link>
-            <span className="text-slate-300">|</span>
-            <Link 
-              href="/guru" 
-              className="text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1 transition-colors"
-            >
-              <GraduationCap className="w-3.5 h-3.5" />
-              Ke Halaman 3: Guru Mengaji &rarr;
-            </Link>
           </div>
         </div>
       </footer>

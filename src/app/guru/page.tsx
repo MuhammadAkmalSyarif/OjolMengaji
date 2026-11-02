@@ -5,11 +5,8 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { GuruPortal } from '@/components/guru/GuruPortal';
 import { GuruAuth } from '@/components/guru/GuruAuth';
-import { PortalSwitcher } from '@/components/layout/PortalSwitcher';
 import { 
   GraduationCap, 
-  Shield, 
-  Bike, 
   RotateCcw, 
   ArrowLeft, 
   BookOpen, 
@@ -58,28 +55,8 @@ export default function GuruPage() {
                 </div>
               </div>
             </Link>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors shadow-2xs"
-              >
-                <Bike className="w-3.5 h-3.5" />
-                <span>Halaman Driver</span>
-              </Link>
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors shadow-2xs"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Halaman Admin</span>
-              </Link>
-            </div>
           </div>
         </header>
-
-        {/* 3-Page Switcher */}
-        <PortalSwitcher activePortal="guru" />
 
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 flex items-center justify-center">
           <GuruAuth />
@@ -117,7 +94,7 @@ export default function GuruPage() {
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md border border-teal-200">
                       <GraduationCap className="w-3 h-3 text-teal-700" />
-                      Halaman 3: Portal Guru
+                      Portal Guru Mengaji
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 hidden sm:block">
@@ -196,9 +173,6 @@ export default function GuruPage() {
             </div>
           </div>
         </div>
-
-        {/* 3-Page Switcher Bar */}
-        <PortalSwitcher activePortal="guru" />
       </header>
 
       {/* Main Content Area */}
@@ -211,27 +185,9 @@ export default function GuruPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-teal-600" />
-            <span className="font-semibold text-slate-700">Halaman 3: Portal Dewan Guru Mengaji (Ustadz)</span>
+            <span className="font-semibold text-slate-700">Halaman Guru: Portal Dewan Guru Mengaji (Ustadz)</span>
             <span>—</span>
             <span>Mendampingi Pembinaan Al-Qur&apos;an Mitra Driver Ojol</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link 
-              href="/" 
-              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 transition-colors"
-            >
-              <Bike className="w-3.5 h-3.5" />
-              Ke Halaman 1: Driver
-            </Link>
-            <span className="text-slate-300">|</span>
-            <Link 
-              href="/admin" 
-              className="text-purple-700 hover:text-purple-800 font-semibold flex items-center gap-1 transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              Ke Halaman 2: Admin Pusat &rarr;
-            </Link>
           </div>
         </div>
       </footer>

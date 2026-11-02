@@ -1,11 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { 
   Shield, 
-  GraduationCap, 
   Lock, 
   Mail, 
   Eye, 
@@ -13,11 +11,7 @@ import {
   LogIn, 
   AlertCircle, 
   CheckCircle2, 
-  ArrowLeft, 
-  Info,
-  KeyRound,
-  Sparkles,
-  Bike
+  KeyRound
 } from 'lucide-react';
 
 interface AdminAuthProps {
@@ -27,29 +21,26 @@ interface AdminAuthProps {
 export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
   const { loginStaff, currentUser } = useApp();
 
-  const [identifier, setIdentifier] = useState('admin@ojolmengaji.id');
-  const [password, setPassword] = useState('OjolMengaji_Admin123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e?: React.FormEvent, customId?: string, customPass?: string) => {
+  const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const loginId = customId !== undefined ? customId : identifier;
-    const loginPass = customPass !== undefined ? customPass : password;
-
-    if (!loginId.trim()) {
+    if (!identifier.trim()) {
       setErrorMsg('Silakan masukkan email Administrator Pusat.');
       return;
     }
 
     setIsSubmitting(true);
     setTimeout(() => {
-      const res = loginStaff(loginId, loginPass);
+      const res = loginStaff(identifier, password);
       setIsSubmitting(false);
 
       if (res.success) {
@@ -65,27 +56,13 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
     }, 400);
   };
 
-  const handleFillOfficialAdmin = () => {
-    setIdentifier('admin@ojolmengaji.id');
-    setPassword('OjolMengaji_Admin123');
-    handleLogin(undefined, 'admin@ojolmengaji.id', 'OjolMengaji_Admin123');
-  };
-
   return (
     <div className="max-w-xl mx-auto py-4 px-2 sm:px-4">
-      {/* Top back navigation */}
-      <div className="mb-4 flex items-center justify-between">
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-emerald-700 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali ke Halaman Driver</span>
-        </Link>
-
+      {/* Top badge */}
+      <div className="mb-4 flex items-center justify-end">
         <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-purple-100 text-purple-900 px-2.5 py-1 rounded-md border border-purple-200">
           <Shield className="w-3 h-3 text-purple-700" />
-          Halaman 2: Administrator Pusat
+          Portal Administrator Pusat
         </span>
       </div>
 
@@ -121,26 +98,6 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
         </div>
 
         <div className="p-5 sm:p-7 space-y-5">
-          {/* Quick Admin Credential Button */}
-          <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-950 text-xs">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 font-bold text-purple-900">
-                <Sparkles className="w-4 h-4 text-purple-600" />
-                <span>Akun Administrator Resmi:</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleFillOfficialAdmin}
-                className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition"
-              >
-                Klik untuk Masuk Cepat
-              </button>
-            </div>
-            <p className="mt-1.5 text-[11px] text-purple-800/90 font-mono">
-              Email: <strong>admin@ojolmengaji.id</strong> | Password: <strong>OjolMengaji_Admin123</strong>
-            </p>
-          </div>
-
           {/* Current Ojol notice if logged in as ojol */}
           {currentUser && currentUser.role === 'ojol' && (
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
@@ -240,25 +197,6 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
               </button>
             </div>
           </form>
-
-          {/* Links to Other Pages */}
-          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <Link 
-              href="/guru" 
-              className="inline-flex items-center gap-1.5 text-teal-700 hover:text-teal-800 font-semibold transition-colors"
-            >
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>Ke Halaman 3: Guru Mengaji (Ustadz) &rarr;</span>
-            </Link>
-
-            <Link 
-              href="/" 
-              className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 font-semibold transition-colors"
-            >
-              <Bike className="w-3.5 h-3.5" />
-              <span>Ke Halaman 1: User / Driver &rarr;</span>
-            </Link>
-          </div>
         </div>
       </div>
     </div>
