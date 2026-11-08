@@ -81,6 +81,11 @@ export const AdminPortal: React.FC = () => {
   const [teacherSpec, setTeacherSpec] = useState('');
   const [teacherSelectedShelters, setTeacherSelectedShelters] = useState<string[]>([]);
 
+  // Teacher Shelter Assignment Modal
+  const [showAssignShelterModal, setShowAssignShelterModal] = useState(false);
+  const [assigningTeacher, setAssigningTeacher] = useState<Teacher | null>(null);
+  const [selectedSheltersForAssign, setSelectedSheltersForAssign] = useState<string[]>([]);
+
   // Participant Modal
   const [showPartModal, setShowPartModal] = useState(false);
   const [partName, setPartName] = useState('');
@@ -197,6 +202,27 @@ export const AdminPortal: React.FC = () => {
     setTeacherPhone('');
     setTeacherSpec('');
     setTeacherSelectedShelters([]);
+  };
+
+  // Open Shelter Assignment Modal for Teacher
+  const handleOpenAssignShelters = (t: Teacher) => {
+    setAssigningTeacher(t);
+    setSelectedSheltersForAssign(t.shelterIds || []);
+    setShowAssignShelterModal(true);
+  };
+
+  // Save Shelter Assignment for Teacher
+  const handleSaveShelterAssignment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assigningTeacher) return;
+
+    updateTeacher({
+      ...assigningTeacher,
+      shelterIds: selectedSheltersForAssign
+    });
+
+    setShowAssignShelterModal(false);
+    alert(`Alhamdulillah! Penugasan shelter untuk Ustadz ${assigningTeacher.name} berhasil disimpan (${selectedSheltersForAssign.length} shelter binaan ditunjuk). Guru hanya dapat melihat shelter tersebut dan ojol yang mendaftar di dalamnya.`);
   };
 
   // Save Participant
@@ -584,27 +610,61 @@ export const AdminPortal: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {teachers.map(teacher => {
-              const mySheltersList = shelters.filter(s => teacher.shelterIds.includes(s.id));
+              const mySheltersList = shelters.filter(s => (teacher.shelterIds || []).includes(s.id));
+              const totalDrivers = participants.filter(p => (teacher.shelterIds || []).includes(p.shelterId)).length;
               return (
-                <div key={teacher.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <img src={teacher.avatar} alt={teacher.name} className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500" />
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900">{teacher.name}</h4>
-                      <p className="text-xs text-slate-500">{teacher.phone} • {teacher.email}</p>
-                      <p className="text-[11px] text-emerald-700 font-medium mt-0.5">{teacher.specialization}</p>
+                <div key={teacher.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <img src={teacher.avatar} alt={teacher.name} className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-2xs" />
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900">{teacher.name}</h4>
+                          <p className="text-xs text-slate-500">{teacher.phone} • {teacher.email}</p>
+                          <p className="text-[11px] text-emerald-700 font-medium mt-0.5">{teacher.specialization}</p>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
+                        {mySheltersList.length} Shelter • {totalDrivers} Ojol
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-bold text-slate-700">Shelter Ditunjuk Admin:</span>
+                        <span className="text-[10px] text-slate-400">Guru hanya bisa lihat shelter ini &amp; ojolnya</span>
+                      </div>
+                      {mySheltersList.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {mySheltersList.map(s => {
+                            const count = participants.filter(p => p.shelterId === s.id).length;
+                            return (
+                              <span key={s.id} className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-[11px] font-medium flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-purple-600" />
+                                <span>{s.name}</span>
+                                <span className="font-bold text-purple-700 text-[10px]">({count} ojol)</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-700 font-medium italic">
+                          Belum ada shelter yang ditugaskan ke ustadz ini.
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs">
-                    <span className="font-bold text-slate-700 block mb-1">Penugasan Shelter:</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {mySheltersList.map(s => (
-                        <span key={s.id} className="px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 text-[11px] font-medium">
-                          {s.name}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAssignShelters(teacher)}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition-colors flex items-center gap-1.5"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Atur Penugasan Shelter</span>
+                    </button>
                   </div>
                 </div>
               );
@@ -1397,6 +1457,134 @@ export const AdminPortal: React.FC = () => {
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md"
                 >
                   Simpan &amp; Catat Audit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ATUR PENUGASAN SHELTER GURU */}
+      {showAssignShelterModal && assigningTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl my-8 border border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                  <MapPin className="w-5 h-5 text-purple-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">
+                    Atur Penugasan Shelter Guru
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Tentukan shelter binaan yang diampu oleh {assigningTeacher.name}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAssignShelterModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Instruction Notice */}
+            <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs mb-4 flex items-start gap-2">
+              <Shield className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                <strong>Kebijakan Hak Akses:</strong> Ustadz hanya dapat melihat shelter yang dicentang oleh Admin di bawah ini, dan ustadz juga hanya dapat melihat pengemudi ojol yang mendaftar di shelter tersebut.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveShelterAssignment} className="space-y-4">
+              {/* Quick Actions */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-700">
+                  Pilih Shelter Binaan ({selectedSheltersForAssign.length} dipilih):
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSheltersForAssign(shelters.map(s => s.id))}
+                    className="text-[11px] font-semibold text-purple-700 hover:underline"
+                  >
+                    Pilih Semua
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSheltersForAssign([])}
+                    className="text-[11px] font-semibold text-rose-600 hover:underline"
+                  >
+                    Kosongkan Semua
+                  </button>
+                </div>
+              </div>
+
+              {/* Checkboxes List */}
+              <div className="space-y-2 max-h-64 overflow-y-auto border border-slate-200 rounded-2xl p-3 bg-slate-50/50">
+                {shelters.map(s => {
+                  const isChecked = selectedSheltersForAssign.includes(s.id);
+                  const driverCount = participants.filter(p => p.shelterId === s.id).length;
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                        isChecked
+                          ? 'border-purple-500 bg-purple-50/80 shadow-xs ring-1 ring-purple-300'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSheltersForAssign(prev => [...prev, s.id]);
+                            } else {
+                              setSelectedSheltersForAssign(prev => prev.filter(id => id !== s.id));
+                            }
+                          }}
+                          className="mt-1 rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">{s.name}</div>
+                          <div className="text-[11px] text-slate-500 line-clamp-1">{s.address}</div>
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-2 ${
+                        driverCount > 0
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {driverCount} Ojol Terdaftar
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignShelterModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Penugasan Shelter</span>
                 </button>
               </div>
             </form>

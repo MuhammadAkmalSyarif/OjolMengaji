@@ -29,7 +29,7 @@ export default function GuruPage() {
   const isGuruLoggedIn = Boolean(currentUser && (currentUser.role === 'guru' || currentUser.role === 'admin'));
 
   // Current active teacher
-  const currentTeacher = teachers.find(t => t.userId === currentUser?.id) || teachers[0];
+  const currentTeacher = teachers.find(t => t.userId === currentUser?.id) || (currentUser?.role === 'admin' ? teachers[0] : null);
 
   // If not logged in as guru/admin, show GuruAuth
   if (!isGuruLoggedIn) {
@@ -119,24 +119,37 @@ export default function GuruPage() {
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
 
-              {/* Teacher Selector for testing/simulation */}
-              <div className="hidden sm:flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-teal-200 text-xs">
-                <span className="text-teal-800 font-semibold flex items-center gap-1">
-                  <GraduationCap className="w-3.5 h-3.5 text-teal-600" />
-                  Pilih Ustadz:
-                </span>
-                <select
-                  value={currentUser?.id || ''}
-                  onChange={(e) => switchUser(e.target.value)}
-                  className="bg-transparent font-bold text-teal-950 focus:outline-none cursor-pointer"
-                >
-                  {users.filter(u => u.role === 'guru').map(g => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Teacher Info or Admin Simulation Selector */}
+              {currentUser?.role === 'admin' ? (
+                <div className="hidden sm:flex items-center gap-2 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200 text-xs">
+                  <span className="text-purple-800 font-semibold flex items-center gap-1">
+                    <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                    Simulasi Guru (Admin):
+                  </span>
+                  <select
+                    value={currentUser?.id || ''}
+                    onChange={(e) => switchUser(e.target.value)}
+                    className="bg-transparent font-bold text-purple-950 focus:outline-none cursor-pointer"
+                  >
+                    {users.filter(u => u.role === 'guru').map(g => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="hidden sm:flex items-center gap-2 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-200 text-xs">
+                  <GraduationCap className="w-3.5 h-3.5 text-teal-700" />
+                  <span className="font-bold text-teal-950">{currentUser?.name}</span>
+                  <span className="text-teal-400">•</span>
+                  <span className="text-teal-700 font-medium">
+                    {currentTeacher?.shelterIds?.length 
+                      ? `${currentTeacher.shelterIds.length} Shelter Ditunjuk Admin` 
+                      : 'Belum Ada Penugasan Shelter'}
+                  </span>
+                </div>
+              )}
 
               {/* Active User Avatar & Info */}
               <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
