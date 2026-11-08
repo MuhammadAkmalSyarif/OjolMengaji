@@ -1100,198 +1100,223 @@ export const GuruPortal: React.FC = () => {
 
       {/* MODAL: INPUT PENILAIAN 6 ASPEK */}
       {showAssessmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl my-8">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Formulir Penilaian Membaca Al-Qur&apos;an</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Isi nilai 6 aspek rubrik pembelajaran (skala 1–4) khusus untuk peserta di shelter binaan Anda.
-            </p>
-
-            <form onSubmit={handleSaveAssessment} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 border border-slate-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
+                  <Award className="w-5 h-5 text-emerald-700" />
+                </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Peserta Ojol Binaan</label>
-                  <select
-                    value={evalParticipantId}
-                    onChange={(e) => {
-                      const newId = e.target.value;
-                      setEvalParticipantId(newId);
-                      const p = myParticipants.find(part => part.id === newId);
-                      if (p && p.currentLevel !== 'Belum Dinilai') {
-                        setEvalAssignedLevel(p.currentLevel);
-                      }
-                    }}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
-                  >
-                    {myShelters.map(sh => {
-                      const shParts = myParticipants.filter(p => p.shelterId === sh.id);
-                      if (shParts.length === 0) return null;
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                    Formulir Penilaian Membaca Al-Qur&apos;an
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Isi nilai 6 aspek rubrik pembelajaran (skala 1–4) khusus untuk peserta di shelter binaan Anda.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAssessmentModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+                title="Tutup Formulir"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAssessment} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Peserta Ojol Binaan</label>
+                    <select
+                      value={evalParticipantId}
+                      onChange={(e) => {
+                        const newId = e.target.value;
+                        setEvalParticipantId(newId);
+                        const p = myParticipants.find(part => part.id === newId);
+                        if (p && p.currentLevel !== 'Belum Dinilai') {
+                          setEvalAssignedLevel(p.currentLevel);
+                        }
+                      }}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
+                    >
+                      {myShelters.map(sh => {
+                        const shParts = myParticipants.filter(p => p.shelterId === sh.id);
+                        if (shParts.length === 0) return null;
+                        return (
+                          <optgroup key={sh.id} label={`Shelter: ${sh.name}`}>
+                            {shParts.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.ojolPlatform} - {p.vehiclePlate}) - {p.currentLevel}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Materi / Surah Diuji</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Surah Al-Mulk ayat 1-10 / Iqro 5"
+                      value={evalMaterial}
+                      onChange={(e) => setEvalMaterial(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Tingkat Kemampuan Mengaji Driver */}
+                <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Tingkat Kemampuan Mengaji Driver (Penilaian Guru)</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Tentukan / sesuaikan jenjang pembelajaran driver berdasarkan bacaan saat ini:
+                      </p>
+                    </div>
+                    {(() => {
+                      const currentPart = myParticipants.find(p => p.id === evalParticipantId);
                       return (
-                        <optgroup key={sh.id} label={`Shelter: ${sh.name}`}>
-                          {shParts.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.ojolPlatform} - {p.vehiclePlate}) - {p.currentLevel}
-                            </option>
-                          ))}
-                        </optgroup>
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border self-start sm:self-auto ${
+                          currentPart?.currentLevel === 'Belum Dinilai'
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        }`}>
+                          Level Saat Ini: {currentPart?.currentLevel || 'Belum Dinilai'}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {LEVEL_OPTIONS.map((lvl) => {
+                      const isSelected = evalAssignedLevel === lvl.id;
+                      return (
+                        <div
+                          key={lvl.id}
+                          onClick={() => setEvalAssignedLevel(lvl.id)}
+                          className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
+                            isSelected
+                              ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">{lvl.icon}</span>
+                              <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {lvl.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
+                        </div>
                       );
                     })}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Materi / Surah Diuji</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Surah Al-Mulk ayat 1-10 / Iqro 5"
-                    value={evalMaterial}
-                    onChange={(e) => setEvalMaterial(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Tingkat Kemampuan Mengaji Driver */}
-              <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Tingkat Kemampuan Mengaji Driver (Penilaian Guru)</span>
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      Tentukan / sesuaikan jenjang pembelajaran driver berdasarkan bacaan saat ini:
-                    </p>
                   </div>
-                  {(() => {
-                    const currentPart = myParticipants.find(p => p.id === evalParticipantId);
-                    return (
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border self-start sm:self-auto ${
-                        currentPart?.currentLevel === 'Belum Dinilai'
-                          ? 'bg-amber-100 text-amber-800 border-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                      }`}>
-                        Level Saat Ini: {currentPart?.currentLevel || 'Belum Dinilai'}
-                      </span>
-                    );
-                  })()}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {LEVEL_OPTIONS.map((lvl) => {
-                    const isSelected = evalAssignedLevel === lvl.id;
-                    return (
-                      <div
-                        key={lvl.id}
-                        onClick={() => setEvalAssignedLevel(lvl.id)}
-                        className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">{lvl.icon}</span>
-                            <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
-                          </div>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {lvl.badge}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
-                      </div>
-                    );
-                  })}
+                {/* 6 Rubric Selectors */}
+                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Rubrik 6 Aspek Bacaan (1: Perlu Bimbingan, 2: Berkembang, 3: Baik, 4: Sangat Baik)
+                  </h4>
+
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700">1. Pengenalan Huruf Hijaiyah</span>
+                      {renderScoreButtons('hijaiyah', evalScores.hijaiyah)}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700">2. Harakat &amp; Rangkaian Huruf Sambung</span>
+                      {renderScoreButtons('harakat', evalScores.harakat)}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700">3. Kelancaran Membaca</span>
+                      {renderScoreButtons('kelancaran', evalScores.kelancaran)}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700">4. Tajwid Dasar (Panjang Pendek &amp; Dengung)</span>
+                      {renderScoreButtons('tajwid', evalScores.tajwid)}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700">5. Makhraj &amp; Pelafalan Huruf</span>
+                      {renderScoreButtons('makhraj', evalScores.makhraj)}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700">6. Kemandirian Membaca (Tanpa Ditalqin)</span>
+                      {renderScoreButtons('kemandirian', evalScores.kemandirian)}
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* 6 Rubric Selectors */}
-              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Rubrik 6 Aspek Bacaan (1: Perlu Bimbingan, 2: Berkembang, 3: Baik, 4: Sangat Baik)
-                </h4>
-
+                {/* Notes */}
                 <div className="space-y-3">
                   <div>
-                    <span className="text-xs font-semibold text-slate-700">1. Pengenalan Huruf Hijaiyah</span>
-                    {renderScoreButtons('hijaiyah', evalScores.hijaiyah)}
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Kelebihan / Kemajuan Peserta</label>
+                    <textarea
+                      rows={2}
+                      value={evalStrengths}
+                      onChange={(e) => setEvalStrengths(e.target.value)}
+                      placeholder="Contoh: Makhraj huruf 'Ain dan Ha sudah fasih, pelafalan mantap..."
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
                   </div>
+
                   <div>
-                    <span className="text-xs font-semibold text-slate-700">2. Harakat &amp; Rangkaian Huruf Sambung</span>
-                    {renderScoreButtons('harakat', evalScores.harakat)}
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Hal yang Perlu Diperbaiki</label>
+                    <textarea
+                      rows={2}
+                      value={evalImprovements}
+                      onChange={(e) => setEvalImprovements(e.target.value)}
+                      placeholder="Contoh: Ghunnah pada nun bertasydid mohon ditahan 2 harakat..."
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
                   </div>
+
                   <div>
-                    <span className="text-xs font-semibold text-slate-700">3. Kelancaran Membaca</span>
-                    {renderScoreButtons('kelancaran', evalScores.kelancaran)}
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-700">4. Tajwid Dasar (Panjang Pendek &amp; Dengung)</span>
-                    {renderScoreButtons('tajwid', evalScores.tajwid)}
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-700">5. Makhraj &amp; Pelafalan Huruf</span>
-                    {renderScoreButtons('makhraj', evalScores.makhraj)}
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-700">6. Kemandirian Membaca (Tanpa Ditalqin)</span>
-                    {renderScoreButtons('kemandirian', evalScores.kemandirian)}
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Rekomendasi Latihan di Rumah/Shelter</label>
+                    <input
+                      type="text"
+                      value={evalRecommendations}
+                      onChange={(e) => setEvalRecommendations(e.target.value)}
+                      placeholder="Contoh: Ulangi ayat 5-8 sebanyak 3x di shelter saat santai..."
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Notes */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Kelebihan / Kemajuan Peserta</label>
-                  <textarea
-                    rows={2}
-                    value={evalStrengths}
-                    onChange={(e) => setEvalStrengths(e.target.value)}
-                    placeholder="Contoh: Makhraj huruf 'Ain dan Ha sudah fasih, pelafalan mantap..."
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Hal yang Perlu Diperbaiki</label>
-                  <textarea
-                    rows={2}
-                    value={evalImprovements}
-                    onChange={(e) => setEvalImprovements(e.target.value)}
-                    placeholder="Contoh: Ghunnah pada nun bertasydid mohon ditahan 2 harakat..."
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Rekomendasi Latihan di Rumah/Shelter</label>
-                  <input
-                    type="text"
-                    value={evalRecommendations}
-                    onChange={(e) => setEvalRecommendations(e.target.value)}
-                    placeholder="Contoh: Ulangi ayat 5-8 sebanyak 3x di shelter saat santai..."
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-3 border-t border-slate-200">
+              {/* Modal Footer */}
+              <div className="flex gap-2 justify-end p-4 sm:px-6 border-t border-slate-100 bg-slate-50/90 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowAssessmentModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200/70 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Simpan &amp; Publikasikan ke Driver
+                  <Award className="w-4 h-4" />
+                  <span>Simpan &amp; Publikasikan ke Driver</span>
                 </button>
               </div>
             </form>
@@ -1301,11 +1326,11 @@ export const GuruPortal: React.FC = () => {
 
       {/* MODAL: PENILAIAN TINGKAT KEMAMPUAN MENGAJI DRIVER */}
       {showLevelModal && selectedParticipantForLevel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl my-8 border border-slate-100">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 border border-slate-100">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-white shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
                   <Sparkles className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div>
@@ -1321,109 +1346,112 @@ export const GuruPortal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowLevelModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+                title="Tutup Formulir"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveLevelAssessment} className="space-y-4">
-              {/* Driver Summary Card */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={selectedParticipantForLevel.avatar}
-                    alt={selectedParticipantForLevel.name}
-                    className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/20"
-                  />
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-900">
-                      {selectedParticipantForLevel.name}
-                    </h4>
-                    <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                      <span className="font-semibold text-emerald-700">{selectedParticipantForLevel.ojolPlatform}</span>
-                      <span>•</span>
-                      <span>{selectedParticipantForLevel.vehiclePlate}</span>
-                      <span>•</span>
-                      <span className="text-slate-700 font-medium">
-                        {shelters.find(s => s.id === selectedParticipantForLevel.shelterId)?.name}
-                      </span>
+            <form onSubmit={handleSaveLevelAssessment} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                {/* Driver Summary Card */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={selectedParticipantForLevel.avatar}
+                      alt={selectedParticipantForLevel.name}
+                      className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/20"
+                    />
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900">
+                        {selectedParticipantForLevel.name}
+                      </h4>
+                      <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                        <span className="font-semibold text-emerald-700">{selectedParticipantForLevel.ojolPlatform}</span>
+                        <span>•</span>
+                        <span>{selectedParticipantForLevel.vehiclePlate}</span>
+                        <span>•</span>
+                        <span className="text-slate-700 font-medium">
+                          {shelters.find(s => s.id === selectedParticipantForLevel.shelterId)?.name}
+                        </span>
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Level Saat Ini</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                      selectedParticipantForLevel.currentLevel === 'Belum Dinilai'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {selectedParticipantForLevel.currentLevel}
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Level Saat Ini</span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                    selectedParticipantForLevel.currentLevel === 'Belum Dinilai'
-                      ? 'bg-amber-100 text-amber-800 border-amber-300'
-                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                  }`}>
-                    {selectedParticipantForLevel.currentLevel}
-                  </span>
-                </div>
-              </div>
+                {/* 4 Cards: Tingkat Kemampuan Mengaji */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Pilih Tingkat Kemampuan Mengaji Hasil Penilaian Ustadz:
+                  </label>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Pilih perkiraan kemampuan membaca Al-Qur&apos;an peserta berdasarkan hasil tes bacaan / talaqqi di shelter:
+                  </p>
 
-              {/* 4 Cards: Tingkat Kemampuan Mengaji */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">
-                  Pilih Tingkat Kemampuan Mengaji Hasil Penilaian Ustadz:
-                </label>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Pilih perkiraan kemampuan membaca Al-Qur&apos;an peserta berdasarkan hasil tes bacaan / talaqqi di shelter:
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {LEVEL_OPTIONS.map((lvl) => {
-                    const isSelected = newAssignedLevel === lvl.id;
-                    return (
-                      <div
-                        key={lvl.id}
-                        onClick={() => setNewAssignedLevel(lvl.id)}
-                        className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{lvl.icon}</span>
-                            <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {LEVEL_OPTIONS.map((lvl) => {
+                      const isSelected = newAssignedLevel === lvl.id;
+                      return (
+                        <div
+                          key={lvl.id}
+                          onClick={() => setNewAssignedLevel(lvl.id)}
+                          className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
+                            isSelected
+                              ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/30'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{lvl.icon}</span>
+                              <span className="text-xs font-extrabold text-slate-900">{lvl.title}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {lvl.badge}
+                            </span>
                           </div>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {lvl.badge}
-                          </span>
+                          <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
                         </div>
-                        <p className="text-[11px] text-slate-600 leading-snug">{lvl.desc}</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Catatan Observasi Guru */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Catatan Hasil Tes / Observasi Guru (Opsional)
-                </label>
-                <input
-                  type="text"
-                  value={levelEvaluationNote}
-                  onChange={(e) => setLevelEvaluationNote(e.target.value)}
-                  placeholder="Contoh: Sudah hafal makhraj huruf dasar, ditempatkan di Iqro 4..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
+                {/* Catatan Observasi Guru */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Catatan Hasil Tes / Observasi Guru (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={levelEvaluationNote}
+                    onChange={(e) => setLevelEvaluationNote(e.target.value)}
+                    placeholder="Contoh: Sudah hafal makhraj huruf dasar, ditempatkan di Iqro 4..."
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
+              <div className="flex gap-2 justify-end p-4 border-t border-slate-100 bg-slate-50/90 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowLevelModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200/70 transition-colors"
                 >
                   Batal
                 </button>
@@ -1442,87 +1470,101 @@ export const GuruPortal: React.FC = () => {
 
       {/* MODAL: MANUAL ATTENDANCE GURU */}
       {manualAttModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Presensi Manual oleh Guru</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Gunakan saat peserta di shelter binaan Anda mengalami masalah sinyal GPS.
-            </p>
-
-            <form onSubmit={handleSaveManualAttendance} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Shelter Binaan</label>
-                  <select
-                    value={manualShelterId}
-                    onChange={(e) => handleManualShelterChange(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-semibold"
-                  >
-                    {myShelters.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status Kehadiran</label>
-                  <select
-                    value={manualStatus}
-                    onChange={(e) => setManualStatus(e.target.value as any)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-bold"
-                  >
-                    <option value="hadir">Hadir</option>
-                    <option value="terlambat">Terlambat</option>
-                    <option value="izin">Izin</option>
-                    <option value="sakit">Sakit</option>
-                  </select>
-                </div>
-              </div>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-white shrink-0">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pilih Peserta Ojol (Terdaftar di Shelter Ini)
-                </label>
-                {(() => {
-                  const shelterDrivers = myParticipants.filter(p => p.shelterId === manualShelterId);
-                  if (shelterDrivers.length === 0) {
-                    return (
-                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                        Belum ada ojol yang mendaftar di shelter ini.
-                      </div>
-                    );
-                  }
-                  return (
+                <h3 className="text-lg font-bold text-slate-900 mb-0.5">Presensi Manual oleh Guru</h3>
+                <p className="text-xs text-slate-500">
+                  Gunakan saat peserta di shelter binaan Anda mengalami masalah sinyal GPS.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualAttModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+                title="Tutup Formulir"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveManualAttendance} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Shelter Binaan</label>
                     <select
-                      value={manualPartId}
-                      onChange={(e) => setManualPartId(e.target.value)}
+                      value={manualShelterId}
+                      onChange={(e) => handleManualShelterChange(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-semibold"
                     >
-                      {shelterDrivers.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.ojolPlatform} - {p.vehiclePlate})
-                        </option>
+                      {myShelters.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
-                  );
-                })()}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Status Kehadiran</label>
+                    <select
+                      value={manualStatus}
+                      onChange={(e) => setManualStatus(e.target.value as any)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-bold"
+                    >
+                      <option value="hadir">Hadir</option>
+                      <option value="terlambat">Terlambat</option>
+                      <option value="izin">Izin</option>
+                      <option value="sakit">Sakit</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Pilih Peserta Ojol (Terdaftar di Shelter Ini)
+                  </label>
+                  {(() => {
+                    const shelterDrivers = myParticipants.filter(p => p.shelterId === manualShelterId);
+                    if (shelterDrivers.length === 0) {
+                      return (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                          Belum ada ojol yang mendaftar di shelter ini.
+                        </div>
+                      );
+                    }
+                    return (
+                      <select
+                        value={manualPartId}
+                        onChange={(e) => setManualPartId(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-semibold"
+                      >
+                        {shelterDrivers.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.ojolPlatform} - {p.vehiclePlate})
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan / Alasan Manual</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Hadir di shelter, GPS ponsel driver sedang trouble"
+                    value={manualNotes}
+                    onChange={(e) => setManualNotes(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan / Alasan Manual</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Hadir di shelter, GPS ponsel driver sedang trouble"
-                  value={manualNotes}
-                  onChange={(e) => setManualNotes(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2">
+              <div className="flex gap-2 justify-end p-4 border-t border-slate-100 bg-slate-50/90 shrink-0">
                 <button
                   type="button"
                   onClick={() => setManualAttModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200/70"
                 >
                   Batal
                 </button>
