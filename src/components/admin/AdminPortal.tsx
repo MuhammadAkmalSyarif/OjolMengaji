@@ -37,7 +37,8 @@ import {
   Table,
   Database,
   Building,
-  Award
+  Award,
+  Printer
 } from 'lucide-react';
 import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType } from '@/types';
 import { MemberCardModal } from '../ojol/MemberCardModal';
@@ -235,6 +236,7 @@ export const AdminPortal: React.FC = () => {
   >('peserta');
   const [exportDelimiter, setExportDelimiter] = useState<';' | ','>(';');
   const [exportScope, setExportScope] = useState<'all' | 'filtered'>('all');
+  const [showKpiPrintModal, setShowKpiPrintModal] = useState(false);
 
   // Calculation Metrics
   const activeParticipants = participants.filter(p => p.isActive);
@@ -1136,13 +1138,23 @@ export const AdminPortal: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => handleOpenExportModal('kpi')}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 shadow-2xs transition-all flex items-center gap-2 self-start sm:self-auto"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-purple-700" />
-              <span>Ekspor Ringkasan &amp; KPI (CSV)</span>
-            </button>
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleOpenExportModal('kpi')}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-purple-700" />
+                <span>Ekspor CSV Data KPI</span>
+              </button>
+
+              <button
+                onClick={() => setShowKpiPrintModal(true)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-md shadow-purple-700/20 transition-all flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak / Unduh PDF Laporan KPI</span>
+              </button>
+            </div>
           </div>
 
           {/* Top 4 KPI Metrics */}
@@ -3310,6 +3322,272 @@ export const AdminPortal: React.FC = () => {
                 <Download className="w-4 h-4" />
                 <span>Unduh File CSV Rapi Sekarang</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CETAK / SIMPAN PDF LAPORAN RINGKASAN & KPI */}
+      {showKpiPrintModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl my-auto border border-slate-200 overflow-hidden flex flex-col max-h-[96vh]">
+            {/* Action Bar (Top Controls - Hidden during actual print) */}
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between gap-3 shrink-0 print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="font-bold text-sm">Laporan Eksekutif Ringkasan &amp; KPI Program</h3>
+                  <p className="text-[11px] text-slate-400">Siap Cetak / Simpan sebagai PDF Resmi (A4)</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenExportModal('kpi')}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex items-center gap-1.5"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Ekspor CSV</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak / Simpan PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowKpiPrintModal(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  title="Tutup"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Area */}
+            <div id="ojol-kpi-print-area" className="p-6 sm:p-10 overflow-y-auto bg-white text-slate-900 space-y-6">
+              {/* KOP RESMI LAPORAN */}
+              <div className="border-b-2 border-slate-900 pb-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-800 p-1 flex items-center justify-center text-white font-extrabold shadow-sm">
+                    <BookOpen className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-widest block">
+                      Dewan Pimpinan Wilayah DKI Jakarta
+                    </span>
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                      KOMUNITAS OJOL MENGAJI
+                    </h1>
+                    <p className="text-xs text-slate-600">
+                      Platform Pembinaan Membaca Al-Qur&apos;an &amp; Presensi Berbasis Shelter Pengemudi Ojol
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right text-xs">
+                  <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-900 font-extrabold border border-purple-200 block mb-1">
+                    LAPORAN EKSEKUTIF KPI
+                  </span>
+                  <div className="text-[11px] text-slate-500">
+                    <div>Dicetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                    <div className="font-semibold text-slate-700">Administrator: Budi Santoso, M.Pd.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* DOKUMEN HEADER & CAKUPAN */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="font-bold text-slate-800 block text-sm">
+                    Laporan Ringkasan Capaian &amp; Key Performance Indicators (KPI)
+                  </span>
+                  <p className="text-slate-600 text-[11px] mt-0.5">
+                    Evaluasi komprehensif kehadiran mitra, distribusi kemampuan tahsin, dan pengawasan shelter halaqah.
+                  </p>
+                </div>
+                <div className="shrink-0 text-slate-600 font-mono text-[11px] font-semibold bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+                  Total Mitra Binaan: <strong className="text-purple-900">{participants.length} Driver</strong>
+                </div>
+              </div>
+
+              {/* 4 KARTU KPI UTAMA */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
+                  1. Indikator Performa Utama (Key Metrics)
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-4 rounded-2xl border border-purple-200 bg-purple-50/50">
+                    <div className="text-[11px] font-semibold text-purple-900 mb-1">Driver Ojol Aktif</div>
+                    <div className="text-2xl font-black text-purple-950">{activeParticipants.length} Orang</div>
+                    <div className="text-[10px] text-purple-700 mt-1 font-medium">100% Akun Terverifikasi</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50">
+                    <div className="text-[11px] font-semibold text-emerald-900 mb-1">Dewan Guru Mengaji</div>
+                    <div className="text-2xl font-black text-emerald-950">{activeTeachers.length} Ustadz</div>
+                    <div className="text-[10px] text-emerald-700 mt-1 font-medium">Mengampu {activeShelters.length} Shelter</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50/50">
+                    <div className="text-[11px] font-semibold text-amber-900 mb-1">Titik Shelter GPS</div>
+                    <div className="text-2xl font-black text-amber-950">{activeShelters.length} Titik</div>
+                    <div className="text-[10px] text-amber-700 mt-1 font-medium">Validasi Geofencing &amp; QR</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50/50">
+                    <div className="text-[11px] font-semibold text-rose-900 mb-1">Perlu Pendampingan</div>
+                    <div className="text-2xl font-black text-rose-600">{riskParticipants.length} Driver</div>
+                    <div className="text-[10px] text-rose-700 mt-1 font-medium">Tingkat Hadir &lt; 75%</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SEKSI 2: DISTRIBUSI TINGKAT BACAAN AL-QUR'AN & KOMPOSISI MITRA */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Distribusi Tingkat Mengaji */}
+                <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center justify-between">
+                    <span>2. Distribusi Jenjang Bacaan Al-Qur&apos;an</span>
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                  </h4>
+                  <div className="space-y-2.5">
+                    {Object.entries(levelCounts).map(([lvl, count]) => {
+                      const percent = participants.length > 0 ? Math.round((count / participants.length) * 100) : 0;
+                      return (
+                        <div key={lvl}>
+                          <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                            <span>{lvl}</span>
+                            <span className="font-bold text-slate-900">{count} Driver ({percent}%)</span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-600 rounded-full"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Komposisi Aplikasi & Kehadiran Program */}
+                <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center justify-between">
+                    <span>3. Komposisi Aplikasi Mitra &amp; Target KPI</span>
+                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Gojek</span>
+                      <span className="text-base font-extrabold text-slate-800">
+                        {participants.filter(p => p.ojolPlatform === 'Gojek').length} Driver
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Grab</span>
+                      <span className="text-base font-extrabold text-slate-800">
+                        {participants.filter(p => p.ojolPlatform === 'Grab').length} Driver
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Maxim</span>
+                      <span className="text-base font-extrabold text-slate-800">
+                        {participants.filter(p => p.ojolPlatform === 'Maxim').length} Driver
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Lainnya (InDrive/Shopee)</span>
+                      <span className="text-base font-extrabold text-slate-800">
+                        {participants.filter(p => p.ojolPlatform === 'InDrive' || p.ojolPlatform === 'ShopeeFood').length} Driver
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
+                    <div className="font-bold flex items-center justify-between">
+                      <span>Kualifikasi Target Kehadiran (&ge; 75%):</span>
+                      <span className="text-emerald-800 font-extrabold">
+                        {participants.filter(p => getParticipantAttendanceStats(p.id).rate >= 75).length} dari {participants.length} Driver
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-emerald-800 mt-1">
+                      Peserta dengan kehadiran &ge; 75% berhak menerima insentif operasional dan sertifikat jenjang.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SEKSI 3: DAFTAR PESERTA BERISIKO KURANG AKTIF (< 75%) */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center justify-between">
+                  <span>4. Daftar Pengemudi Memerlukan Pendampingan Khusus (&lt; 75%)</span>
+                  <span className="text-[11px] text-rose-600 font-bold">{riskParticipants.length} Driver Terdaftar</span>
+                </h4>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">No</th>
+                        <th className="py-2.5 px-3">Nama Mitra &amp; Aplikasi</th>
+                        <th className="py-2.5 px-3">Shelter Penempatan</th>
+                        <th className="py-2.5 px-3">Kontak WhatsApp</th>
+                        <th className="py-2.5 px-3 text-center">Tingkat Hadir (%)</th>
+                        <th className="py-2.5 px-3 text-center">Rasio Kehadiran</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {riskParticipants.map((rp, rIdx) => {
+                        const sh = shelters.find(s => s.id === rp.shelterId);
+                        const { rate, attendedSessions, totalSessions } = getParticipantAttendanceStats(rp.id);
+                        return (
+                          <tr key={rp.id}>
+                            <td className="py-2 px-3 text-slate-400 font-semibold">{rIdx + 1}</td>
+                            <td className="py-2 px-3 font-bold text-slate-900">
+                              {rp.name} <span className="text-[10px] text-emerald-700 font-semibold">({rp.ojolPlatform})</span>
+                            </td>
+                            <td className="py-2 px-3 text-slate-600">{sh?.name || '-'}</td>
+                            <td className="py-2 px-3 font-mono text-slate-600">{rp.phone}</td>
+                            <td className="py-2 px-3 text-center font-bold text-rose-600">{rate}%</td>
+                            <td className="py-2 px-3 text-center text-slate-500 font-mono text-[11px]">
+                              {attendedSessions} / {totalSessions} sesi
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* KOLOM TANDA TANGAN / PENGESAHAN */}
+              <div className="pt-6 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
+                <div>
+                  <p className="text-slate-500">Mengetahui,</p>
+                  <p className="font-bold text-slate-800">Koordinator Dewan Guru Mengaji</p>
+                  <div className="h-16 flex items-end justify-center">
+                    <span className="font-serif italic text-slate-400 font-semibold">( Ust. Ahmad Fauzi, S.Q. )</span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-slate-500">Ditetapkan di Jakarta,</p>
+                  <p className="font-bold text-slate-800">Administrator Pusat Ojol Mengaji</p>
+                  <div className="h-16 flex items-end justify-center">
+                    <span className="font-serif italic text-slate-900 font-bold underline">( Budi Santoso, M.Pd. )</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

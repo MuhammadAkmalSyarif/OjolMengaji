@@ -61,7 +61,7 @@ body {
   animation: fadeIn 0.25s ease-out forwards;
 }
 
-/* Print optimization for KTA Cards */
+/* Print optimization for KTA Cards & KPI Executive Reports */
 @media print {
   body {
     background: #ffffff !important;
@@ -71,21 +71,23 @@ body {
   }
   
   /* Hide standard web layout elements when printing */
-  header, nav, .print\:hidden {
+  header, nav, footer, .print\:hidden {
     display: none !important;
   }
   
-  #ojol-kta-print-area {
+  #ojol-kta-print-area, #ojol-kpi-print-area {
     display: block !important;
     position: static !important;
     width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 
   @page {
     size: auto;
-    margin: 8mm;
+    margin: 10mm;
   }
 }
 
