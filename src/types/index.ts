@@ -70,6 +70,7 @@ export interface RegisterDriverData {
   currentLevel?: ParticipantLevel;
   bankName?: string;
   bankAccount?: string;
+  selfiePhoto?: string; // Foto selfie untuk Kartu Anggota Ojol Mengaji
 }
 
 export interface Shelter {
@@ -105,6 +106,7 @@ export interface Participant {
   phone: string;
   email: string;
   avatar: string;
+  selfiePhoto?: string; // Foto selfie asli untuk pembuatan kartu anggota
   ojolPlatform: 'Gojek' | 'Grab' | 'Maxim' | 'InDrive' | 'ShopeeFood';
   nik?: string;
   vehiclePlate: string;

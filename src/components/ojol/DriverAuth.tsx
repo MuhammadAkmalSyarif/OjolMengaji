@@ -26,9 +26,17 @@ import {
   Check, 
   Info,
   CreditCard,
-  Search
+  Search,
+  Camera,
+  Upload,
+  Trash2,
+  RotateCw,
+  Printer,
+  QrCode
 } from 'lucide-react';
 import { RegisterDriverData } from '@/types';
+import { MemberCardModal } from './MemberCardModal';
+import { compressImage } from '@/utils/imageUtils';
 
 // Daftar opsi bank resmi untuk pencairan / insentif
 const BANK_OPTIONS = [
@@ -72,7 +80,109 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     currentLevel: 'Belum Dinilai',
     bankName: '',
     bankAccount: '',
+    selfiePhoto: '',
   });
+
+  // Selfie Camera & KTA Preview States
+  const [showKtaPreviewModal, setShowKtaPreviewModal] = useState(false);
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraMobileInputRef = React.useRef<HTMLInputElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  // Handle opening live webcam or camera
+  const startWebcam = async () => {
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Fallback to mobile input with capture="user"
+        if (cameraMobileInputRef.current) {
+          cameraMobileInputRef.current.click();
+          return;
+        }
+        throw new Error('Kamera tidak didukung');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+        audio: false,
+      });
+      setWebcamStream(stream);
+      setShowWebcamModal(true);
+    } catch (err: any) {
+      console.warn('Webcam direct stream error, fallback to file/camera picker:', err);
+      if (cameraMobileInputRef.current) {
+        cameraMobileInputRef.current.click();
+      } else if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }
+  };
+
+  const stopWebcam = () => {
+    if (webcamStream) {
+      webcamStream.getTracks().forEach((track) => track.stop());
+      setWebcamStream(null);
+    }
+    setShowWebcamModal(false);
+  };
+
+  React.useEffect(() => {
+    if (showWebcamModal && videoRef.current && webcamStream) {
+      videoRef.current.srcObject = webcamStream;
+      videoRef.current.play().catch(e => console.warn(e));
+    }
+  }, [showWebcamModal, webcamStream]);
+
+  const captureWebcamPhoto = async () => {
+    if (!videoRef.current) return;
+    try {
+      setIsProcessingPhoto(true);
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 640;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Mirror the image horizontally if front camera
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const compressed = await compressImage(dataUrl, 480, 480, 0.82);
+        setRegForm(prev => ({ ...prev, selfiePhoto: compressed }));
+      }
+      stopWebcam();
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Gagal mengambil foto dari kamera. Silakan pilih dari galeri.');
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Harap pilih file foto dengan format JPG, PNG, atau WEBP.');
+      return;
+    }
+
+    try {
+      setIsProcessingPhoto(true);
+      const compressed = await compressImage(file, 480, 480, 0.82);
+      setRegForm(prev => ({ ...prev, selfiePhoto: compressed }));
+      setErrorMsg(null);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Gagal memproses gambar foto selfie. Harap gunakan foto lain.');
+    } finally {
+      setIsProcessingPhoto(false);
+      e.target.value = '';
+    }
+  };
 
   // Pastikan shelterId selalu valid & tersinkronisasi saat shelters dimuat / bertambah dari Admin
   React.useEffect(() => {
@@ -184,6 +294,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
           currentLevel: 'Belum Dinilai',
           bankName: '',
           bankAccount: '',
+          selfiePhoto: '',
         });
         setConfirmPassword('');
       } else {
@@ -396,7 +507,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Identitas Pribadi Driver
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 1 dari 3</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 1 dari 4</span>
               </div>
 
               {/* Nama Lengkap */}
@@ -466,16 +577,232 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* Section 2: Platform Ojol, Plat Nomor, & Shelter */}
+            {/* Section 2: Upload Foto Selfie untuk Pembuatan Kartu Anggota (KTA) */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
                   2
                 </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                    Foto Selfie Mitra Driver
+                  </h3>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                    Untuk Kartu Anggota (KTA)
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 2 dari 4</span>
+              </div>
+
+              {/* Informative description banner */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 text-xs text-slate-700 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-emerald-950 flex items-center gap-1.5 flex-wrap">
+                    <span>Foto Resmi untuk Pembuatan Kartu Anggota Ojol Mengaji</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Foto selfie wajah Anda akan dicetak secara otomatis pada <strong>Kartu Tanda Anggota (KTA) Digital &amp; Fisik</strong> resmi Ojol Mengaji yang didukung DPW DKI Jakarta.
+                  </p>
+                </div>
+              </div>
+
+              {/* Hidden File Inputs */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <input
+                type="file"
+                ref={cameraMobileInputRef}
+                accept="image/*"
+                capture="user"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+
+              {/* Upload Box / Photo Preview Container */}
+              {!regForm.selfiePhoto ? (
+                <div className="border-2 border-dashed border-emerald-300/80 hover:border-emerald-500 rounded-2xl p-5 bg-emerald-50/30 transition-all text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-300 text-emerald-700 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <Camera className="w-8 h-8 text-emerald-700" />
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-800">
+                    Ambil Foto Selfie atau Unggah dari Galeri
+                  </h4>
+                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+                    Posisikan wajah tampak jelas dari depan, disarankan mengenakan jaket/atribut mitra ojol atau pakaian rapi &amp; sopan.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 max-w-md mx-auto">
+                    <button
+                      type="button"
+                      onClick={startWebcam}
+                      disabled={isProcessingPhoto}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-700 hover:bg-emerald-800 shadow-sm active:scale-95 transition"
+                    >
+                      <Camera className="w-4 h-4 text-emerald-200" />
+                      <span>{isProcessingPhoto ? 'Memproses Foto...' : 'Ambil Foto Selfie (Kamera)'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingPhoto}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-2xs active:scale-95 transition"
+                    >
+                      <Upload className="w-4 h-4 text-slate-500" />
+                      <span>Pilih dari Galeri / File</span>
+                    </button>
+                  </div>
+
+                  {/* Checklist Guidelines */}
+                  <div className="mt-4 pt-3 border-t border-emerald-200/60 flex flex-wrap items-center justify-center gap-3 text-[10px] text-slate-500 font-medium">
+                    <span className="flex items-center gap-1 text-emerald-800">
+                      <Check className="w-3 h-3 text-emerald-600" /> Wajah tampak depan jelas
+                    </span>
+                    <span className="flex items-center gap-1 text-emerald-800">
+                      <Check className="w-3 h-3 text-emerald-600" /> Atribut ojol / pakaian sopan
+                    </span>
+                    <span className="flex items-center gap-1 text-emerald-800">
+                      <Check className="w-3 h-3 text-emerald-600" /> Tanpa masker / kacamata hitam
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* When Selfie Photo IS Uploaded */
+                <div className="p-4 rounded-2xl border border-emerald-300 bg-emerald-50/50 space-y-4 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative">
+                        <div className="w-20 h-24 rounded-xl overflow-hidden border-2 border-emerald-500 shadow-md ring-2 ring-emerald-400/30 bg-slate-800">
+                          <img
+                            src={regForm.selfiePhoto}
+                            alt="Foto Selfie Driver"
+                            className="w-full h-full object-cover object-top"
+                          />
+                        </div>
+                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                          <Check className="w-3 h-3" />
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 mb-1">
+                          <Sparkles className="w-3 h-3 text-amber-500" />
+                          <span>Foto Selfie Kartu Anggota Siap ✓</span>
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                          {regForm.name || 'Foto Mitra Driver'}
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Foto siap dipasang pada Kartu Tanda Anggota (KTA) Ojol Mengaji.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={startWebcam}
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 transition shadow-2xs"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Ganti Foto</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRegForm(prev => ({ ...prev, selfiePhoto: '' }))}
+                        className="p-2 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition"
+                        title="Hapus foto selfie"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Member Card (KTA) Real-time Interactive Mini Preview Box */}
+                  <div className="pt-3 border-t border-emerald-200/70">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Preview Tampilan Kartu Anggota (KTA)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowKtaPreviewModal(true)}
+                        className="text-[11px] font-bold text-emerald-800 hover:text-emerald-900 hover:underline flex items-center gap-1"
+                      >
+                        <span>Perbesar Kartu</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Compact Card Visual */}
+                    <div 
+                      onClick={() => setShowKtaPreviewModal(true)}
+                      className="cursor-pointer rounded-2xl p-3 text-white border border-emerald-700/50 shadow-md relative overflow-hidden transition hover:scale-[1.01]"
+                      style={{
+                        background: 'linear-gradient(135deg, #022c22 0%, #064e3b 50%, #0f172a 100%)',
+                      }}
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-emerald-500/30">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center">
+                            <img src="/logo-ojol-mengaji.png" alt="Logo" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[10px] font-black uppercase text-amber-300">
+                            KARTU TANDA ANGGOTA • OJOL MENGAJI
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-mono text-emerald-300 font-bold">
+                          {regForm.ojolPlatform}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-2.5">
+                        <div className="w-12 h-14 rounded-lg overflow-hidden border border-amber-300/60 bg-slate-900 shrink-0 shadow">
+                          <img src={regForm.selfiePhoto} alt="Selfie" className="w-full h-full object-cover object-top" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-black uppercase text-white truncate">
+                            {regForm.name || 'NAMA DRIVER'}
+                          </div>
+                          <div className="text-[9px] font-mono text-slate-300 truncate mt-0.5">
+                            {regForm.nik ? `NIK: ${regForm.nik}` : 'NIK: 317XXXXXXXXXXXXX'}
+                          </div>
+                          <div className="text-[9px] text-emerald-300 truncate mt-0.5">
+                            {shelters.find(s => s.id === regForm.shelterId)?.name || 'Shelter Binaan'}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="text-[9px] px-2 py-1 rounded-md bg-emerald-600/60 border border-emerald-400/40 text-emerald-100 font-bold block">
+                            Lihat Kartu 🔍
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section 3: Platform Ojol, Plat Nomor, & Shelter */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
+                  3
+                </div>
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Armada Ojol &amp; Shelter Pilihan
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 2 dari 3</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 3 dari 4</span>
               </div>
 
               {/* Platform Ojol Visual Selector Buttons */}
@@ -770,16 +1097,16 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* Section 3: Buat Kata Sandi */}
+            {/* Section 4: Buat Kata Sandi */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
-                  3
+                  4
                 </div>
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Keamanan Akun &amp; Kata Sandi
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 3 dari 3</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 4 dari 4</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1119,6 +1446,89 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
           </div>
         </div>
       )}
+
+      {/* Interactive In-Browser Webcam Capture Modal */}
+      {showWebcamModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-200 relative text-center">
+            <button
+              type="button"
+              onClick={stopWebcam}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <Camera className="w-4 h-4" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">Ambil Foto Selfie KTA</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              Posisikan wajah Anda tepat di dalam bingkai oval di bawah ini, lalu klik tombol Ambil Foto.
+            </p>
+
+            {/* Video Viewport with Oval Selfie Frame Overlay */}
+            <div className="relative w-full aspect-square max-w-[320px] mx-auto rounded-2xl overflow-hidden bg-slate-950 shadow-inner">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover -scale-x-100"
+              />
+
+              {/* Oval Face Guide Overlay */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-44 h-56 border-2 border-dashed border-emerald-400 rounded-[50%] shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+              </div>
+
+              <div className="absolute bottom-2.5 inset-x-0 text-center">
+                <span className="text-[10px] font-semibold text-white/90 bg-black/60 px-2.5 py-0.5 rounded-full backdrop-blur-xs">
+                  Pastikan Wajah Jelas &amp; Terang
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={stopWebcam}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+              >
+                Batal
+              </button>
+
+              <button
+                type="button"
+                onClick={captureWebcamPhoto}
+                disabled={isProcessingPhoto}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold text-white bg-emerald-700 hover:bg-emerald-800 shadow-md shadow-emerald-700/30 active:scale-95 transition"
+              >
+                <Camera className="w-4 h-4 text-emerald-200" />
+                <span>{isProcessingPhoto ? 'Memproses...' : 'Ambil Foto Sekarang'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Member Card (KTA) Preview Modal during Registration */}
+      <MemberCardModal
+        isOpen={showKtaPreviewModal}
+        onClose={() => setShowKtaPreviewModal(false)}
+        participant={{
+          name: regForm.name || 'Nama Driver Peserta',
+          ojolPlatform: regForm.ojolPlatform,
+          nik: regForm.nik || regForm.vehiclePlate || '317XXXXXXXXXXXXX',
+          selfiePhoto: regForm.selfiePhoto,
+          avatar: regForm.selfiePhoto,
+        }}
+        shelter={shelters.find(s => s.id === regForm.shelterId)}
+        isRegistrationPreview={true}
+      />
     </div>
   );
 };

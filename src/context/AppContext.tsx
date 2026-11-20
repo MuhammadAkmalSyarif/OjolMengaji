@@ -520,7 +520,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const userId = 'user-ojol-' + Date.now();
     const partId = 'part-' + Date.now();
-    const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`;
+    const avatarUrl = data.selfiePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`;
 
     const newUser: User = {
       id: userId,
@@ -541,6 +541,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: data.phone.trim(),
       email: cleanEmail || `${cleanPhone}@ojolmengaji.id`,
       avatar: avatarUrl,
+      selfiePhoto: data.selfiePhoto,
       ojolPlatform: data.ojolPlatform,
       nik: nikVal,
       vehiclePlate: data.vehiclePlate?.trim().toUpperCase() || nikVal || '-',
@@ -699,7 +700,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notifySync({ participants: next });
       return next;
     });
-    setUsers(prev => prev.map(u => u.id === updated.userId ? { ...u, name: updated.name, phone: updated.phone } : u));
+    setUsers(prev => prev.map(u => u.id === updated.userId ? { 
+      ...u, 
+      name: updated.name, 
+      phone: updated.phone,
+      avatar: updated.avatar || updated.selfiePhoto || u.avatar
+    } : u));
+    setCurrentUser(prev => {
+      if (prev && prev.id === updated.userId) {
+        return {
+          ...prev,
+          name: updated.name,
+          phone: updated.phone,
+          avatar: updated.avatar || updated.selfiePhoto || prev.avatar
+        };
+      }
+      return prev;
+    });
     addAudit('UPDATE_PARTICIPANT', 'participants', updated.id, `Memperbarui data peserta ojol "${updated.name}"`);
   };
 

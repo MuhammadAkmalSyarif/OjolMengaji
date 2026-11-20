@@ -20,8 +20,14 @@ import {
   LogOut,
   Search,
   Check,
-  X
+  X,
+  CreditCard,
+  Camera,
+  Upload,
+  Printer
 } from 'lucide-react';
+import { MemberCardModal } from './MemberCardModal';
+import { compressImage } from '@/utils/imageUtils';
 
 export const OjolPortal: React.FC = () => {
   const { 
@@ -47,11 +53,35 @@ export const OjolPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'beranda' | 'presensi' | 'progres' | 'pengumuman' | 'profil'>('beranda');
   const [showChangeShelterModal, setShowChangeShelterModal] = useState(false);
   const [shelterModalSearch, setShelterModalSearch] = useState('');
+  const [showKtaModal, setShowKtaModal] = useState(false);
+  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
+  const portalFileInputRef = React.useRef<HTMLInputElement>(null);
+  const portalCameraInputRef = React.useRef<HTMLInputElement>(null);
   
   // Interactive GPS & Presensi State
   const [gpsSimulatedDistance, setGpsSimulatedDistance] = useState<number>(18);
   const [isSimulatingGps, setIsSimulatingGps] = useState(false);
   const [presensiFeedback, setPresensiFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handlePhotoUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUpdatingPhoto(true);
+      const compressed = await compressImage(file, 480, 480, 0.82);
+      updateParticipant({
+        ...participant,
+        avatar: compressed,
+        selfiePhoto: compressed,
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal memproses foto baru.');
+    } finally {
+      setIsUpdatingPhoto(false);
+      e.target.value = '';
+    }
+  };
 
   // Filtered data for this participant
   const myAttendance = attendance.filter(a => a.participantId === participant.id);
@@ -153,6 +183,16 @@ export const OjolPortal: React.FC = () => {
               <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span className="truncate">{shelter.name}</span>
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowKtaModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md transition active:scale-95"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-slate-950" />
+                <span>Kartu Anggota (KTA)</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -572,6 +612,80 @@ export const OjolPortal: React.FC = () => {
       {/* TAB CONTENT: PROFIL SAYA */}
       {activeTab === 'profil' && (
         <div className="space-y-5">
+          {/* Kartu Tanda Anggota (KTA) Digital Banner Card */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white shadow-xl border border-emerald-700/50 space-y-3 relative overflow-hidden">
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+                  <CreditCard className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                    <span>Kartu Tanda Anggota (KTA) Resmi</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">
+                      Digital
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-300">
+                    Kartu identitas resmi bimbingan Al-Qur&apos;an Ojol Mengaji
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Driver Photo & KTA Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-emerald-700/50 relative z-10">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="w-14 h-16 rounded-xl overflow-hidden border-2 border-amber-400 shadow-md bg-slate-800 shrink-0 ring-2 ring-emerald-500/40">
+                  <img
+                    src={participant.selfiePhoto || participant.avatar}
+                    alt={participant.name}
+                    className="w-full h-full object-cover object-top"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">
+                    Foto Selfie KTA Terverifikasi
+                  </span>
+                  <span className="text-xs font-bold text-white block">
+                    {participant.name}
+                  </span>
+                  <span className="text-[10px] text-emerald-300">
+                    {participant.ojolPlatform} • {shelter.name}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="file"
+                  ref={portalFileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpdate}
+                />
+                <button
+                  type="button"
+                  onClick={() => portalFileInputRef.current?.click()}
+                  disabled={isUpdatingPhoto}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>{isUpdatingPhoto ? 'Memproses...' : 'Ganti Foto'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowKtaModal(true)}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-slate-950 transition shadow-md active:scale-95"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Buka &amp; Cetak KTA</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
             <h2 className="text-lg font-bold text-slate-800 mb-4">Profil Driver Peserta</h2>
             
@@ -778,6 +892,14 @@ export const OjolPortal: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Official Kartu Tanda Anggota (KTA) Modal */}
+      <MemberCardModal
+        isOpen={showKtaModal}
+        onClose={() => setShowKtaModal(false)}
+        participant={participant}
+        shelter={shelter}
+      />
     </div>
   );
 };

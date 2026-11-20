@@ -37,6 +37,7 @@ import {
   Table
 } from 'lucide-react';
 import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores } from '@/types';
+import { MemberCardModal } from '../ojol/MemberCardModal';
 
 // Preset titik-titik shelter strategis untuk pengisian otomatis 1-klik
 const PRESET_SHELTERS = [
@@ -197,7 +198,8 @@ export const AdminPortal: React.FC = () => {
   const [assigningTeacher, setAssigningTeacher] = useState<Teacher | null>(null);
   const [selectedSheltersForAssign, setSelectedSheltersForAssign] = useState<string[]>([]);
 
-  // Participant Modal
+  // Participant Modal & KTA Preview
+  const [selectedKtaParticipant, setSelectedKtaParticipant] = useState<Participant | null>(null);
   const [showPartModal, setShowPartModal] = useState(false);
   const [partName, setPartName] = useState('');
   const [partEmail, setPartEmail] = useState('');
@@ -1193,6 +1195,7 @@ export const AdminPortal: React.FC = () => {
                   <th className="py-3 px-4">Tingkat Kemampuan</th>
                   <th className="py-3 px-4 text-center">Kehadiran (%)</th>
                   <th className="py-3 px-4 text-center">Bergabung</th>
+                  <th className="py-3 px-4 text-center">Kartu KTA</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1237,6 +1240,18 @@ export const AdminPortal: React.FC = () => {
                       </td>
 
                       <td className="py-3 px-4 text-center text-slate-500">{part.joinedDate}</td>
+
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedKtaParticipant(part)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition"
+                          title="Cetak atau Lihat Kartu Anggota Ojol Mengaji"
+                        >
+                          <CreditCard className="w-3 h-3 text-emerald-600" />
+                          <span>KTA</span>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -2788,6 +2803,14 @@ export const AdminPortal: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Official Kartu Tanda Anggota (KTA) Preview & Print Modal */}
+      <MemberCardModal
+        isOpen={!!selectedKtaParticipant}
+        onClose={() => setSelectedKtaParticipant(null)}
+        participant={selectedKtaParticipant || {}}
+        shelter={shelters.find(s => s.id === selectedKtaParticipant?.shelterId)}
+      />
     </div>
   );
 };
