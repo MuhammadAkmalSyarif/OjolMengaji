@@ -1064,19 +1064,11 @@ export const GuruPortal: React.FC = () => {
                       }}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
                     >
-                      {myShelters.map(sh => {
-                        const shParts = myParticipants.filter(p => p.shelterId === sh.id);
-                        if (shParts.length === 0) return null;
-                        return (
-                          <optgroup key={sh.id} label={`Shelter: ${sh.name}`}>
-                            {shParts.map(p => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} ({p.ojolPlatform} - {p.vehiclePlate}) - {p.currentLevel}
-                              </option>
-                            ))}
-                          </optgroup>
-                        );
-                      })}
+                      {myParticipants.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.ojolPlatform} - {p.vehiclePlate}) - {p.currentLevel}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
