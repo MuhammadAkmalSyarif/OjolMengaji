@@ -473,7 +473,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUsers(prev => [...prev, newUser]);
     setParticipants(prev => [...prev, newParticipant]);
-    setCurrentUser(newUser);
+    // Jangan langsung login otomatis (setCurrentUser), driver harus melalui proses login terlebih dahulu
 
     const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
     const idInfo = nikVal ? `NIK: ${nikVal}` : (data.vehiclePlate || '-');
@@ -482,7 +482,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       success: true,
-      message: `Alhamdulillah! Pendaftaran berhasil. Selamat datang di Ojol Mengaji, Akhina ${data.name}.`,
+      message: `Alhamdulillah! Pendaftaran akun berhasil. Selamat datang di Ojol Mengaji, Akhina ${data.name}. Silakan masuk menggunakan nomor WhatsApp atau email serta kata sandi Anda.`,
       user: newUser
     };
   };

@@ -153,7 +153,25 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       setIsSubmitting(false);
       if (res.success) {
         setSuccessMsg(res.message);
-        if (onSuccess) onSuccess();
+        // Alihkan ke tab login dan isi otomatis nomor telepon / email untuk mempermudah login
+        setActiveTab('login');
+        setLoginIdentifier(regForm.phone || regForm.email);
+        setLoginPassword('');
+        // Reset formulir pendaftaran
+        setRegForm({
+          name: '',
+          phone: '',
+          email: '',
+          password: '',
+          ojolPlatform: 'Gojek',
+          nik: '',
+          vehiclePlate: '',
+          shelterId: shelters[0]?.id || '',
+          currentLevel: 'Belum Dinilai',
+          bankName: '',
+          bankAccount: '',
+        });
+        setConfirmPassword('');
       } else {
         setErrorMsg(res.message);
       }
@@ -326,12 +344,28 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="font-bold text-emerald-900">Alhamdulillah Berhasil!</p>
-                <p className="mt-0.5 text-emerald-800">{successMsg}</p>
-                <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  Membuka dashboard akun driver Anda...
-                </p>
+                <p className="mt-0.5 text-emerald-800 leading-relaxed">{successMsg}</p>
+                {activeTab === 'login' && !isSubmitting && (
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Silakan masukkan kata sandi Anda di bawah ini untuk masuk ke dashboard driver.
+                  </p>
+                )}
+                {isSubmitting && (
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    Membuka dashboard akun driver Anda...
+                  </p>
+                )}
               </div>
+              <button 
+                type="button" 
+                onClick={() => setSuccessMsg(null)}
+                className="text-emerald-600 hover:text-emerald-800 transition p-0.5"
+                title="Tutup pesan"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
         </div>
