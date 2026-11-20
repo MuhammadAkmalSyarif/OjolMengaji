@@ -25,7 +25,8 @@ import {
   MessageCircle, 
   Check, 
   Info,
-  CreditCard
+  CreditCard,
+  Search
 } from 'lucide-react';
 import { RegisterDriverData } from '@/types';
 
@@ -56,6 +57,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const [isShelterDropdownOpen, setIsShelterDropdownOpen] = useState(false);
+  const [shelterSearch, setShelterSearch] = useState('');
 
   // Registration Form State
   const [regForm, setRegForm] = useState<RegisterDriverData>({
@@ -71,6 +73,18 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     bankName: '',
     bankAccount: '',
   });
+
+  // Pastikan shelterId selalu valid & tersinkronisasi saat shelters dimuat / bertambah dari Admin
+  React.useEffect(() => {
+    if (shelters.length > 0) {
+      if (!regForm.shelterId || !shelters.some(s => s.id === regForm.shelterId)) {
+        setRegForm(prev => ({
+          ...prev,
+          shelterId: shelters[0].id
+        }));
+      }
+    }
+  }, [shelters, regForm.shelterId]);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(true);
 
@@ -548,31 +562,90 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
 
                     {/* Menu Pilihan Shelter Selalu Membuka ke Bawah */}
                     {isShelterDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
-                        {shelters.map((s) => {
-                          const isSelected = regForm.shelterId === s.id;
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => {
-                                setRegForm({ ...regForm, shelterId: s.id });
-                                setIsShelterDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
-                                isSelected
-                                  ? 'bg-emerald-50 text-emerald-900 font-bold'
-                                  : 'text-slate-700 hover:bg-slate-50'
-                              }`}
-                            >
-                              <div className="truncate pr-2">
-                                <div className="font-bold text-slate-900">{s.name}</div>
-                                <div className="text-[11px] text-slate-500 truncate">{s.address.split(',')[1]?.trim() || s.address}</div>
-                              </div>
-                              {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
-                            </button>
-                          );
-                        })}
+                      <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-72 overflow-hidden flex flex-col animate-fadeIn">
+                        {/* Search Bar Shelter */}
+                        <div className="p-2 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              placeholder="Cari shelter (misal: Poltangan, Tebet)..."
+                              value={shelterSearch}
+                              onChange={(e) => setShelterSearch(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        {/* List Shelter */}
+                        <div className="overflow-y-auto divide-y divide-slate-100 py-1 flex-1">
+                          {(() => {
+                            const activeSheltersList = shelters.filter(s => s.isActive !== false);
+                            const filtered = activeSheltersList.filter(s => 
+                              s.name.toLowerCase().includes(shelterSearch.toLowerCase()) ||
+                              s.address.toLowerCase().includes(shelterSearch.toLowerCase()) ||
+                              (s.notes && s.notes.toLowerCase().includes(shelterSearch.toLowerCase()))
+                            );
+
+                            if (filtered.length === 0) {
+                              return (
+                                <div className="p-4 text-center text-xs text-slate-500">
+                                  Shelter &quot;{shelterSearch}&quot; tidak ditemukan.
+                                </div>
+                              );
+                            }
+
+                            return filtered.map((s) => {
+                              const isSelected = regForm.shelterId === s.id;
+                              const isPoltanganOrNew = s.name.toLowerCase().includes('poltangan') || s.name.toLowerCase().includes('baru');
+                              return (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setRegForm({ ...regForm, shelterId: s.id });
+                                    setIsShelterDropdownOpen(false);
+                                    setShelterSearch('');
+                                  }}
+                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
+                                    isSelected
+                                      ? 'bg-emerald-50 text-emerald-900 font-bold'
+                                      : 'text-slate-700 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className="truncate pr-2">
+                                    <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                                      <span>{s.name}</span>
+                                      {isPoltanganOrNew && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-300">
+                                          Baru
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] text-slate-400 font-normal">
+                                        (Radius {s.radiusMeters}m)
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 truncate mt-0.5">{s.address}</div>
+                                    {s.notes && (
+                                      <div className="text-[10px] text-emerald-700 truncate">{s.notes}</div>
+                                    )}
+                                  </div>
+                                  {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+
+                        {/* Footer Info Realtime Sync */}
+                        <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 flex items-center justify-between">
+                          <span>{shelters.filter(s => s.isActive !== false).length} Shelter Aktif</span>
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Terkoneksi Admin Realtime
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>

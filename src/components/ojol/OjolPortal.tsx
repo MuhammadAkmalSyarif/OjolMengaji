@@ -17,7 +17,10 @@ import {
   ShieldCheck,
   Send,
   UserCheck,
-  LogOut
+  LogOut,
+  Search,
+  Check,
+  X
 } from 'lucide-react';
 
 export const OjolPortal: React.FC = () => {
@@ -31,7 +34,8 @@ export const OjolPortal: React.FC = () => {
     assessments, 
     announcements,
     recordAttendance,
-    getParticipantAttendanceStats
+    getParticipantAttendanceStats,
+    updateParticipant
   } = useApp();
 
   // Find participant profile corresponding to current logged in user
@@ -41,6 +45,8 @@ export const OjolPortal: React.FC = () => {
 
   // States
   const [activeTab, setActiveTab] = useState<'beranda' | 'presensi' | 'progres' | 'pengumuman' | 'profil'>('beranda');
+  const [showChangeShelterModal, setShowChangeShelterModal] = useState(false);
+  const [shelterModalSearch, setShelterModalSearch] = useState('');
   
   // Interactive GPS & Presensi State
   const [gpsSimulatedDistance, setGpsSimulatedDistance] = useState<number>(18);
@@ -211,10 +217,22 @@ export const OjolPortal: React.FC = () => {
               </span>
             </div>
 
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 mb-4 text-xs space-y-1">
-              <div className="flex justify-between">
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 mb-4 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
                 <span className="text-slate-500">Shelter Tujuan:</span>
-                <span className="font-semibold text-slate-800">{shelter.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900">{shelter.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShelterModalSearch('');
+                      setShowChangeShelterModal(true);
+                    }}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 transition"
+                  >
+                    Ganti Shelter
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Perkiraan Jarak GPS:</span>
@@ -329,18 +347,34 @@ export const OjolPortal: React.FC = () => {
             </p>
 
             {/* Shelter Info Box */}
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 mb-5">
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 mb-5 flex flex-col sm:flex-row items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-bold text-sm text-emerald-950">{shelter.name}</h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-bold text-sm text-emerald-950">{shelter.name}</h4>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 font-bold">
+                      Shelter Aktif Anda
+                    </span>
+                  </div>
                   <p className="text-xs text-emerald-800 mt-0.5">{shelter.address}</p>
                   <div className="flex gap-4 mt-2 text-xs font-semibold text-emerald-900">
                     <span>Koordinat: {shelter.latitude}, {shelter.longitude}</span>
-                    <span>Radius Toleransi: {shelter.radiusMeters} meter</span>
+                    <span>Radius: {shelter.radiusMeters} meter</span>
                   </div>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShelterModalSearch('');
+                  setShowChangeShelterModal(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 shadow-sm transition"
+              >
+                Pindah Shelter
+              </button>
             </div>
 
             {/* GPS Simulation Console */}
@@ -558,9 +592,21 @@ export const OjolPortal: React.FC = () => {
                 <span className="text-slate-500">No. WhatsApp / HP</span>
                 <span className="font-bold text-slate-800">{participant.phone}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-100">
+              <div className="flex items-center justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Shelter Binaan</span>
-                <span className="font-bold text-slate-800">{shelter.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-800">{shelter.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShelterModalSearch('');
+                      setShowChangeShelterModal(true);
+                    }}
+                    className="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition"
+                  >
+                    Ubah
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Level Pembelajaran</span>
@@ -594,6 +640,139 @@ export const OjolPortal: React.FC = () => {
               >
                 <LogOut className="w-4 h-4" />
                 <span>Keluar dari Akun Driver</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pilih / Ganti Shelter Binaan */}
+      {showChangeShelterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-800 to-teal-800 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Pilih / Ganti Shelter Binaan</h3>
+                  <p className="text-[11px] text-emerald-200">Terkoneksi langsung dengan master shelter Admin Pusat</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChangeShelterModal(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="p-3 bg-slate-50 border-b border-slate-200">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Ketik nama atau lokasi shelter (cth: Poltangan, Tebet)..."
+                  value={shelterModalSearch}
+                  onChange={(e) => setShelterModalSearch(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Shelters List */}
+            <div className="overflow-y-auto divide-y divide-slate-100 p-2 flex-1 max-h-96">
+              {(() => {
+                const activeShelters = shelters.filter(s => s.isActive !== false);
+                const filtered = activeShelters.filter(s =>
+                  s.name.toLowerCase().includes(shelterModalSearch.toLowerCase()) ||
+                  s.address.toLowerCase().includes(shelterModalSearch.toLowerCase()) ||
+                  (s.notes && s.notes.toLowerCase().includes(shelterModalSearch.toLowerCase()))
+                );
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-6 text-center text-xs text-slate-500">
+                      Shelter &quot;{shelterModalSearch}&quot; tidak ditemukan.
+                    </div>
+                  );
+                }
+
+                return filtered.map((s) => {
+                  const isCurrent = participant.shelterId === s.id;
+                  const isPoltanganOrNew = s.name.toLowerCase().includes('poltangan') || s.name.toLowerCase().includes('baru');
+
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => {
+                        updateParticipant({
+                          ...participant,
+                          shelterId: s.id
+                        });
+                        setShowChangeShelterModal(false);
+                      }}
+                      className={`p-3.5 rounded-2xl cursor-pointer transition flex items-center justify-between gap-3 ${
+                        isCurrent 
+                          ? 'bg-emerald-50 border border-emerald-300 shadow-2xs' 
+                          : 'hover:bg-slate-50 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-sm text-slate-900">{s.name}</h4>
+                          {isPoltanganOrNew && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-300">
+                              Baru
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
+                            Radius {s.radiusMeters}m
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1 flex items-start gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{s.address}</span>
+                        </p>
+                        {s.notes && (
+                          <p className="text-[11px] text-slate-500 mt-0.5 pl-4.5">{s.notes}</p>
+                        )}
+                      </div>
+
+                      <div className="shrink-0">
+                        {isCurrent ? (
+                          <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Aktif</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition"
+                          >
+                            Pilih
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>{shelters.filter(s => s.isActive !== false).length} Shelter Tersedia</span>
+              <button
+                type="button"
+                onClick={() => setShowChangeShelterModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition shadow-2xs"
+              >
+                Tutup
               </button>
             </div>
           </div>

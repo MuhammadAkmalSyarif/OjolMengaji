@@ -159,7 +159,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser(parsed.currentUser);
           }
         }
-        if (parsed.shelters) setShelters(parsed.shelters);
+        if (parsed.shelters && Array.isArray(parsed.shelters)) {
+          // Normalize and merge: ensure INITIAL_SHELTERS (including Shelter Poltangan (baru)) are included
+          const existingNames = new Set(parsed.shelters.map((s: Shelter) => s.name.trim().toLowerCase()));
+          const existingIds = new Set(parsed.shelters.map((s: Shelter) => s.id));
+          
+          const missingInitial = INITIAL_SHELTERS.filter(
+            (initS: Shelter) => !existingIds.has(initS.id) && !existingNames.has(initS.name.trim().toLowerCase())
+          );
+          
+          setShelters([...parsed.shelters, ...missingInitial]);
+        } else {
+          setShelters(INITIAL_SHELTERS);
+        }
         if (parsed.teachers) {
           const hydratedTeachers = parsed.teachers.map((t: Teacher) => {
             const initMatch = INITIAL_TEACHERS.find(it => it.id === t.id);
@@ -234,6 +246,75 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     announcements,
     auditLogs
   ]);
+
+  // Cross-tab synchronization via BroadcastChannel & StorageEvent
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.shelters) setShelters(parsed.shelters);
+          if (parsed.users) setUsers(parsed.users);
+          if (parsed.teachers) setTeachers(parsed.teachers);
+          if (parsed.participants) setParticipants(parsed.participants);
+          if (parsed.schedules) setSchedules(parsed.schedules);
+          if (parsed.attendance) setAttendance(parsed.attendance);
+          if (parsed.assessments) setAssessments(parsed.assessments);
+          if (parsed.announcements) setAnnouncements(parsed.announcements);
+          if (parsed.auditLogs) setAuditLogs(parsed.auditLogs);
+        } catch (err) {
+          console.warn('Storage sync error:', err);
+        }
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('ojol_mengaji_channel');
+      bc.onmessage = (event) => {
+        if (event.data?.payload) {
+          const p = event.data.payload;
+          if (p.shelters) setShelters(p.shelters);
+          if (p.users) setUsers(p.users);
+          if (p.teachers) setTeachers(p.teachers);
+          if (p.participants) setParticipants(p.participants);
+          if (p.schedules) setSchedules(p.schedules);
+          if (p.attendance) setAttendance(p.attendance);
+          if (p.assessments) setAssessments(p.assessments);
+          if (p.announcements) setAnnouncements(p.announcements);
+        }
+      };
+    }
+
+    const handleCustomSync = (e: any) => {
+      if (e.detail?.shelters) setShelters(e.detail.shelters);
+      if (e.detail?.participants) setParticipants(e.detail.participants);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('ojol_state_sync', handleCustomSync);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('ojol_state_sync', handleCustomSync);
+      if (bc) bc.close();
+    };
+  }, []);
+
+  const notifySync = (payload: Partial<any>) => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ojol_state_sync', { detail: payload }));
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('ojol_mengaji_channel');
+          bc.postMessage({ type: 'STATE_UPDATED', payload });
+          bc.close();
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const addAudit = (action: string, entity: string, targetId: string, details: string) => {
     const newLog: AuditLog = {
@@ -520,18 +601,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addShelter = (newShelterData: Omit<Shelter, 'id'>) => {
     const id = 'shelter-' + Date.now();
     const shelter: Shelter = { ...newShelterData, id };
-    setShelters(prev => [...prev, shelter]);
+    setShelters(prev => {
+      // Prevent duplicate if same exact name exists (case-insensitive)
+      const filtered = prev.filter(s => s.id !== id && s.name.toLowerCase().trim() !== shelter.name.toLowerCase().trim());
+      const next = [...filtered, shelter];
+      notifySync({ shelters: next });
+      return next;
+    });
     addAudit('CREATE_SHELTER', 'shelters', id, `Menambahkan shelter baru "${shelter.name}"`);
   };
 
   const updateShelter = (updated: Shelter) => {
-    setShelters(prev => prev.map(s => s.id === updated.id ? updated : s));
+    setShelters(prev => {
+      const next = prev.map(s => s.id === updated.id ? updated : s);
+      notifySync({ shelters: next });
+      return next;
+    });
     addAudit('UPDATE_SHELTER', 'shelters', updated.id, `Memperbarui data shelter "${updated.name}"`);
   };
 
   const deleteShelter = (id: string) => {
     const name = shelters.find(s => s.id === id)?.name || id;
-    setShelters(prev => prev.filter(s => s.id !== id));
+    setShelters(prev => {
+      const next = prev.filter(s => s.id !== id);
+      notifySync({ shelters: next });
+      return next;
+    });
     addAudit('DELETE_SHELTER', 'shelters', id, `Menghapus shelter "${name}"`);
   };
 
@@ -599,7 +694,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateParticipant = (updated: Participant) => {
-    setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p));
+    setParticipants(prev => {
+      const next = prev.map(p => p.id === updated.id ? updated : p);
+      notifySync({ participants: next });
+      return next;
+    });
     setUsers(prev => prev.map(u => u.id === updated.userId ? { ...u, name: updated.name, phone: updated.phone } : u));
     addAudit('UPDATE_PARTICIPANT', 'participants', updated.id, `Memperbarui data peserta ojol "${updated.name}"`);
   };

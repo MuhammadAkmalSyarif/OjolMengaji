@@ -135,6 +135,16 @@ export const INITIAL_SHELTERS: Shelter[] = [
     radiusMeters: 50,
     isActive: true,
     notes: 'Dekat area istirahat driver transit Harmoni.'
+  },
+  {
+    id: 'shelter-5',
+    name: 'Shelter Poltangan (baru)',
+    address: 'Jl. Poltangan Raya No. 25, Tanjung Barat, Jagakarsa, Jakarta Selatan',
+    latitude: -6.2995,
+    longitude: 106.8458,
+    radiusMeters: 75,
+    isActive: true,
+    notes: 'Pangkalan binaan ojol Poltangan dekat Stasiun Tanjung Barat & koridor TB Simatupang.'
   }
 ];
 
@@ -147,7 +157,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     email: 'ahmad.fauzi@ojolmengaji.id',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     specialization: 'Tahsin Al-Qur\'an & Makhorijul Huruf, Metode Talaqqi',
-    shelterIds: ['shelter-1', 'shelter-2'],
+    shelterIds: ['shelter-1', 'shelter-2', 'shelter-5'],
     isActive: true,
     nik: '3201011505800001',
     bankName: 'BSI (Bank Syariah Indonesia)',
@@ -332,6 +342,16 @@ export const INITIAL_SCHEDULES: Schedule[] = [
     startTime: '16:00',
     endTime: '17:30',
     topic: 'Tahsin Al-Qur\'an & Doa Harian Driver',
+    isActive: true,
+  },
+  {
+    id: 'sched-6',
+    shelterId: 'shelter-5',
+    teacherId: 'teacher-1',
+    dayName: 'Rabu',
+    startTime: '16:30',
+    endTime: '18:00',
+    topic: 'Tahsin & Bimbingan Makharijul Huruf Jamaah Shelter Poltangan',
     isActive: true,
   }
 ];

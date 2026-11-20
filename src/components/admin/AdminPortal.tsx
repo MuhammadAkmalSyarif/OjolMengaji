@@ -41,6 +41,14 @@ import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores
 // Preset titik-titik shelter strategis untuk pengisian otomatis 1-klik
 const PRESET_SHELTERS = [
   {
+    name: 'Shelter Poltangan (baru)',
+    address: 'Jl. Poltangan Raya No. 25, Tanjung Barat, Jagakarsa, Jakarta Selatan',
+    lat: -6.2995,
+    lng: 106.8458,
+    radius: 75,
+    notes: 'Pangkalan binaan ojol Poltangan dekat Stasiun Tanjung Barat & koridor TB Simatupang.'
+  },
+  {
     name: 'Shelter Stasiun Tebet Barat',
     address: 'Jl. Tebet Raya No. 45, Tebet Timur, Jakarta Selatan',
     lat: -6.2268,
