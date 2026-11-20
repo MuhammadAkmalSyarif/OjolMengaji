@@ -450,7 +450,7 @@ export const GuruPortal: React.FC = () => {
                 <Users className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="text-2xl font-black text-slate-900">{myParticipants.length} Driver</div>
-              <p className="text-xs text-slate-500 mt-1">Terdaftar di {myShelters.length} shelter yang ditunjuk admin</p>
+              <p className="text-xs text-slate-500 mt-1">Terdaftar di {assignedShelter ? assignedShelter.name : 'shelter binaan Anda'}</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
@@ -625,7 +625,7 @@ export const GuruPortal: React.FC = () => {
             <div>
               <h2 className="text-lg font-bold text-slate-900">Peserta Binaan Anda</h2>
               <p className="text-xs text-slate-500">
-                Sesuai penugasan Admin, Anda hanya dapat melihat driver yang mendaftar di: {myShelters.map(s => s.name).join(', ')}.
+                Sesuai penugasan Admin, Anda hanya dapat melihat driver yang mendaftar di {assignedShelter ? assignedShelter.name : 'shelter binaan Anda'}.
               </p>
             </div>
 
