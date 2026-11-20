@@ -1,5 +1,7 @@
 export type UserRole = 'admin' | 'guru' | 'ojol';
 
+export type PaymentAccountType = 'Bank' | 'Gojek' | 'Ovo' | 'Dana';
+
 export type ParticipantLevel = 
   | 'Belum Dinilai'
   | 'Iqro 1-3' 
@@ -68,9 +70,11 @@ export interface RegisterDriverData {
   vehiclePlate?: string;
   shelterId: string;
   currentLevel?: ParticipantLevel;
+  accountType?: PaymentAccountType;
   bankName?: string;
   bankAccount?: string;
   selfiePhoto?: string; // Foto selfie untuk Kartu Anggota Ojol Mengaji
+  memberNumber?: number;
 }
 
 export interface Shelter {
@@ -114,8 +118,10 @@ export interface Participant {
   currentLevel: ParticipantLevel;
   joinedDate: string;
   isActive: boolean;
+  accountType?: PaymentAccountType;
   bankName?: string;
   bankAccount?: string;
+  memberNumber?: number;
 }
 
 export interface Schedule {

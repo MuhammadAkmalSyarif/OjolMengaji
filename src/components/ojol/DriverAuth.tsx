@@ -34,9 +34,18 @@ import {
   Printer,
   QrCode
 } from 'lucide-react';
-import { RegisterDriverData } from '@/types';
+import { RegisterDriverData, PaymentAccountType } from '@/types';
 import { MemberCardModal } from './MemberCardModal';
 import { compressImage } from '@/utils/imageUtils';
+import { getMemberCode } from '@/utils/cardGenerator';
+
+// Daftar opsi akun pencairan / insentif
+const ACCOUNT_TYPE_OPTIONS: { id: PaymentAccountType; label: string; badge: string; icon: string; desc: string }[] = [
+  { id: 'Bank', label: 'Akun Bank', badge: 'BSI, Mandiri, BCA, BRI, dll', icon: '🏦', desc: 'Transfer ke rekening bank' },
+  { id: 'Gojek', label: 'Akun Gojek (GoPay)', badge: 'Gojek / GoPay', icon: '🟢', desc: 'Nomor HP akun Gojek' },
+  { id: 'Ovo', label: 'Akun OVO', badge: 'E-Wallet OVO', icon: '🟣', desc: 'Nomor HP akun OVO' },
+  { id: 'Dana', label: 'Akun DANA', badge: 'E-Wallet DANA', icon: '🔵', desc: 'Nomor HP akun DANA' },
+];
 
 // Daftar opsi bank resmi untuk pencairan / insentif
 const BANK_OPTIONS = [
@@ -63,6 +72,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [isAccountTypeDropdownOpen, setIsAccountTypeDropdownOpen] = useState(false);
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const [isShelterDropdownOpen, setIsShelterDropdownOpen] = useState(false);
   const [shelterSearch, setShelterSearch] = useState('');
@@ -78,6 +88,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     vehiclePlate: '',
     shelterId: shelters[0]?.id || '',
     currentLevel: 'Belum Dinilai',
+    accountType: undefined,
     bankName: '',
     bankAccount: '',
     selfiePhoto: '',
@@ -254,8 +265,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       setErrorMsg('Silakan pilih shelter pembinaan terdekat.');
       return;
     }
-    if (regForm.bankAccount && !regForm.bankName) {
-      setErrorMsg('Harap pilih nama bank untuk nomor rekening yang Anda masukkan.');
+    if (regForm.accountType === 'Bank' && regForm.bankAccount && !regForm.bankName) {
+      setErrorMsg('Harap pilih nama bank dari dropdown daftar bank untuk nomor rekening Anda.');
       return;
     }
     if (regForm.password && regForm.password.length < 4) {
@@ -292,6 +303,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
           vehiclePlate: '',
           shelterId: shelters[0]?.id || '',
           currentLevel: 'Belum Dinilai',
+          accountType: undefined,
           bankName: '',
           bankAccount: '',
           selfiePhoto: '',
@@ -758,11 +770,20 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                             <img src="/logo-ojol-mengaji.png" alt="Logo" className="w-full h-full object-contain" />
                           </div>
                           <span className="text-[10px] font-black uppercase text-amber-300">
-                            KARTU TANDA ANGGOTA • OJOL MENGAJI
+                            KARTU MEMBER • OJOL MENGAJI
                           </span>
                         </div>
-                        <span className="text-[9px] font-mono text-emerald-300 font-bold">
-                          {regForm.ojolPlatform}
+                        <span className="text-[9px] font-mono text-amber-300 font-bold bg-black/40 px-2 py-0.5 rounded border border-amber-400/30">
+                          {getMemberCode(
+                            {
+                              name: regForm.name,
+                              ojolPlatform: regForm.ojolPlatform,
+                              shelterId: regForm.shelterId,
+                              joinedDate: new Date().toISOString().split('T')[0],
+                            },
+                            shelters.find(s => s.id === regForm.shelterId),
+                            shelters
+                          )}
                         </span>
                       </div>
 
@@ -980,101 +1001,224 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 </div>
               </div>
 
-              {/* Data Rekening Bank Mitra (Nomor Rekening & Dropdown Bank ke Bawah) */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3">
+              {/* Permintaan: "Nomor Akun Bank/Gojek/Ovo/Dana" (Dropdown) */}
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3.5">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <CreditCard className="w-4 h-4 text-emerald-700" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-800">Nomor Rekening Bank Mitra</span>
-                    <p className="text-[10px] text-slate-500">Penyaluran insentif kafalah, bantuan kuota &amp; beasiswa mengaji ojol</p>
+                    <span className="text-xs font-bold text-slate-800">Nomor Akun Bank / Gojek / OVO / DANA</span>
+                    <p className="text-[10px] text-slate-500">Penyaluran insentif kafalah, bantuan kuota &amp; beasiswa mengaji mitra ojol</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Pilih Nama Bank <span className="text-slate-400 font-normal">(Opsional)</span>
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsBankDropdownOpen(!isBankDropdownOpen);
-                          setIsShelterDropdownOpen(false);
-                        }}
-                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
-                          isBankDropdownOpen
-                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                            : 'border-slate-300 hover:border-slate-400 text-slate-800'
-                        }`}
-                      >
-                        <span className={`truncate pr-2 ${regForm.bankName ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
-                          {regForm.bankName || '-- Pilih Bank Rekening --'}
-                        </span>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isBankDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
-                      </button>
+                {/* Dropdown 1: "Nomor Akun Bank/Gojek/Ovo/Dana" */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Nomor Akun Bank/Gojek/Ovo/Dana <span className="text-slate-400 font-normal">(Opsional)</span>
+                  </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountTypeDropdownOpen(!isAccountTypeDropdownOpen);
+                        setIsBankDropdownOpen(false);
+                        setIsShelterDropdownOpen(false);
+                      }}
+                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
+                        isAccountTypeDropdownOpen
+                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                          : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                      }`}
+                    >
+                      <span className={`truncate pr-2 ${regForm.accountType ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
+                        {regForm.accountType 
+                          ? ACCOUNT_TYPE_OPTIONS.find(a => a.id === regForm.accountType)?.icon + ' ' + ACCOUNT_TYPE_OPTIONS.find(a => a.id === regForm.accountType)?.label
+                          : '-- Pilih Akun Bank / Gojek / Ovo / Dana --'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isAccountTypeDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                    </button>
 
-                      {isBankDropdownOpen && (
-                        <div 
-                          className="fixed inset-0 z-30" 
-                          onClick={() => setIsBankDropdownOpen(false)} 
-                        />
-                      )}
+                    {isAccountTypeDropdownOpen && (
+                      <div 
+                        className="fixed inset-0 z-30" 
+                        onClick={() => setIsAccountTypeDropdownOpen(false)} 
+                      />
+                    )}
 
-                      {/* Menu Dropdown Bank Selalu Membuka ke Bawah (top-full mt-1.5) */}
-                      {isBankDropdownOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRegForm({ ...regForm, bankName: '' });
-                              setIsBankDropdownOpen(false);
-                            }}
-                            className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
-                          >
-                            -- Kosongkan / Belum Memiliki --
-                          </button>
-                          {BANK_OPTIONS.map((bank) => {
-                            const isSelected = regForm.bankName === bank;
-                            return (
-                              <button
-                                key={bank}
-                                type="button"
-                                onClick={() => {
-                                  setRegForm({ ...regForm, bankName: bank });
-                                  setIsBankDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
-                                  isSelected
-                                    ? 'bg-emerald-50 text-emerald-900 font-bold'
-                                    : 'text-slate-700 hover:bg-slate-50'
-                                }`}
-                              >
-                                <span>{bank}</span>
-                                {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
-                              </button>
-                            );
-                          })}
+                    {isAccountTypeDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegForm({ ...regForm, accountType: undefined, bankName: '', bankAccount: '' });
+                            setIsAccountTypeDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
+                        >
+                          -- Kosongkan / Belum Memiliki --
+                        </button>
+                        {ACCOUNT_TYPE_OPTIONS.map((opt) => {
+                          const isSelected = regForm.accountType === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                setRegForm({ 
+                                  ...regForm, 
+                                  accountType: opt.id,
+                                  bankName: opt.id === 'Bank' ? regForm.bankName : opt.id,
+                                });
+                                setIsAccountTypeDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
+                                isSelected
+                                  ? 'bg-emerald-50 text-emerald-900 font-bold'
+                                  : 'text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">{opt.icon}</span>
+                                <div>
+                                  <div className="font-bold text-slate-900">{opt.label}</div>
+                                  <div className="text-[10px] text-slate-400">{opt.desc}</div>
+                                </div>
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Pilih jenis akun penerima pencairan atau insentif</p>
+                </div>
+
+                {/* Conditional: Kalau pilihnya akun bank, maka disusul dengan field baru yaitu dropdown "daftar bank" & nomor rekening */}
+                {regForm.accountType === 'Bank' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200/80 animate-fadeIn">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Daftar Bank <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsBankDropdownOpen(!isBankDropdownOpen);
+                            setIsAccountTypeDropdownOpen(false);
+                            setIsShelterDropdownOpen(false);
+                          }}
+                          className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
+                            isBankDropdownOpen
+                              ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                              : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                          }`}
+                        >
+                          <span className={`truncate pr-2 ${regForm.bankName ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
+                            {regForm.bankName || '-- Pilih dari Daftar Bank --'}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isBankDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                        </button>
+
+                        {isBankDropdownOpen && (
+                          <div 
+                            className="fixed inset-0 z-30" 
+                            onClick={() => setIsBankDropdownOpen(false)} 
+                          />
+                        )}
+
+                        {isBankDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRegForm({ ...regForm, bankName: '' });
+                                setIsBankDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
+                            >
+                              -- Pilih Nama Bank --
+                            </button>
+                            {BANK_OPTIONS.map((bank) => {
+                              const isSelected = regForm.bankName === bank;
+                              return (
+                                <button
+                                  key={bank}
+                                  type="button"
+                                  onClick={() => {
+                                    setRegForm({ ...regForm, bankName: bank });
+                                    setIsBankDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
+                                    isSelected
+                                      ? 'bg-emerald-50 text-emerald-900 font-bold'
+                                      : 'text-slate-700 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <span>{bank}</span>
+                                  {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">Pilih bank tempat rekening Anda dibuka</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Nomor Rekening Bank <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <CreditCard className="w-4 h-4" />
                         </div>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Contoh: 1234567890"
+                          value={regForm.bankAccount || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9-]/g, '');
+                            setRegForm({ ...regForm, bankAccount: val });
+                          }}
+                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">Sesuai buku tabungan / m-banking aktif</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Conditional: Kalau pilihnya Gojek, Ovo, atau Dana */}
+                {(regForm.accountType === 'Gojek' || regForm.accountType === 'Ovo' || regForm.accountType === 'Dana') && (
+                  <div className="pt-2 border-t border-slate-200/80 animate-fadeIn">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Nomor Akun {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} <span className="text-rose-500">*</span>
+                      </label>
+                      {regForm.phone && (
+                        <button
+                          type="button"
+                          onClick={() => setRegForm({ ...regForm, bankAccount: regForm.phone })}
+                          className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition"
+                        >
+                          Gunakan No. WhatsApp ({regForm.phone})
+                        </button>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">Pilih bank tempat rekening Anda dibuka</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Nomor Rekening Bank <span className="text-slate-400 font-normal">(Opsional)</span>
-                    </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <CreditCard className="w-4 h-4" />
+                        <Phone className="w-4 h-4" />
                       </div>
                       <input
-                        type="text"
+                        type="tel"
                         inputMode="numeric"
-                        placeholder="Contoh: 1234567890"
+                        placeholder="Contoh: 081234567890"
                         value={regForm.bankAccount || ''}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9-]/g, '');
@@ -1083,9 +1227,11 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                         className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">Sesuai buku tabungan / m-banking aktif</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Nomor ponsel yang terdaftar aktif pada aplikasi {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} Anda
+                    </p>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Informative Note: Kemampuan Mengaji Dinilai Ustadz */}

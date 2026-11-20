@@ -36,8 +36,9 @@ import {
   FileSpreadsheet,
   Table
 } from 'lucide-react';
-import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores } from '@/types';
+import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType } from '@/types';
 import { MemberCardModal } from '../ojol/MemberCardModal';
+import { getMemberCode } from '@/utils/cardGenerator';
 
 // Preset titik-titik shelter strategis untuk pengisian otomatis 1-klik
 const PRESET_SHELTERS = [
@@ -208,6 +209,7 @@ export const AdminPortal: React.FC = () => {
   const [partPlate, setPartPlate] = useState('');
   const [partShelterId, setPartShelterId] = useState<string>(shelters[0]?.id || '');
   const [partLevel, setPartLevel] = useState<'Iqro 1-3' | 'Iqro 4-6' | 'Al-Qur\'an Dasar' | 'Al-Qur\'an Mahir / Tajwid'>('Al-Qur\'an Dasar');
+  const [partAccountType, setPartAccountType] = useState<PaymentAccountType | ''>('Bank');
   const [partBankName, setPartBankName] = useState('');
   const [partBankAccount, setPartBankAccount] = useState('');
 
@@ -496,7 +498,8 @@ export const AdminPortal: React.FC = () => {
       currentLevel: partLevel,
       joinedDate: new Date().toISOString().substring(0, 10),
       isActive: true,
-      bankName: partBankName.trim() || undefined,
+      accountType: partAccountType || undefined,
+      bankName: partAccountType === 'Bank' ? (partBankName.trim() || undefined) : (partAccountType || undefined),
       bankAccount: partBankAccount.trim() || undefined,
     }, partEmail || `${partPlate.toLowerCase().replace(/\s+/g, '')}@driver.ojol`);
 
@@ -504,6 +507,7 @@ export const AdminPortal: React.FC = () => {
     setPartName('');
     setPartPlate('');
     setPartPhone('');
+    setPartAccountType('Bank');
     setPartBankName('');
     setPartBankAccount('');
   };
@@ -1210,10 +1214,15 @@ export const AdminPortal: React.FC = () => {
                           <img src={part.avatar} alt={part.name} className="w-8 h-8 rounded-full object-cover" />
                           <div>
                             <div className="font-bold text-slate-900">{part.name}</div>
-                            <div className="text-[11px] font-semibold text-emerald-700">{part.ojolPlatform}</div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] font-semibold text-emerald-700">{part.ojolPlatform}</span>
+                              <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-300">
+                                {getMemberCode(part, sh, shelters)}
+                              </span>
+                            </div>
                             {part.bankAccount && (
                               <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                                {part.bankName ? `${part.bankName} - ` : 'Rek: '}{part.bankAccount}
+                                {part.accountType === 'Bank' ? (part.bankName || 'Bank') : (part.accountType || part.bankName || 'Akun')}: {part.bankAccount}
                               </div>
                             )}
                           </div>
@@ -2181,52 +2190,83 @@ export const AdminPortal: React.FC = () => {
                 />
               </div>
 
-              {/* Data Rekening Bank Driver (Nomor Rekening & Dropdown Bank) */}
+              {/* Data Rekening / Akun Penyaluran Insentif Driver */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
                   <div>
-                    <span className="text-xs font-bold text-slate-800">Nomor Rekening Bank Mitra</span>
+                    <span className="text-xs font-bold text-slate-800">Nomor Akun Bank/Gojek/Ovo/Dana</span>
                     <p className="text-[10px] text-slate-500">Penyaluran insentif &amp; bantuan operasional mengaji</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Pilih Bank
-                    </label>
-                    <select
-                      value={partBankName}
-                      onChange={(e) => setPartBankName(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
-                    >
-                      <option value="">-- Pilih Bank --</option>
-                      <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
-                      <option value="Bank Muamalat">Bank Muamalat</option>
-                      <option value="BCA Syariah">BCA Syariah</option>
-                      <option value="Bank Mandiri">Bank Mandiri</option>
-                      <option value="Bank BCA">Bank BCA</option>
-                      <option value="Bank BRI">Bank BRI</option>
-                      <option value="Bank BNI">Bank BNI</option>
-                      <option value="Bank DKI / DKI Syariah">Bank DKI / DKI Syariah</option>
-                      <option value="Bank Lainnya">Bank Lainnya</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Jenis Akun Pembayaran / Penyaluran
+                  </label>
+                  <select
+                    value={partAccountType}
+                    onChange={(e) => setPartAccountType(e.target.value as any)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-semibold focus:ring-2 focus:ring-purple-400 outline-none"
+                  >
+                    <option value="Bank">🏦 Akun Bank</option>
+                    <option value="Gojek">🟢 Akun Gojek (GoPay)</option>
+                    <option value="Ovo">🟣 Akun OVO</option>
+                    <option value="Dana">🔵 Akun DANA</option>
+                  </select>
+                </div>
 
+                {partAccountType === 'Bank' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Pilih Nama Bank
+                      </label>
+                      <select
+                        value={partBankName}
+                        onChange={(e) => setPartBankName(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
+                      >
+                        <option value="">-- Pilih Bank --</option>
+                        <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
+                        <option value="Bank Muamalat">Bank Muamalat</option>
+                        <option value="BCA Syariah">BCA Syariah</option>
+                        <option value="Bank Mandiri">Bank Mandiri</option>
+                        <option value="Bank BCA">Bank BCA</option>
+                        <option value="Bank BRI">Bank BRI</option>
+                        <option value="Bank BNI">Bank BNI</option>
+                        <option value="Bank DKI / DKI Syariah">Bank DKI / DKI Syariah</option>
+                        <option value="Bank Lainnya">Bank Lainnya</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Nomor Rekening Bank
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: 1234567890"
+                        value={partBankAccount}
+                        onChange={(e) => setPartBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-semibold focus:ring-2 focus:ring-purple-400 outline-none"
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Nomor Rekening
+                      Nomor Akun {partAccountType === 'Gojek' ? 'Gojek / GoPay' : partAccountType}
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: 1234567890"
+                      placeholder="Contoh: 081234567890"
                       value={partBankAccount}
                       onChange={(e) => setPartBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-semibold focus:ring-2 focus:ring-purple-400 outline-none"
                     />
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="flex gap-2 justify-end pt-3">

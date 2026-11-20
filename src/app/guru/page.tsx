@@ -145,7 +145,7 @@ export default function GuruPage() {
                   <span className="text-teal-400">•</span>
                   <span className="text-teal-700 font-medium">
                     {currentTeacher?.shelterIds?.length 
-                      ? `${currentTeacher.shelterIds.length} Shelter Ditunjuk Admin` 
+                      ? (shelters.find(s => s.id === currentTeacher.shelterIds[0])?.name || 'Shelter Ditunjuk Admin')
                       : 'Belum Ada Penugasan Shelter'}
                   </span>
                 </div>

@@ -57,7 +57,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
   const nik = participant.nik || participant.vehiclePlate || '317XXXXXXXXXXXXX';
   const shelterName = shelter?.name || 'Shelter Ojol Mengaji';
   const joinedDate = participant.joinedDate || new Date().toISOString().split('T')[0];
-  const memberCode = getMemberCode(participant);
+  const memberCode = getMemberCode(participant, shelter);
   const currentPlatformStyle = PLATFORM_STYLES[platform] || PLATFORM_STYLES.Gojek;
 
   // Generate real live QR Code for preview modal
@@ -170,13 +170,13 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-extrabold flex items-center gap-2 flex-wrap">
-                <span>Kartu Tanda Anggota (KTA)</span>
+                <span>Kartu Member Ojol Mengaji</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">
                   {isRegistrationPreview ? 'Preview Pendaftaran' : 'Resmi Digital'}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-300">
-                Identitas resmi binaan Al-Qur&apos;an Ojol Mengaji DPW DKI Jakarta
+                Identitas resmi binaan Al-Qur&apos;an Ojol Mengaji DPW DKI Jakarta • Format: {memberCode}
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                 ) : (
                   <Download className="w-3.5 h-3.5" />
                 )}
-                <span>Download KTA</span>
+                <span>Download Kartu Member</span>
                 <ChevronDown className="w-3 h-3 ml-0.5 opacity-80" />
               </button>
 
@@ -400,7 +400,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
 
                       <div>
                         <h4 className="text-[11px] sm:text-xs font-black tracking-wider uppercase text-amber-300 drop-shadow-xs">
-                          KARTU TANDA ANGGOTA
+                          KARTU MEMBER OJOL MENGAJI
                         </h4>
                         <p className="text-[9px] sm:text-[10px] font-extrabold text-white tracking-tight uppercase">
                           OJOL MENGAJI • DPW DKI JAKARTA
@@ -408,9 +408,12 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-[8px] sm:text-[9px] font-mono tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-amber-400/50 text-amber-300 shadow-xs">
+                    <div className="text-right flex flex-col items-end">
+                      <span className="text-[8px] font-mono tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-amber-400/50 text-amber-300 shadow-xs">
                         {memberCode}
+                      </span>
+                      <span className="text-[7px] text-emerald-200 mt-0.5 font-sans">
+                        No.Urut-Shelter-Bulan-Tahun
                       </span>
                     </div>
                   </div>

@@ -68,18 +68,61 @@ function drawRoundedRect(
 }
 
 /**
- * Generate official member ID code
+ * Generate official member ID code formatted as:
+ * XXXX-XX-XX-XX
+ * (No. Urut - No. Shelter - Bulan Bergabung - Tahun Bergabung)
  */
-export function getMemberCode(participant: Partial<Participant>): string {
-  const platform = participant.ojolPlatform || 'Gojek';
-  const nik = participant.nik || participant.vehiclePlate || '3179999999999999';
-  const prefix = `OM-${platform.toUpperCase().slice(0, 2)}`;
-  
-  if (participant.id) {
-    return `${prefix}-${participant.id.slice(-6).toUpperCase()}`;
+export function getMemberCode(
+  participant: Partial<Participant>,
+  shelter?: Shelter | null,
+  allShelters?: Shelter[]
+): string {
+  // 1. No. Urut (XXXX - 4 digit nomor urut peserta)
+  let seq = 1;
+  if (typeof participant.memberNumber === 'number' && participant.memberNumber > 0) {
+    seq = participant.memberNumber;
+  } else if (participant.id) {
+    const digits = participant.id.replace(/\D/g, '');
+    if (digits) {
+      if (digits.length <= 4) {
+        seq = parseInt(digits, 10) || 1;
+      } else {
+        seq = parseInt(digits.slice(-4), 10) || 1;
+      }
+    }
   }
-  const cleanNik = nik.replace(/\D/g, '') || '999999';
-  return `${prefix}-${cleanNik.slice(-6)}`;
+  const noUrut = String(seq).padStart(4, '0');
+
+  // 2. No. Shelter (XX - 2 digit nomor shelter binaan)
+  let shelterNum = 1;
+  const targetShelterId = shelter?.id || participant.shelterId || '';
+  if (targetShelterId) {
+    const digits = targetShelterId.replace(/\D/g, '');
+    if (digits) {
+      shelterNum = parseInt(digits, 10) || 1;
+    } else if (allShelters && allShelters.length > 0) {
+      const idx = allShelters.findIndex(s => s.id === targetShelterId);
+      if (idx !== -1) shelterNum = idx + 1;
+    }
+  }
+  const noShelter = String(shelterNum).padStart(2, '0');
+
+  // 3. Bulan bergabung (XX - 2 digit) & 4. Tahun bergabung (XX - 2 digit)
+  let month = '01';
+  let year = '26';
+  if (participant.joinedDate && participant.joinedDate.includes('-')) {
+    const parts = participant.joinedDate.split('-');
+    if (parts.length >= 2) {
+      year = parts[0].slice(-2);
+      month = parts[1].padStart(2, '0').slice(0, 2);
+    }
+  } else {
+    const now = new Date();
+    month = String(now.getMonth() + 1).padStart(2, '0');
+    year = String(now.getFullYear()).slice(-2);
+  }
+
+  return `${noUrut}-${noShelter}-${month}-${year}`;
 }
 
 /**
@@ -124,7 +167,7 @@ export async function renderFrontCard(
   const nik = participant.nik || participant.vehiclePlate || '317XXXXXXXXXXXXX';
   const shelterName = shelter?.name || 'Shelter Ojol Mengaji';
   const joinedDate = participant.joinedDate || new Date().toISOString().split('T')[0];
-  const memberCode = getMemberCode(participant);
+  const memberCode = getMemberCode(participant, shelter);
   const platformStyle = PLATFORM_STYLES[platform] || PLATFORM_STYLES.Gojek;
 
   ctx.save();
@@ -245,21 +288,25 @@ export async function renderFrontCard(
   ctx.font = '500 12px sans-serif';
   ctx.fillText('Komunitas & Pembinaan Al-Qur\'an Pengemudi Ojek Online', 202, 96);
 
-  // Header Right: Member Code Pill
-  const codePillWidth = 240;
+  // Header Right: Member Code Pill (Format: XXXX-XX-XX-XX)
+  const codePillWidth = 265;
   const codePillX = CARD_WIDTH - codePillWidth - 36;
-  const codePillY = 32;
-  drawRoundedRect(ctx, codePillX, codePillY, codePillWidth, 48, 24);
-  ctx.fillStyle = 'rgba(2, 44, 34, 0.85)';
+  const codePillY = 26;
+  drawRoundedRect(ctx, codePillX, codePillY, codePillWidth, 54, 14);
+  ctx.fillStyle = 'rgba(2, 44, 34, 0.9)';
   ctx.fill();
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 1.8;
   ctx.stroke();
 
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 18px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(memberCode, codePillX + codePillWidth / 2, codePillY + 31);
+  ctx.fillStyle = '#a7f3d0';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText('NO. KARTU MEMBER OJOL MENGAJI', codePillX + codePillWidth / 2, codePillY + 18);
+
+  ctx.fillStyle = '#fef08a';
+  ctx.font = '900 17px monospace';
+  ctx.fillText(memberCode, codePillX + codePillWidth / 2, codePillY + 41);
 
   // Header Separator Line
   ctx.beginPath();
@@ -706,12 +753,12 @@ export async function renderBothCardsSheet(
   ctx.font = '700 18px sans-serif';
   ctx.fillText('KOMUNITAS PEMBINAAN AL-QUR\'AN OJOL MENGAJI • DPW DKI JAKARTA', sheetWidth / 2, 102);
 
-  const memberCode = getMemberCode(participant);
+  const memberCode = getMemberCode(participant, shelter);
   const name = (participant.name || 'Nama Driver Peserta').toUpperCase();
   const platform = participant.ojolPlatform || 'Gojek';
   ctx.fillStyle = '#a7f3d0';
   ctx.font = '600 15px sans-serif';
-  ctx.fillText(`Nama Mitra: ${name}  |  Aplikasi: ${platform}  |  Kode Anggota: ${memberCode}`, sheetWidth / 2, 134);
+  ctx.fillText(`Nama Mitra: ${name}  |  Aplikasi: ${platform}  |  No. Kartu Member: ${memberCode}`, sheetWidth / 2, 134);
 
   // Separator
   ctx.beginPath();
@@ -796,7 +843,8 @@ export async function downloadCardImage(
   const cleanName = (participant.name || 'Driver').replace(/[^a-zA-Z0-9]/g, '_');
   const platform = participant.ojolPlatform || 'Gojek';
   const sideName = side === 'front' ? 'Depan' : side === 'back' ? 'Belakang' : 'Lengkap';
-  const fileName = `KTA-Ojol-Mengaji-${sideName}-${cleanName}-${platform}.png`;
+  const memberCode = getMemberCode(participant, shelter);
+  const fileName = `Kartu-Member-Ojol-Mengaji-${memberCode}-${cleanName}-${sideName}.png`;
 
   const link = document.createElement('a');
   link.download = fileName;
@@ -820,7 +868,8 @@ export async function shareCardImage(
     const dataUrl = await generateCardDataUrl(participant, shelter, side);
     const cleanName = (participant.name || 'Driver').replace(/[^a-zA-Z0-9]/g, '_');
     const sideName = side === 'front' ? 'Depan' : side === 'back' ? 'Belakang' : 'Lengkap';
-    const fileName = `KTA-Ojol-Mengaji-${sideName}-${cleanName}.png`;
+    const memberCode = getMemberCode(participant, shelter);
+    const fileName = `Kartu-Member-Ojol-Mengaji-${memberCode}-${cleanName}-${sideName}.png`;
 
     // Convert Data URL to Blob
     const res = await fetch(dataUrl);
@@ -833,8 +882,8 @@ export async function shareCardImage(
       navigator.canShare({ files: [file] })
     ) {
       await navigator.share({
-        title: `KTA Ojol Mengaji - ${participant.name}`,
-        text: `Kartu Tanda Anggota Resmi Komunitas Ojol Mengaji DPW DKI Jakarta atas nama ${participant.name} (${participant.ojolPlatform})`,
+        title: `Kartu Member Ojol Mengaji - ${memberCode} - ${participant.name}`,
+        text: `Kartu Member Resmi Komunitas Ojol Mengaji DPW DKI Jakarta atas nama ${participant.name} (${participant.ojolPlatform}) - No. Kartu: ${memberCode}`,
         files: [file],
       });
       return { success: true, shared: true, message: 'Berhasil dibagikan!' };
@@ -849,7 +898,7 @@ export async function shareCardImage(
       return { 
         success: true, 
         shared: false, 
-        message: 'Browser tidak mendukung share langsung. File KTA otomatis diunduh ke galeri/perangkat Anda!' 
+        message: 'Browser tidak mendukung share langsung. File Kartu Member otomatis diunduh ke galeri/perangkat Anda!' 
       };
     }
   } catch (err: any) {

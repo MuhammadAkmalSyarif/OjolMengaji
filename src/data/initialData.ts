@@ -157,7 +157,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     email: 'ahmad.fauzi@ojolmengaji.id',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     specialization: 'Tahsin Al-Qur\'an & Makhorijul Huruf, Metode Talaqqi',
-    shelterIds: ['shelter-1', 'shelter-2', 'shelter-5'],
+    shelterIds: ['shelter-1'], // Ditugaskan resmi oleh Admin di Shelter Tebet Barat
     isActive: true,
     nik: '3201011505800001',
     bankName: 'BSI (Bank Syariah Indonesia)',
@@ -171,7 +171,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     email: 'ridwan@ojolmengaji.id',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     specialization: 'Iqro Dasar Dewasa & Tajwid Praktis',
-    shelterIds: ['shelter-3', 'shelter-4'],
+    shelterIds: ['shelter-3'], // Ditugaskan resmi oleh Admin di Shelter Palmerah Sentral
     isActive: true,
     nik: '3201022008820002',
     bankName: 'Bank Muamalat',
@@ -194,6 +194,8 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Al-Qur\'an Dasar',
     joinedDate: '2026-08-15',
     isActive: true,
+    memberNumber: 1,
+    accountType: 'Bank',
     bankName: 'BSI (Bank Syariah Indonesia)',
     bankAccount: '7234567890',
   },
@@ -211,6 +213,8 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Iqro 4-6',
     joinedDate: '2026-08-20',
     isActive: true,
+    memberNumber: 2,
+    accountType: 'Bank',
     bankName: 'Bank Mandiri',
     bankAccount: '1230009876543',
   },
@@ -228,6 +232,8 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Iqro 1-3',
     joinedDate: '2026-09-01',
     isActive: true,
+    memberNumber: 3,
+    accountType: 'Bank',
     bankName: 'Bank BCA',
     bankAccount: '8870123456',
   },
@@ -245,6 +251,10 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Al-Qur\'an Mahir / Tajwid',
     joinedDate: '2026-08-10',
     isActive: true,
+    memberNumber: 4,
+    accountType: 'Gojek',
+    bankName: 'Gojek (GoPay)',
+    bankAccount: '081922334455',
   },
   {
     id: 'part-5',
@@ -260,6 +270,10 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Al-Qur\'an Dasar',
     joinedDate: '2026-09-10',
     isActive: true,
+    memberNumber: 5,
+    accountType: 'Dana',
+    bankName: 'DANA',
+    bankAccount: '081244556677',
   },
   {
     id: 'part-6',
@@ -275,6 +289,10 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Iqro 4-6',
     joinedDate: '2026-09-12',
     isActive: true,
+    memberNumber: 6,
+    accountType: 'Ovo',
+    bankName: 'OVO',
+    bankAccount: '085266778899',
   },
   {
     id: 'part-7',
@@ -290,6 +308,10 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Belum Dinilai',
     joinedDate: '2026-10-30',
     isActive: true,
+    memberNumber: 7,
+    accountType: 'Bank',
+    bankName: 'Bank BRI',
+    bankAccount: '012345678901234',
   }
 ];
 

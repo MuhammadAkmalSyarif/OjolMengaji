@@ -53,6 +53,7 @@ export const OjolPortal: React.FC = () => {
   const participant = participants.find(p => p.userId === currentUser?.id) || participants[0];
   const shelter = shelters.find(s => s.id === participant.shelterId) || shelters[0];
   const participantSchedules = schedules.filter(s => s.shelterId === shelter.id);
+  const memberCode = getMemberCode(participant, shelter);
 
   // States
   const [activeTab, setActiveTab] = useState<'beranda' | 'presensi' | 'progres' | 'pengumuman' | 'profil'>('beranda');
@@ -77,7 +78,7 @@ export const OjolPortal: React.FC = () => {
       setDownloadingKta(side);
       const sideName = side === 'front' ? 'Tampak Depan (HD)' : 'Lembar Lengkap (Depan & Belakang)';
       const fileName = await downloadCardImage(participant, shelter, side);
-      setKtaDownloadAlert(`✓ KTA (${sideName}) berhasil diunduh: ${fileName}. Siap disimpan atau dicetak!`);
+      setKtaDownloadAlert(`✓ Kartu Member Ojol Mengaji (${sideName}) berhasil diunduh: ${fileName}. Siap disimpan atau dicetak!`);
       setTimeout(() => setKtaDownloadAlert(null), 5000);
     } catch (err) {
       console.error(err);
@@ -215,21 +216,21 @@ export const OjolPortal: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold shadow-md transition active:scale-95"
               >
                 <CreditCard className="w-3.5 h-3.5 text-slate-950" />
-                <span>Buka &amp; Download KTA</span>
+                <span>Buka Kartu Member</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleDownloadKtaDirect('front')}
                 disabled={!!downloadingKta}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-bold transition active:scale-95 disabled:opacity-50"
-                title="Download Cepat Kartu Depan (PNG HD)"
+                title="Download Kartu Member (PNG HD)"
               >
                 {downloadingKta === 'front' ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
                 ) : (
                   <Download className="w-3.5 h-3.5 text-amber-300" />
                 )}
-                <span>Download PNG</span>
+                <span>Download Kartu Member</span>
               </button>
             </div>
           </div>
@@ -310,18 +311,18 @@ export const OjolPortal: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-900/80 border border-amber-400/40 text-amber-300">
-                      {getMemberCode(participant)}
+                    <span className="text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-950/90 border border-amber-400 text-amber-300 shadow-xs">
+                      {memberCode}
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                       Aktif Binaan
                     </span>
                   </div>
                   <h3 className="text-sm sm:text-base font-extrabold text-white mt-1">
-                    Kartu Tanda Anggota (KTA) Digital
+                    Kartu Member Ojol Mengaji
                   </h3>
                   <p className="text-[11px] text-slate-300">
-                    {participant.ojolPlatform} • {shelter.name}
+                    No. Urut: {memberCode.split('-')[0]} • No. Shelter: {memberCode.split('-')[1]} • Bergabung: {memberCode.split('-')[2]}/{memberCode.split('-')[3]}
                   </p>
                 </div>
               </div>
@@ -333,7 +334,7 @@ export const OjolPortal: React.FC = () => {
                   className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-slate-950 transition shadow-sm active:scale-95"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Lihat KTA</span>
+                  <span>Lihat Kartu</span>
                 </button>
                 <button
                   type="button"
@@ -871,14 +872,20 @@ export const OjolPortal: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500">Nomor Kartu Member</span>
+                <span className="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  {memberCode}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Tanggal Bergabung</span>
                 <span className="font-bold text-slate-800">{participant.joinedDate}</span>
               </div>
               {participant.bankAccount && (
                 <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Rekening Bank Mitra</span>
+                  <span className="text-slate-500">Akun Penyaluran Insentif</span>
                   <span className="font-mono font-bold text-emerald-800">
-                    {participant.bankName ? `${participant.bankName} - ` : ''}{participant.bankAccount}
+                    {participant.accountType === 'Bank' ? (participant.bankName || 'Bank') : (participant.accountType || participant.bankName || 'E-Wallet')} - {participant.bankAccount}
                   </span>
                 </div>
               )}

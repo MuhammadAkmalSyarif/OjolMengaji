@@ -180,15 +180,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               nik: t.nik || initMatch?.nik || '',
               bankName: t.bankName || initMatch?.bankName || '',
               bankAccount: t.bankAccount || initMatch?.bankAccount || '',
+              // Pastikan penugasan shelter guru sesuai ketetapan Admin
+              shelterIds: (t.shelterIds && t.shelterIds.length === 1) ? t.shelterIds : (initMatch?.shelterIds || t.shelterIds || ['shelter-1']),
             };
           });
           setTeachers(hydratedTeachers);
         }
         if (parsed.participants) {
-          const hydratedParts = parsed.participants.map((p: Participant) => {
+          const hydratedParts = parsed.participants.map((p: Participant, idx: number) => {
             const initMatch = INITIAL_PARTICIPANTS.find(ip => ip.id === p.id);
             return {
               ...p,
+              memberNumber: p.memberNumber || initMatch?.memberNumber || (idx + 1),
+              accountType: p.accountType || initMatch?.accountType || (p.bankName?.toLowerCase().includes('gojek') ? 'Gojek' : p.bankName?.toLowerCase().includes('ovo') ? 'Ovo' : p.bankName?.toLowerCase().includes('dana') ? 'Dana' : p.bankAccount ? 'Bank' : undefined),
               bankName: p.bankName || initMatch?.bankName || undefined,
               bankAccount: p.bankAccount || initMatch?.bankAccount || undefined,
             };
@@ -534,6 +538,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const nikVal = data.nik?.trim() || data.vehiclePlate?.trim() || '';
+    const nextMemberNumber = participants.length > 0
+      ? Math.max(...participants.map(p => p.memberNumber || 0)) + 1
+      : 1;
+
     const newParticipant: Participant = {
       id: partId,
       userId,
@@ -549,7 +557,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentLevel: data.currentLevel || 'Belum Dinilai',
       joinedDate: new Date().toISOString().split('T')[0],
       isActive: true,
-      bankName: data.bankName?.trim() || undefined,
+      memberNumber: nextMemberNumber,
+      accountType: data.accountType,
+      bankName: data.accountType === 'Bank' ? (data.bankName?.trim() || undefined) : (data.accountType || undefined),
       bankAccount: data.bankAccount?.trim() || undefined,
     };
 
@@ -682,11 +692,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isActive: true,
     };
 
+    const nextMemberNumber = data.memberNumber || (participants.length > 0
+      ? Math.max(...participants.map(p => p.memberNumber || 0)) + 1
+      : 1);
+
     const newPart: Participant = {
       ...data,
       id: partId,
       userId,
       email,
+      memberNumber: nextMemberNumber,
     };
 
     setUsers(prev => [...prev, newUser]);

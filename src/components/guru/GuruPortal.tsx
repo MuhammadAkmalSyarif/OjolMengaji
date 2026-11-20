@@ -53,8 +53,9 @@ export const GuruPortal: React.FC = () => {
   // Filter shelters explicitly assigned to this teacher by Admin
   const myShelterIds = teacher?.shelterIds || [];
   const myShelters = shelters.filter(s => myShelterIds.includes(s.id));
+  const assignedShelter = myShelters[0] || null;
 
-  // Participants belonging ONLY to this teacher's assigned shelters
+  // Participants belonging ONLY to this teacher's assigned shelter (strictly determined by Admin)
   const myParticipants = participants.filter(p => myShelterIds.includes(p.shelterId));
   const myParticipantIds = new Set(myParticipants.map(p => p.id));
   const mySchedules = schedules.filter(s => myShelterIds.includes(s.shelterId));
@@ -62,40 +63,30 @@ export const GuruPortal: React.FC = () => {
   // Active Tab
   const [activeTab, setActiveTab] = useState<'dashboard' | 'peserta' | 'presensi' | 'penilaian' | 'laporan'>('dashboard');
 
-  // Filter shelter selection ('all' or specific shelterId from myShelterIds)
-  const [selectedShelterId, setSelectedShelterId] = useState<string>('all');
-  const activeShelterId = (selectedShelterId !== 'all' && myShelterIds.includes(selectedShelterId))
-    ? selectedShelterId
-    : 'all';
-
   // Search participant
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Participants strictly filtered by active shelter and search query
+  // Participants strictly filtered by assigned shelter and search query
   const filteredParticipants = myParticipants.filter(p => {
-    const matchShelter = activeShelterId === 'all' ? true : p.shelterId === activeShelterId;
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         (p.vehiclePlate && p.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase())) ||
                         (p.nik && p.nik.includes(searchQuery));
-    return matchShelter && matchSearch;
+    return matchSearch;
   });
 
-  // Count unassessed participants in this teacher's shelters
+  // Count unassessed participants in this teacher's shelter
   const unassessedParticipants = myParticipants.filter(p => p.currentLevel === 'Belum Dinilai');
 
-  // Assessments for participants belonging to this teacher's shelters
+  // Assessments for participants belonging strictly to this teacher's assigned shelter
   const myAssessments = assessments.filter(a => {
     const part = participants.find(p => p.id === a.participantId);
     if (!part) return false;
-    const inMyShelters = myShelterIds.includes(part.shelterId);
-    const matchShelter = activeShelterId === 'all' || part.shelterId === activeShelterId;
-    return inMyShelters && matchShelter;
+    return myShelterIds.includes(part.shelterId);
   });
 
-  // Attendance for participants in this teacher's shelters
+  // Attendance for participants in this teacher's assigned shelter
   const myAttendance = attendance
     .filter(a => myShelterIds.includes(a.shelterId))
-    .filter(a => activeShelterId === 'all' || a.shelterId === activeShelterId)
     .filter(a => myParticipantIds.has(a.participantId));
 
   // Assessment Modal state
@@ -163,9 +154,7 @@ export const GuruPortal: React.FC = () => {
       alert('Anda belum ditugaskan di shelter manapun oleh admin.');
       return;
     }
-    const initialShId = (activeShelterId !== 'all' && myShelterIds.includes(activeShelterId))
-      ? activeShelterId
-      : myShelters[0].id;
+    const initialShId = assignedShelter?.id || myShelters[0]?.id || '';
 
     setManualShelterId(initialShId);
     const partsInSh = myParticipants.filter(p => p.shelterId === initialShId);
@@ -372,61 +361,47 @@ export const GuruPortal: React.FC = () => {
               Spesialisasi: {teacher.specialization}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
-              {myShelters.map(s => {
-                const partCount = myParticipants.filter(p => p.shelterId === s.id).length;
-                return (
-                  <span key={s.id} className="text-[11px] font-medium bg-emerald-950/70 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-800 flex items-center gap-1.5 shadow-2xs">
-                    <MapPin className="w-3 h-3 text-amber-400" />
-                    <span className="font-bold">{s.name}</span>
-                    <span className="text-[10px] bg-emerald-900 text-emerald-200 px-1.5 py-0.2 rounded-full border border-emerald-700">
-                      {partCount} Ojol
-                    </span>
-                  </span>
-                );
-              })}
+              <span className="text-[11px] font-medium bg-emerald-950/70 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-800 flex items-center gap-2 shadow-2xs">
+                <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                <span>Shelter Penugasan: <strong className="text-white text-xs">{assignedShelter ? assignedShelter.name : 'Belum Ditugaskan'}</strong></span>
+                <span className="text-[10px] bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-700 font-bold">
+                  {myParticipants.length} Ojol Binaan
+                </span>
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Shelter Scope Filter Bar */}
+      {/* Shelter Penugasan Resmi (Ditetapkan oleh Admin - Guru Tidak Memilih Shelter) */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold border border-emerald-100">
-            <MapPin className="w-4 h-4 text-emerald-700" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold border border-emerald-100 shrink-0">
+            <Building className="w-5 h-5 text-emerald-700" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-              <span>Filter Shelter Penugasan Admin:</span>
-              <span className="px-2 py-0.5 text-[10px] rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                {myShelters.length} Shelter Ditunjuk
+            <div className="text-xs font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+              <span>Shelter Penugasan Anda:</span>
+              <span className="px-2.5 py-0.5 text-[11px] rounded-full font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                {assignedShelter ? assignedShelter.name : 'Belum Ditugaskan'}
+              </span>
+              <span className="px-2 py-0.5 text-[10px] rounded-full font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                Ditentukan oleh Administrator
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              {activeShelterId === 'all'
-                ? `Menampilkan seluruh ${myParticipants.length} pengemudi ojol di ${myShelters.length} shelter binaan Anda.`
-                : `Menampilkan hanya pengemudi ojol di ${myShelters.find(s => s.id === activeShelterId)?.name} (${myParticipants.filter(p => p.shelterId === activeShelterId).length} ojol).`}
+              {assignedShelter 
+                ? `Alamat: ${assignedShelter.address} • Menampilkan otomatis khusus ${myParticipants.length} pengemudi ojol yang terdaftar di shelter ini.`
+                : 'Belum ada shelter yang ditugaskan oleh Administrator.'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Filter berdasarkan shelter binaan"
-            value={activeShelterId}
-            onChange={(e) => setSelectedShelterId(e.target.value)}
-            className="text-xs font-bold px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50/50 text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
-          >
-            <option value="all">Semua Shelter Ditunjuk ({myShelters.length} Shelter • {myParticipants.length} Ojol)</option>
-            {myShelters.map(s => {
-              const count = myParticipants.filter(p => p.shelterId === s.id).length;
-              return (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({count} Ojol)
-                </option>
-              );
-            })}
-          </select>
+        <div className="shrink-0 hidden sm:block">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+            <Shield className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Hak Akses Terkunci per Shelter</span>
+          </span>
         </div>
       </div>
 
@@ -543,38 +518,35 @@ export const GuruPortal: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {mySchedules
-                    .filter(sched => activeShelterId === 'all' || sched.shelterId === activeShelterId)
-                    .map(sched => {
-                      const sh = shelters.find(s => s.id === sched.shelterId);
-                      return (
-                        <div key={sched.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-slate-900">{sched.dayName}</span>
-                              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                                {sched.startTime} - {sched.endTime} WIB
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-600 mt-1 flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-amber-500" />
-                              <span>{sh?.name}</span>
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1 font-medium">{sched.topic}</div>
+                  {mySchedules.map(sched => {
+                    const sh = shelters.find(s => s.id === sched.shelterId);
+                    return (
+                      <div key={sched.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900">{sched.dayName}</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                              {sched.startTime} - {sched.endTime} WIB
+                            </span>
                           </div>
-
-                          <button
-                            onClick={() => {
-                              setSelectedShelterId(sched.shelterId);
-                              setActiveTab('presensi');
-                            }}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                          >
-                            Buka Sesi
-                          </button>
+                          <div className="text-xs text-slate-600 mt-1 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-amber-500" />
+                            <span>{sh?.name}</span>
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 font-medium">{sched.topic}</div>
                         </div>
-                      );
-                    })}
+
+                        <button
+                          onClick={() => {
+                            setActiveTab('presensi');
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                        >
+                          Buka Sesi
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -665,26 +637,9 @@ export const GuruPortal: React.FC = () => {
                   placeholder="Cari driver / plat..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-44"
+                  className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-52 sm:w-64"
                 />
               </div>
-
-              <select
-                aria-label="Filter berdasarkan shelter binaan"
-                value={activeShelterId}
-                onChange={(e) => setSelectedShelterId(e.target.value)}
-                className="py-1.5 px-3 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
-              >
-                <option value="all">Semua Shelter Ditunjuk ({myShelters.length})</option>
-                {myShelters.map(s => {
-                  const count = myParticipants.filter(p => p.shelterId === s.id).length;
-                  return (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({count} Ojol)
-                    </option>
-                  );
-                })}
-              </select>
             </div>
           </div>
 
@@ -799,23 +754,11 @@ export const GuruPortal: React.FC = () => {
             <div>
               <h2 className="text-lg font-bold text-slate-900">Kelola Presensi Sesi Binaan</h2>
               <p className="text-xs text-slate-500">
-                Presensi pengemudi ojol yang mendaftar di {activeShelterId === 'all' ? `${myShelters.length} shelter binaan Anda` : myShelters.find(s => s.id === activeShelterId)?.name}.
+                Presensi pengemudi ojol khusus di {assignedShelter ? assignedShelter.name : 'shelter binaan Anda'}.
               </p>
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <select
-                aria-label="Filter presensi berdasarkan shelter"
-                value={activeShelterId}
-                onChange={(e) => setSelectedShelterId(e.target.value)}
-                className="py-1.5 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium"
-              >
-                <option value="all">Semua Shelter Ditunjuk ({myShelters.length})</option>
-                {myShelters.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-
               <button
                 onClick={handleOpenManualAttendanceModal}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 whitespace-nowrap"
@@ -928,18 +871,6 @@ export const GuruPortal: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-              <select
-                aria-label="Filter penilaian berdasarkan shelter"
-                value={activeShelterId}
-                onChange={(e) => setSelectedShelterId(e.target.value)}
-                className="py-1.5 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium"
-              >
-                <option value="all">Semua Shelter Ditunjuk ({myShelters.length})</option>
-                {myShelters.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-
               <button
                 onClick={() => handleOpenLevelModal()}
                 className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 shadow-xs transition-all flex items-center gap-1.5"
@@ -1027,21 +958,9 @@ export const GuruPortal: React.FC = () => {
             <div>
               <h2 className="text-lg font-bold text-slate-900">Rekap Kehadiran Peserta Binaan</h2>
               <p className="text-xs text-slate-500">
-                Rekapitulasi kehadiran khusus pengemudi ojol yang mendaftar di shelter binaan Anda.
+                Rekapitulasi kehadiran khusus pengemudi ojol yang mendaftar di {assignedShelter ? assignedShelter.name : 'shelter binaan Anda'}.
               </p>
             </div>
-
-            <select
-              aria-label="Filter laporan berdasarkan shelter"
-              value={activeShelterId}
-              onChange={(e) => setSelectedShelterId(e.target.value)}
-              className="py-1.5 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium self-start sm:self-auto"
-            >
-              <option value="all">Semua Shelter Ditunjuk ({myShelters.length})</option>
-              {myShelters.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
           </div>
 
           {filteredParticipants.length === 0 ? (
@@ -1493,16 +1412,10 @@ export const GuruPortal: React.FC = () => {
               <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Shelter Binaan</label>
-                    <select
-                      value={manualShelterId}
-                      onChange={(e) => handleManualShelterChange(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-semibold"
-                    >
-                      {myShelters.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Shelter Penugasan Resmi (Admin)</label>
+                    <div className="w-full text-xs p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-950 font-bold truncate">
+                      {assignedShelter ? assignedShelter.name : 'Belum Ditugaskan'}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Status Kehadiran</label>
