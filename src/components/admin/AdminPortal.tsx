@@ -25,9 +25,100 @@ import {
   History,
   ShieldCheck,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  Navigation,
+  Loader2,
+  Lock,
+  Unlock,
+  CreditCard,
+  IdCard
 } from 'lucide-react';
 import { Shelter, Teacher, Participant, Schedule, AttendanceStatus } from '@/types';
+
+// Preset titik-titik shelter strategis untuk pengisian otomatis 1-klik
+const PRESET_SHELTERS = [
+  {
+    name: 'Shelter Stasiun Tebet Barat',
+    address: 'Jl. Tebet Raya No. 45, Tebet Timur, Jakarta Selatan',
+    lat: -6.2268,
+    lng: 106.8582,
+    radius: 75,
+    notes: 'Dekat pangkalan ojol Pintu Barat Stasiun Tebet. Kapasitas 25 orang.'
+  },
+  {
+    name: 'Shelter Blok M Square Sentral',
+    address: 'Jl. Melawai Raya, Area Parkir Belakang Blok M Square, Jakarta Selatan',
+    lat: -6.2435,
+    lng: 106.7981,
+    radius: 60,
+    notes: 'Pojok gazebo musholla sentral Blok M. Ruangan nyaman dan tenang.'
+  },
+  {
+    name: 'Shelter Stasiun Palmerah',
+    address: 'Jl. Palmerah Barat No. 12, Gelora, Jakarta Pusat',
+    lat: -6.2081,
+    lng: 106.7972,
+    radius: 80,
+    notes: 'Depan Pasar Palmerah dan dekat JPO halte TransJakarta.'
+  },
+  {
+    name: 'Shelter Harmoni Hayam Wuruk',
+    address: 'Jl. Hayam Wuruk No. 88, Gambir, Jakarta Pusat',
+    lat: -6.1664,
+    lng: 106.8197,
+    radius: 50,
+    notes: 'Dekat area istirahat driver transit Harmoni.'
+  },
+  {
+    name: 'Shelter Stasiun Manggarai',
+    address: 'Pintu Barat Stasiun Manggarai, Jl. Manggarai Utara 1, Tebet, Jakarta Selatan',
+    lat: -6.2100,
+    lng: 106.8503,
+    radius: 75,
+    notes: 'Pangkalan transit driver ojol Manggarai dekat musholla.'
+  },
+  {
+    name: 'Shelter Stasiun Tanah Abang',
+    address: 'Jl. Jatibaru Raya No. 1, Kampung Bali, Tanah Abang, Jakarta Pusat',
+    lat: -6.1856,
+    lng: 106.8111,
+    radius: 75,
+    notes: 'Titik kumpul driver dekat JPO Stasiun Tanah Abang.'
+  },
+  {
+    name: 'Shelter Stasiun Pasar Senen',
+    address: 'Jl. Pasar Senen No. 14, Senen, Jakarta Pusat',
+    lat: -6.1747,
+    lng: 106.8444,
+    radius: 75,
+    notes: 'Pangkalan barat Stasiun Senen area parkir ojol.'
+  },
+  {
+    name: 'Shelter Stasiun Juanda',
+    address: 'Jl. Ir. H. Juanda No. 1, Kebon Kelapa, Gambir, Jakarta Pusat',
+    lat: -6.1668,
+    lng: 106.8315,
+    radius: 65,
+    notes: 'Pangkalan ojol dekat pintu keluar halte Juanda.'
+  },
+  {
+    name: 'Shelter Terminal Kampung Rambutan',
+    address: 'Jl. Lingkar Luar Selatan, Ciracas, Jakarta Timur',
+    lat: -6.3115,
+    lng: 106.8824,
+    radius: 80,
+    notes: 'Gazebo musholla istirahat driver transit luar kota.'
+  },
+  {
+    name: 'Shelter Stasiun Jatinegara',
+    address: 'Jl. Bekasi Barat No. 1, Jatinegara, Jakarta Timur',
+    lat: -6.2151,
+    lng: 106.8681,
+    radius: 75,
+    notes: 'Dekat area pangkalan sepeda motor Stasiun Jatinegara.'
+  }
+];
 
 export const AdminPortal: React.FC = () => {
   const { 
@@ -73,12 +164,22 @@ export const AdminPortal: React.FC = () => {
   const [shelterRadius, setShelterRadius] = useState<number>(75);
   const [shelterNotes, setShelterNotes] = useState('');
 
+  // Auto Geofencing & GPS Detection State (Bukan Manual)
+  const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [gpsAutoStatus, setGpsAutoStatus] = useState<string>('');
+  const [allowManualCoordEdit, setAllowManualCoordEdit] = useState(false);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+
   // Teacher Modal
   const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [teacherName, setTeacherName] = useState('');
   const [teacherEmail, setTeacherEmail] = useState('');
   const [teacherPhone, setTeacherPhone] = useState('');
   const [teacherSpec, setTeacherSpec] = useState('');
+  const [teacherNik, setTeacherNik] = useState('');
+  const [teacherBankName, setTeacherBankName] = useState('');
+  const [teacherBankAccount, setTeacherBankAccount] = useState('');
   const [teacherSelectedShelters, setTeacherSelectedShelters] = useState<string[]>([]);
 
   // Teacher Shelter Assignment Modal
@@ -95,6 +196,8 @@ export const AdminPortal: React.FC = () => {
   const [partPlate, setPartPlate] = useState('');
   const [partShelterId, setPartShelterId] = useState<string>(shelters[0]?.id || '');
   const [partLevel, setPartLevel] = useState<'Iqro 1-3' | 'Iqro 4-6' | 'Al-Qur\'an Dasar' | 'Al-Qur\'an Mahir / Tajwid'>('Al-Qur\'an Dasar');
+  const [partBankName, setPartBankName] = useState('');
+  const [partBankAccount, setPartBankAccount] = useState('');
 
   // Announcement Modal
   const [showAnnModal, setShowAnnModal] = useState(false);
@@ -128,16 +231,101 @@ export const AdminPortal: React.FC = () => {
     'Al-Qur\'an Mahir / Tajwid': participants.filter(p => p.currentLevel === 'Al-Qur\'an Mahir / Tajwid').length,
   };
 
+  // Auto-detect GPS location (Latitude & Longitude) dan Radius terisi otomatis
+  const detectGpsLocation = (defaultRadius = 75) => {
+    setIsDetectingGps(true);
+    setGpsAutoStatus('Mendeteksi koordinat GPS otomatis...');
+
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          setShelterLat(lat);
+          setShelterLng(lng);
+          setShelterRadius(defaultRadius);
+          setIsDetectingGps(false);
+          setGpsAutoStatus(`✓ Koordinat GPS berhasil terisi otomatis: ${lat}, ${lng} (Akurasi: ±${Math.round(pos.coords.accuracy)}m)`);
+        },
+        (err) => {
+          console.warn('Geolocation warning / permission:', err);
+          // Standard center Jakarta fallback
+          setShelterLat(-6.2268);
+          setShelterLng(106.8582);
+          setShelterRadius(defaultRadius);
+          setIsDetectingGps(false);
+          setGpsAutoStatus('Izin GPS belum aktif / sensor tidak terdeteksi. Koordinat terisi otomatis standar Jakarta (-6.2268, 106.8582).');
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+      );
+    } else {
+      setShelterLat(-6.2268);
+      setShelterLng(106.8582);
+      setShelterRadius(defaultRadius);
+      setIsDetectingGps(false);
+      setGpsAutoStatus('Geolokasi browser tidak tersedia. Koordinat disetel otomatis ke standar Jakarta.');
+    }
+  };
+
+  // Ambil koordinat otomatis dari Nama/Alamat Shelter
+  const handleAutoGeocodeFromAddress = async () => {
+    const query = shelterAddress || shelterName;
+    if (!query.trim()) {
+      alert('Silakan ketik Nama Shelter atau Alamat terlebih dahulu untuk mengambil koordinat otomatis.');
+      return;
+    }
+
+    setIsSearchingAddress(true);
+    setGpsAutoStatus('Mencari koordinat otomatis berdasarkan alamat...');
+
+    const lowerQuery = query.toLowerCase();
+    const matchedPreset = PRESET_SHELTERS.find(p => 
+      lowerQuery.includes(p.name.toLowerCase().replace('shelter ', '')) ||
+      p.name.toLowerCase().includes(lowerQuery) ||
+      p.address.toLowerCase().includes(lowerQuery)
+    );
+
+    if (matchedPreset) {
+      setShelterLat(matchedPreset.lat);
+      setShelterLng(matchedPreset.lng);
+      setShelterRadius(matchedPreset.radius);
+      if (!shelterAddress) setShelterAddress(matchedPreset.address);
+      setIsSearchingAddress(false);
+      setGpsAutoStatus(`✓ Koordinat & Radius terisi otomatis dari referensi (${matchedPreset.lat}, ${matchedPreset.lng})!`);
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Indonesia')}&limit=1`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const foundLat = Number(parseFloat(data[0].lat).toFixed(6));
+        const foundLng = Number(parseFloat(data[0].lon).toFixed(6));
+        setShelterLat(foundLat);
+        setShelterLng(foundLng);
+        setShelterRadius(75);
+        setGpsAutoStatus(`✓ Koordinat berhasil terisi otomatis dari peta: ${foundLat}, ${foundLng}`);
+      } else {
+        setGpsAutoStatus('Alamat tidak ditemukan di geocoder peta. Koordinat saat ini dipertahankan.');
+      }
+    } catch {
+      setGpsAutoStatus('Layanan geocoding peta sedang sibuk. Gunakan tombol Deteksi GPS atau pilih preset.');
+    } finally {
+      setIsSearchingAddress(false);
+    }
+  };
+
   // Open Shelter Modal for Create
   const handleOpenCreateShelter = () => {
     setEditingShelter(null);
     setShelterName('');
     setShelterAddress('');
-    setShelterLat(-6.2268);
-    setShelterLng(106.8582);
-    setShelterRadius(75);
     setShelterNotes('');
+    setShelterRadius(75); // Otomatis terisi default radius 75 meter
+    setAllowManualCoordEdit(false);
     setShowShelterModal(true);
+    // Pemicu otomatis deteksi GPS
+    detectGpsLocation(75);
   };
 
   // Open Shelter Modal for Edit
@@ -147,8 +335,10 @@ export const AdminPortal: React.FC = () => {
     setShelterAddress(s.address);
     setShelterLat(s.latitude);
     setShelterLng(s.longitude);
-    setShelterRadius(s.radiusMeters);
+    setShelterRadius(s.radiusMeters || 75);
     setShelterNotes(s.notes || '');
+    setAllowManualCoordEdit(false);
+    setGpsAutoStatus(`Koordinat tersimpan: ${s.latitude}, ${s.longitude} • Radius: ${s.radiusMeters}m`);
     setShowShelterModal(true);
   };
 
@@ -182,25 +372,73 @@ export const AdminPortal: React.FC = () => {
     setShowShelterModal(false);
   };
 
-  // Save Teacher
-  const handleSaveTeacher = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!teacherName || !teacherEmail) return;
-
-    addTeacher({
-      name: teacherName,
-      phone: teacherPhone || '0812-0000-0000',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      specialization: teacherSpec || 'Tahsin & Bimbingan Mengaji',
-      shelterIds: teacherSelectedShelters.length > 0 ? teacherSelectedShelters : [shelters[0]?.id || ''],
-      isActive: true,
-    }, teacherEmail);
-
-    setShowTeacherModal(false);
+  // Open Teacher Modal for Create
+  const handleOpenCreateTeacher = () => {
+    setEditingTeacher(null);
     setTeacherName('');
     setTeacherEmail('');
     setTeacherPhone('');
     setTeacherSpec('');
+    setTeacherNik('');
+    setTeacherBankName('BSI (Bank Syariah Indonesia)');
+    setTeacherBankAccount('');
+    setTeacherSelectedShelters([]);
+    setShowTeacherModal(true);
+  };
+
+  // Open Teacher Modal for Edit
+  const handleOpenEditTeacher = (t: Teacher) => {
+    setEditingTeacher(t);
+    setTeacherName(t.name);
+    setTeacherEmail(t.email);
+    setTeacherPhone(t.phone);
+    setTeacherSpec(t.specialization || '');
+    setTeacherNik(t.nik || '');
+    setTeacherBankName(t.bankName || 'BSI (Bank Syariah Indonesia)');
+    setTeacherBankAccount(t.bankAccount || '');
+    setTeacherSelectedShelters(t.shelterIds || []);
+    setShowTeacherModal(true);
+  };
+
+  // Save Teacher
+  const handleSaveTeacher = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teacherName || (!editingTeacher && !teacherEmail)) return;
+
+    if (editingTeacher) {
+      updateTeacher({
+        ...editingTeacher,
+        name: teacherName,
+        phone: teacherPhone || '0812-0000-0000',
+        specialization: teacherSpec || 'Tahsin & Bimbingan Mengaji',
+        nik: teacherNik.trim() || undefined,
+        bankName: teacherBankName.trim() || undefined,
+        bankAccount: teacherBankAccount.trim() || undefined,
+        shelterIds: teacherSelectedShelters.length > 0 ? teacherSelectedShelters : editingTeacher.shelterIds,
+      });
+    } else {
+      addTeacher({
+        name: teacherName,
+        phone: teacherPhone || '0812-0000-0000',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        specialization: teacherSpec || 'Tahsin & Bimbingan Mengaji',
+        nik: teacherNik.trim() || undefined,
+        bankName: teacherBankName.trim() || undefined,
+        bankAccount: teacherBankAccount.trim() || undefined,
+        shelterIds: teacherSelectedShelters.length > 0 ? teacherSelectedShelters : [shelters[0]?.id || ''],
+        isActive: true,
+      }, teacherEmail);
+    }
+
+    setShowTeacherModal(false);
+    setEditingTeacher(null);
+    setTeacherName('');
+    setTeacherEmail('');
+    setTeacherPhone('');
+    setTeacherSpec('');
+    setTeacherNik('');
+    setTeacherBankName('');
+    setTeacherBankAccount('');
     setTeacherSelectedShelters([]);
   };
 
@@ -240,12 +478,16 @@ export const AdminPortal: React.FC = () => {
       currentLevel: partLevel,
       joinedDate: new Date().toISOString().substring(0, 10),
       isActive: true,
+      bankName: partBankName.trim() || undefined,
+      bankAccount: partBankAccount.trim() || undefined,
     }, partEmail || `${partPlate.toLowerCase().replace(/\s+/g, '')}@driver.ojol`);
 
     setShowPartModal(false);
     setPartName('');
     setPartPlate('');
     setPartPhone('');
+    setPartBankName('');
+    setPartBankAccount('');
   };
 
   // Save Announcement
@@ -348,7 +590,7 @@ export const AdminPortal: React.FC = () => {
         {[
           { id: 'dashboard', label: 'Ringkasan & KPI', icon: TrendingUp },
           { id: 'shelter', label: 'Kelola Shelter GPS', icon: MapPin, count: shelters.length },
-          { id: 'guru', label: 'Guru & Penugasan', icon: GraduationCap, count: teachers.length },
+          { id: 'guru', label: 'Pendaftaran Guru', icon: GraduationCap, count: teachers.length },
           { id: 'peserta', label: 'Peserta Ojol', icon: Users, count: participants.length },
           { id: 'presensi', label: 'Log Presensi Realtime', icon: CheckCircle2, count: attendance.length },
           { id: 'evaluasi', label: 'Monitoring Al-Qur\'an', icon: BookOpen, count: assessments.length },
@@ -565,7 +807,18 @@ export const AdminPortal: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Koordinat GPS:</span>
-                      <span className="font-mono text-slate-800 font-semibold">{shelter.latitude}, {shelter.longitude}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="font-mono text-slate-800 font-semibold text-[11px]">{shelter.latitude}, {shelter.longitude}</span>
+                        <a
+                          href={`https://www.google.com/maps?q=${shelter.latitude},${shelter.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-600 hover:text-purple-800"
+                          title="Buka titik shelter di Google Maps"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Driver Binaan:</span>
@@ -593,18 +846,18 @@ export const AdminPortal: React.FC = () => {
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Manajemen Guru Mengaji (Ustadz)</h2>
+              <h2 className="text-lg font-bold text-slate-900">Pendaftaran &amp; Manajemen Guru Mengaji (Ustadz)</h2>
               <p className="text-xs text-slate-500">
-                Admin menentukan penempatan guru pada shelter dan memantau aktivitas bimbingan.
+                Admin mengelola pendaftaran data guru (termasuk NIK dan nomor rekening honorarium), penugasan shelter binaan, serta pemantauan bimbingan.
               </p>
             </div>
 
             <button
-              onClick={() => setShowTeacherModal(true)}
+              onClick={handleOpenCreateTeacher}
               className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" />
-              <span>Tambah Guru Baru</span>
+              <span>Daftarkan Guru Baru</span>
             </button>
           </div>
 
@@ -628,6 +881,34 @@ export const AdminPortal: React.FC = () => {
                       <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
                         {mySheltersList.length} Shelter • {totalDrivers} Ojol
                       </span>
+                    </div>
+
+                    {/* Data Identitas & Rekening (NIK & Nomor Rekening) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold flex items-center gap-1">
+                          <IdCard className="w-3 h-3 text-purple-600" />
+                          NIK KTP Guru:
+                        </span>
+                        <span className="font-mono font-bold text-slate-800 text-[11px] mt-0.5 block">
+                          {teacher.nik ? teacher.nik : <span className="text-slate-400 font-normal italic">Belum diisi</span>}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold flex items-center gap-1">
+                          <CreditCard className="w-3 h-3 text-emerald-600" />
+                          Nomor Rekening:
+                        </span>
+                        <div className="mt-0.5">
+                          {teacher.bankAccount ? (
+                            <span className="font-mono font-bold text-emerald-800 text-[11px]">
+                              {teacher.bankName ? `${teacher.bankName} - ` : ''}{teacher.bankAccount}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal italic text-[11px]">Belum diisi</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs">
@@ -656,7 +937,15 @@ export const AdminPortal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200 flex justify-end">
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditTeacher(teacher)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs transition-colors flex items-center gap-1.5"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Data &amp; Rekening</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleOpenAssignShelters(teacher)}
@@ -718,6 +1007,11 @@ export const AdminPortal: React.FC = () => {
                           <div>
                             <div className="font-bold text-slate-900">{part.name}</div>
                             <div className="text-[11px] font-semibold text-emerald-700">{part.ojolPlatform}</div>
+                            {part.bankAccount && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                {part.bankName ? `${part.bankName} - ` : 'Rek: '}{part.bankAccount}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -1034,99 +1328,328 @@ export const AdminPortal: React.FC = () => {
 
       {/* MODAL: SHELTER CREATE / EDIT */}
       {showShelterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">
-              {editingShelter ? 'Edit Data Shelter' : 'Tambah Titik Shelter Baru'}
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Tentukan koordinat GPS dan radius kehadiran agar driver dapat presensi secara otomatis
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-100">
+            {/* Header Modal */}
+            <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4 text-purple-700" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    {editingShelter ? 'Edit Titik Shelter' : 'Tambah Titik Shelter Baru'}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Koordinat GPS (Latitude, Longitude) dan Radius terisi otomatis oleh sistem geofencing.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowShelterModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Tutup Formulir"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             <form onSubmit={handleSaveShelter} className="space-y-4">
+              {/* Rekomendasi Titik Shelter Populer (1-Klik Otomatis) */}
+              {!editingShelter && (
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/80">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-purple-950 mb-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <span>Pilihan Cepat Titik Populer (1-Klik Auto-Fill):</span>
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      const preset = PRESET_SHELTERS.find(p => p.name === val);
+                      if (preset) {
+                        setShelterName(preset.name);
+                        setShelterAddress(preset.address);
+                        setShelterLat(preset.lat);
+                        setShelterLng(preset.lng);
+                        setShelterRadius(preset.radius);
+                        setShelterNotes(preset.notes);
+                        setGpsAutoStatus(`✓ Titik "${preset.name}" dipilih: Lat, Lng & Radius terisi otomatis!`);
+                      }
+                    }}
+                    defaultValue=""
+                    className="w-full text-xs p-2.5 rounded-xl border border-purple-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">-- Pilih titik shelter strategis (opsional) --</option>
+                    {PRESET_SHELTERS.map(p => (
+                      <option key={p.name} value={p.name}>
+                        {p.name} — Radius {p.radius}m ({p.lat}, {p.lng})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Nama Shelter */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Shelter</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Titik Shelter <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Shelter Tebet Timur / Shelter Palmerah"
+                  placeholder="Contoh: Shelter Stasiun Tebet Barat"
                   value={shelterName}
                   onChange={(e) => setShelterName(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none"
                 />
               </div>
 
+              {/* Alamat Lengkap + Auto Search Coords */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Alamat Lengkap</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Alamat Lengkap <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAutoGeocodeFromAddress}
+                    disabled={isSearchingAddress}
+                    className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center gap-1 hover:underline disabled:opacity-50"
+                    title="Cari koordinat GPS otomatis dari alamat ini"
+                  >
+                    {isSearchingAddress ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-purple-600" />
+                    ) : (
+                      <Search className="w-3 h-3 text-purple-600" />
+                    )}
+                    <span>Ambil Koordinat dari Alamat</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: Jl. Tebet Raya No. 45, Tebet Timur, Jakarta Selatan"
                   value={shelterAddress}
                   onChange={(e) => setShelterAddress(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    required
-                    value={shelterLat}
-                    onChange={(e) => setShelterLat(Number(e.target.value))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-mono"
-                  />
+              {/* KOTAK OTOMATIS: LATITUDE, LONGITUDE, DAN RADIUS */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-slate-900">Geolokasi &amp; Radius Presensi</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          ✓ Terisi Otomatis
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500">
+                        Latitude, Longitude, &amp; Radius ditetapkan otomatis (bukan ketik manual)
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => detectGpsLocation(shelterRadius || 75)}
+                    disabled={isDetectingGps}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition-all flex items-center gap-1.5 self-start sm:self-auto disabled:opacity-50"
+                  >
+                    {isDetectingGps ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Navigation className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isDetectingGps ? 'Mendeteksi GPS...' : 'Deteksi GPS Saya'}</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    required
-                    value={shelterLng}
-                    onChange={(e) => setShelterLng(Number(e.target.value))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-mono"
-                  />
+
+                {/* Status GPS Indikator */}
+                {gpsAutoStatus && (
+                  <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                    gpsAutoStatus.startsWith('✓')
+                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-900 border border-amber-200'
+                  }`}>
+                    {gpsAutoStatus.startsWith('✓') ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    )}
+                    <span className="text-[11px] leading-tight font-medium">{gpsAutoStatus}</span>
+                  </div>
+                )}
+
+                {/* 3 Grid Column: Latitude, Longitude, Radius */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-700">Latitude</label>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                        Otomatis
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      required
+                      readOnly={!allowManualCoordEdit}
+                      value={shelterLat}
+                      onChange={(e) => setShelterLat(Number(e.target.value))}
+                      className={`w-full text-xs p-2.5 rounded-xl border font-mono font-bold transition-colors ${
+                        allowManualCoordEdit
+                          ? 'border-purple-400 bg-white text-slate-900 focus:ring-2 focus:ring-purple-300'
+                          : 'border-slate-200 bg-slate-100/90 text-slate-700 cursor-not-allowed select-all'
+                      }`}
+                      title={allowManualCoordEdit ? 'Mode edit aktif' : 'Terisi otomatis oleh sistem'}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-700">Longitude</label>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                        Otomatis
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      required
+                      readOnly={!allowManualCoordEdit}
+                      value={shelterLng}
+                      onChange={(e) => setShelterLng(Number(e.target.value))}
+                      className={`w-full text-xs p-2.5 rounded-xl border font-mono font-bold transition-colors ${
+                        allowManualCoordEdit
+                          ? 'border-purple-400 bg-white text-slate-900 focus:ring-2 focus:ring-purple-300'
+                          : 'border-slate-200 bg-slate-100/90 text-slate-700 cursor-not-allowed select-all'
+                      }`}
+                      title={allowManualCoordEdit ? 'Mode edit aktif' : 'Terisi otomatis oleh sistem'}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-700">Radius Presensi</label>
+                      <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded">
+                        Otomatis
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        required
+                        readOnly={!allowManualCoordEdit}
+                        value={shelterRadius}
+                        onChange={(e) => setShelterRadius(Number(e.target.value))}
+                        className={`w-full text-xs p-2.5 pr-8 rounded-xl border font-black text-purple-800 transition-colors ${
+                          allowManualCoordEdit
+                            ? 'border-purple-400 bg-white focus:ring-2 focus:ring-purple-300'
+                            : 'border-slate-200 bg-slate-100/90 cursor-not-allowed'
+                        }`}
+                        title={allowManualCoordEdit ? 'Mode edit aktif' : 'Terisi otomatis standar 75m'}
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        m
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Radius (Meter)</label>
-                  <input
-                    type="number"
-                    required
-                    value={shelterRadius}
-                    onChange={(e) => setShelterRadius(Number(e.target.value))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-bold text-purple-700"
-                  />
+
+                {/* Quick Standard Radius Buttons & Google Maps Link */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/70 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-slate-500">Preset Radius Standar:</span>
+                    {[50, 75, 100].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => {
+                          setShelterRadius(r);
+                          setGpsAutoStatus(`✓ Radius otomatis disetel ke ${r} meter.`);
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                          shelterRadius === r
+                            ? 'bg-purple-700 text-white shadow-2xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {r}m {r === 75 ? '(Standar)' : ''}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <a
+                      href={`https://www.google.com/maps?q=${shelterLat},${shelterLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-700 hover:text-purple-900 font-bold text-[11px] inline-flex items-center gap-1 hover:underline"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Buka Titik di Google Maps</span>
+                    </a>
+
+                    <span className="text-slate-300">•</span>
+
+                    <button
+                      type="button"
+                      onClick={() => setAllowManualCoordEdit(!allowManualCoordEdit)}
+                      className="text-[10px] font-semibold text-slate-500 hover:text-purple-700 flex items-center gap-1"
+                      title="Klik untuk membuka kunci jika ada kebutuhan darurat edit angka manual"
+                    >
+                      {allowManualCoordEdit ? (
+                        <>
+                          <Lock className="w-3 h-3 text-emerald-600" />
+                          <span className="text-emerald-700 font-bold">Kunci Otomatis</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="w-3 h-3 text-slate-400" />
+                          <span>Koreksi Manual (Opsional)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
+              {/* Catatan Lokasi */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan Lokasi</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Lokasi Shelter</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Dekat musholla transit driver ojol"
+                  placeholder="Contoh: Dekat musholla transit driver ojol Pintu Barat"
                   value={shelterNotes}
                   onChange={(e) => setShelterNotes(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none"
                 />
               </div>
 
-              <div className="flex gap-2 justify-end pt-3">
+              {/* Action Buttons */}
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowShelterModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Simpan Shelter
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Shelter</span>
                 </button>
               </div>
             </form>
@@ -1134,47 +1657,148 @@ export const AdminPortal: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: TEACHER CREATE */}
+      {/* MODAL: TEACHER CREATE / EDIT */}
       {showTeacherModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Pendaftaran Guru Mengaji (Ustadz)</h3>
-            <p className="text-xs text-slate-500 mb-4">Buat akun guru dan tetapkan penempatan shelter</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-100">
+            <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-4 h-4 text-purple-700" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    {editingTeacher ? 'Edit Data Guru Mengaji' : 'Pendaftaran Guru Mengaji (Ustadz)'}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  {editingTeacher 
+                    ? 'Perbarui data identitas, NIK KTP, rekening honorarium, dan penugasan guru' 
+                    : 'Buat akun guru, lengkapi NIK & nomor rekening honorarium, serta tetapkan penempatan shelter'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTeacherModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Tutup Formulir"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             <form onSubmit={handleSaveTeacher} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap &amp; Gelar</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nama Lengkap &amp; Gelar <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: Ust. Ahmad Fauzi, S.Q."
                   value={teacherName}
                   onChange={(e) => setTeacherName(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email Login</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Email Login <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="email"
                     required
+                    disabled={!!editingTeacher}
                     placeholder="guru@ojolmengaji.id"
                     value={teacherEmail}
                     onChange={(e) => setTeacherEmail(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                    className={`w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none ${
+                      editingTeacher ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">No. WhatsApp</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    No. WhatsApp / HP <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="text"
+                    required
                     placeholder="0813-xxxx-xxxx"
                     value={teacherPhone}
                     onChange={(e) => setTeacherPhone(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none"
                   />
+                </div>
+              </div>
+
+              {/* Data NIK KTP Guru */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <IdCard className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Nomor Induk Kependudukan (NIK KTP)</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">16 digit angka KTP</span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={16}
+                  placeholder="Contoh: 3201011505800001"
+                  value={teacherNik}
+                  onChange={(e) => setTeacherNik(e.target.value.replace(/\D/g, ''))}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 font-mono tracking-wider focus:ring-2 focus:ring-purple-400 outline-none"
+                />
+              </div>
+
+              {/* Data Rekening Bank (Honorarium Ustadz) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="text-xs font-bold text-slate-800">Data Rekening Bank (Honorarium Ustadz)</span>
+                    <p className="text-[10px] text-slate-500">Penyaluran kafalah / honor bimbingan mengaji mitra ojol</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nama Bank
+                    </label>
+                    <select
+                      value={teacherBankName}
+                      onChange={(e) => setTeacherBankName(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
+                    >
+                      <option value="">-- Pilih Bank --</option>
+                      <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
+                      <option value="Bank Muamalat">Bank Muamalat</option>
+                      <option value="BCA Syariah">BCA Syariah</option>
+                      <option value="Bank Mandiri">Bank Mandiri</option>
+                      <option value="Bank BCA">Bank BCA</option>
+                      <option value="Bank BRI">Bank BRI</option>
+                      <option value="Bank BNI">Bank BNI</option>
+                      <option value="Bank DKI / DKI Syariah">Bank DKI / DKI Syariah</option>
+                      <option value="Bank Lainnya">Bank Lainnya</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nomor Rekening
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 7123456789"
+                      value={teacherBankAccount}
+                      onChange={(e) => setTeacherBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-semibold focus:ring-2 focus:ring-purple-400 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1185,17 +1809,17 @@ export const AdminPortal: React.FC = () => {
                   placeholder="Contoh: Tahsin Makharijul Huruf &amp; Talaqqi"
                   value={teacherSpec}
                   onChange={(e) => setTeacherSpec(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Penempatan Shelter</label>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3">
+                <div className="space-y-1.5 max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-white">
                   {shelters.map(s => {
                     const isChecked = teacherSelectedShelters.includes(s.id);
                     return (
-                      <label key={s.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                      <label key={s.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:bg-slate-50 p-1 rounded-lg">
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -1215,7 +1839,7 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end pt-3">
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowTeacherModal(false)}
@@ -1225,9 +1849,10 @@ export const AdminPortal: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Daftarkan Guru
+                  <Check className="w-4 h-4" />
+                  <span>{editingTeacher ? 'Simpan Perubahan' : 'Daftarkan Guru'}</span>
                 </button>
               </div>
             </form>
@@ -1320,6 +1945,54 @@ export const AdminPortal: React.FC = () => {
                   onChange={(e) => setPartPhone(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                 />
+              </div>
+
+              {/* Data Rekening Bank Driver (Nomor Rekening & Dropdown Bank) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="text-xs font-bold text-slate-800">Nomor Rekening Bank Mitra</span>
+                    <p className="text-[10px] text-slate-500">Penyaluran insentif &amp; bantuan operasional mengaji</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Pilih Bank
+                    </label>
+                    <select
+                      value={partBankName}
+                      onChange={(e) => setPartBankName(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
+                    >
+                      <option value="">-- Pilih Bank --</option>
+                      <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
+                      <option value="Bank Muamalat">Bank Muamalat</option>
+                      <option value="BCA Syariah">BCA Syariah</option>
+                      <option value="Bank Mandiri">Bank Mandiri</option>
+                      <option value="Bank BCA">Bank BCA</option>
+                      <option value="Bank BRI">Bank BRI</option>
+                      <option value="Bank BNI">Bank BNI</option>
+                      <option value="Bank DKI / DKI Syariah">Bank DKI / DKI Syariah</option>
+                      <option value="Bank Lainnya">Bank Lainnya</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Nomor Rekening
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 1234567890"
+                      value={partBankAccount}
+                      onChange={(e) => setPartBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-semibold focus:ring-2 focus:ring-purple-400 outline-none"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-2 justify-end pt-3">

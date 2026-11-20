@@ -572,6 +572,14 @@ export const OjolPortal: React.FC = () => {
                 <span className="text-slate-500">Tanggal Bergabung</span>
                 <span className="font-bold text-slate-800">{participant.joinedDate}</span>
               </div>
+              {participant.bankAccount && (
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="text-slate-500">Rekening Bank Mitra</span>
+                  <span className="font-mono font-bold text-emerald-800">
+                    {participant.bankName ? `${participant.bankName} - ` : ''}{participant.bankAccount}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="mt-5 pt-4 border-t border-slate-100">

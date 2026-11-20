@@ -54,6 +54,7 @@ export interface User {
   avatar?: string;
   phone: string;
   password?: string;
+  nik?: string;
   isActive: boolean;
 }
 
@@ -67,6 +68,8 @@ export interface RegisterDriverData {
   vehiclePlate?: string;
   shelterId: string;
   currentLevel?: ParticipantLevel;
+  bankName?: string;
+  bankAccount?: string;
 }
 
 export interface Shelter {
@@ -90,6 +93,9 @@ export interface Teacher {
   specialization: string;
   shelterIds: string[];
   isActive: boolean;
+  nik?: string;
+  bankName?: string;
+  bankAccount?: string;
 }
 
 export interface Participant {
@@ -106,6 +112,8 @@ export interface Participant {
   currentLevel: ParticipantLevel;
   joinedDate: string;
   isActive: boolean;
+  bankName?: string;
+  bankAccount?: string;
 }
 
 export interface Schedule {

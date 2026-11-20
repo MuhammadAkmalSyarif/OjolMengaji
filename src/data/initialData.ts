@@ -149,6 +149,9 @@ export const INITIAL_TEACHERS: Teacher[] = [
     specialization: 'Tahsin Al-Qur\'an & Makhorijul Huruf, Metode Talaqqi',
     shelterIds: ['shelter-1', 'shelter-2'],
     isActive: true,
+    nik: '3201011505800001',
+    bankName: 'BSI (Bank Syariah Indonesia)',
+    bankAccount: '7123456789',
   },
   {
     id: 'teacher-2',
@@ -160,6 +163,9 @@ export const INITIAL_TEACHERS: Teacher[] = [
     specialization: 'Iqro Dasar Dewasa & Tajwid Praktis',
     shelterIds: ['shelter-3', 'shelter-4'],
     isActive: true,
+    nik: '3201022008820002',
+    bankName: 'Bank Muamalat',
+    bankAccount: '1029384756',
   }
 ];
 
@@ -178,6 +184,8 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Al-Qur\'an Dasar',
     joinedDate: '2026-08-15',
     isActive: true,
+    bankName: 'BSI (Bank Syariah Indonesia)',
+    bankAccount: '7234567890',
   },
   {
     id: 'part-2',
@@ -193,6 +201,8 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Iqro 4-6',
     joinedDate: '2026-08-20',
     isActive: true,
+    bankName: 'Bank Mandiri',
+    bankAccount: '1230009876543',
   },
   {
     id: 'part-3',
@@ -208,6 +218,8 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     currentLevel: 'Iqro 1-3',
     joinedDate: '2026-09-01',
     isActive: true,
+    bankName: 'Bank BCA',
+    bankAccount: '8870123456',
   },
   {
     id: 'part-4',

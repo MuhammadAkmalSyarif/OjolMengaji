@@ -160,8 +160,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
         if (parsed.shelters) setShelters(parsed.shelters);
-        if (parsed.teachers) setTeachers(parsed.teachers);
-        if (parsed.participants) setParticipants(parsed.participants);
+        if (parsed.teachers) {
+          const hydratedTeachers = parsed.teachers.map((t: Teacher) => {
+            const initMatch = INITIAL_TEACHERS.find(it => it.id === t.id);
+            return {
+              ...t,
+              nik: t.nik || initMatch?.nik || '',
+              bankName: t.bankName || initMatch?.bankName || '',
+              bankAccount: t.bankAccount || initMatch?.bankAccount || '',
+            };
+          });
+          setTeachers(hydratedTeachers);
+        }
+        if (parsed.participants) {
+          const hydratedParts = parsed.participants.map((p: Participant) => {
+            const initMatch = INITIAL_PARTICIPANTS.find(ip => ip.id === p.id);
+            return {
+              ...p,
+              bankName: p.bankName || initMatch?.bankName || undefined,
+              bankAccount: p.bankAccount || initMatch?.bankAccount || undefined,
+            };
+          });
+          setParticipants(hydratedParts);
+        }
         if (parsed.schedules) setSchedules(parsed.schedules);
         if (parsed.attendance) setAttendance(parsed.attendance);
         if (parsed.assessments) setAssessments(parsed.assessments);
@@ -446,6 +467,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentLevel: data.currentLevel || 'Belum Dinilai',
       joinedDate: new Date().toISOString().split('T')[0],
       isActive: true,
+      bankName: data.bankName?.trim() || undefined,
+      bankAccount: data.bankAccount?.trim() || undefined,
     };
 
     setUsers(prev => [...prev, newUser]);
@@ -454,7 +477,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
     const idInfo = nikVal ? `NIK: ${nikVal}` : (data.vehiclePlate || '-');
-    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran driver baru "${data.name}" (${data.ojolPlatform} - ${idInfo}) di ${shelterName}`);
+    const bankAudit = data.bankAccount ? ` [Rek: ${data.bankName ? data.bankName + ' ' : ''}${data.bankAccount}]` : '';
+    addAudit('REGISTER_DRIVER', 'participants', partId, `Pendaftaran driver baru "${data.name}" (${data.ojolPlatform} - ${idInfo}${bankAudit}) di ${shelterName}`);
 
     return {
       success: true,
@@ -523,6 +547,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       role: 'guru',
       avatar: data.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
       phone: data.phone,
+      nik: data.nik,
       isActive: true,
     };
 
@@ -535,13 +560,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUsers(prev => [...prev, newUser]);
     setTeachers(prev => [...prev, newTeacher]);
-    addAudit('CREATE_TEACHER', 'teachers', teacherId, `Mendaftarkan guru "${data.name}"`);
+    const nikInfo = data.nik ? ` [NIK: ${data.nik}]` : '';
+    const bankInfo = data.bankAccount ? ` [Rek: ${data.bankName ? data.bankName + ' ' : ''}${data.bankAccount}]` : '';
+    addAudit('CREATE_TEACHER', 'teachers', teacherId, `Mendaftarkan guru "${data.name}"${nikInfo}${bankInfo}`);
   };
 
   const updateTeacher = (updated: Teacher) => {
     setTeachers(prev => prev.map(t => t.id === updated.id ? updated : t));
-    setUsers(prev => prev.map(u => u.id === updated.userId ? { ...u, name: updated.name, phone: updated.phone } : u));
-    addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui profil guru "${updated.name}"`);
+    setUsers(prev => prev.map(u => u.id === updated.userId ? { ...u, name: updated.name, phone: updated.phone, nik: updated.nik } : u));
+    addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui data guru "${updated.name}"`);
   };
 
   // Participants

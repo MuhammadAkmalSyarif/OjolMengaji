@@ -18,14 +18,29 @@ import {
   UserPlus, 
   Sparkles, 
   ChevronRight,
-  ShieldCheck,
-  HelpCircle,
-  X,
-  MessageCircle,
-  Check,
-  Info
+  ChevronDown,
+  ShieldCheck, 
+  HelpCircle, 
+  X, 
+  MessageCircle, 
+  Check, 
+  Info,
+  CreditCard
 } from 'lucide-react';
 import { RegisterDriverData } from '@/types';
+
+// Daftar opsi bank resmi untuk pencairan / insentif
+const BANK_OPTIONS = [
+  'BSI (Bank Syariah Indonesia)',
+  'Bank Muamalat',
+  'BCA Syariah',
+  'Bank Mandiri',
+  'Bank BCA',
+  'Bank BRI',
+  'Bank BNI',
+  'Bank DKI / DKI Syariah',
+  'Bank Lainnya'
+];
 
 interface DriverAuthProps {
   onSuccess?: () => void;
@@ -39,6 +54,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
+  const [isShelterDropdownOpen, setIsShelterDropdownOpen] = useState(false);
 
   // Registration Form State
   const [regForm, setRegForm] = useState<RegisterDriverData>({
@@ -51,6 +68,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     vehiclePlate: '',
     shelterId: shelters[0]?.id || '',
     currentLevel: 'Belum Dinilai',
+    bankName: '',
+    bankAccount: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(true);
@@ -109,6 +128,10 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     }
     if (!regForm.shelterId) {
       setErrorMsg('Silakan pilih shelter pembinaan terdekat.');
+      return;
+    }
+    if (regForm.bankAccount && !regForm.bankName) {
+      setErrorMsg('Harap pilih nama bank untuk nomor rekening yang Anda masukkan.');
       return;
     }
     if (regForm.password && regForm.password.length < 4) {
@@ -461,22 +484,173 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     Shelter Binaan Terdekat <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <select
-                      value={regForm.shelterId}
-                      onChange={(e) => setRegForm({ ...regForm, shelterId: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-semibold text-slate-800"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsShelterDropdownOpen(!isShelterDropdownOpen);
+                        setIsBankDropdownOpen(false);
+                      }}
+                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
+                        isShelterDropdownOpen
+                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                          : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                      }`}
                     >
-                      {shelters.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.address.split(',')[1]?.trim() || s.address})
-                        </option>
-                      ))}
-                    </select>
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <span className="truncate pr-2">
+                        {shelters.find(s => s.id === regForm.shelterId)?.name || 'Pilih Shelter'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isShelterDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                    </button>
+
+                    {isShelterDropdownOpen && (
+                      <div 
+                        className="fixed inset-0 z-30" 
+                        onClick={() => setIsShelterDropdownOpen(false)} 
+                      />
+                    )}
+
+                    {/* Menu Pilihan Shelter Selalu Membuka ke Bawah */}
+                    {isShelterDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
+                        {shelters.map((s) => {
+                          const isSelected = regForm.shelterId === s.id;
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => {
+                                setRegForm({ ...regForm, shelterId: s.id });
+                                setIsShelterDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
+                                isSelected
+                                  ? 'bg-emerald-50 text-emerald-900 font-bold'
+                                  : 'text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="truncate pr-2">
+                                <div className="font-bold text-slate-900">{s.name}</div>
+                                <div className="text-[11px] text-slate-500 truncate">{s.address.split(',')[1]?.trim() || s.address}</div>
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">Lokasi pangkalan presensi &amp; belajar</p>
+                </div>
+              </div>
+
+              {/* Data Rekening Bank Mitra (Nomor Rekening & Dropdown Bank ke Bawah) */}
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-4 h-4 text-emerald-700" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800">Nomor Rekening Bank Mitra</span>
+                    <p className="text-[10px] text-slate-500">Penyaluran insentif kafalah, bantuan kuota &amp; beasiswa mengaji ojol</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Pilih Nama Bank <span className="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsBankDropdownOpen(!isBankDropdownOpen);
+                          setIsShelterDropdownOpen(false);
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
+                          isBankDropdownOpen
+                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                            : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                        }`}
+                      >
+                        <span className={`truncate pr-2 ${regForm.bankName ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
+                          {regForm.bankName || '-- Pilih Bank Rekening --'}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isBankDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                      </button>
+
+                      {isBankDropdownOpen && (
+                        <div 
+                          className="fixed inset-0 z-30" 
+                          onClick={() => setIsBankDropdownOpen(false)} 
+                        />
+                      )}
+
+                      {/* Menu Dropdown Bank Selalu Membuka ke Bawah (top-full mt-1.5) */}
+                      {isBankDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRegForm({ ...regForm, bankName: '' });
+                              setIsBankDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
+                          >
+                            -- Kosongkan / Belum Memiliki --
+                          </button>
+                          {BANK_OPTIONS.map((bank) => {
+                            const isSelected = regForm.bankName === bank;
+                            return (
+                              <button
+                                key={bank}
+                                type="button"
+                                onClick={() => {
+                                  setRegForm({ ...regForm, bankName: bank });
+                                  setIsBankDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
+                                  isSelected
+                                    ? 'bg-emerald-50 text-emerald-900 font-bold'
+                                    : 'text-slate-700 hover:bg-slate-50'
+                                }`}
+                              >
+                                <span>{bank}</span>
+                                {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">Pilih bank tempat rekening Anda dibuka</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Nomor Rekening Bank <span className="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Contoh: 1234567890"
+                        value={regForm.bankAccount || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9-]/g, '');
+                          setRegForm({ ...regForm, bankAccount: val });
+                        }}
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">Sesuai buku tabungan / m-banking aktif</p>
+                  </div>
                 </div>
               </div>
 
