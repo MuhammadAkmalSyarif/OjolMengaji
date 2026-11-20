@@ -1245,11 +1245,11 @@ export const AdminPortal: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedKtaParticipant(part)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition"
-                          title="Cetak atau Lihat Kartu Anggota Ojol Mengaji"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition"
+                          title="Lihat, Unduh (PNG HD), atau Cetak Kartu Anggota Ojol Mengaji"
                         >
                           <CreditCard className="w-3 h-3 text-emerald-600" />
-                          <span>KTA</span>
+                          <span>KTA / Unduh</span>
                         </button>
                       </td>
                     </tr>

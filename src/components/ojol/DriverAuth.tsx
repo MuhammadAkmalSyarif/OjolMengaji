@@ -782,8 +782,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                           </div>
                         </div>
                         <div className="shrink-0 text-right">
-                          <span className="text-[9px] px-2 py-1 rounded-md bg-emerald-600/60 border border-emerald-400/40 text-emerald-100 font-bold block">
-                            Lihat Kartu 🔍
+                          <span className="text-[9px] px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 font-extrabold block shadow-xs">
+                            Lihat &amp; Download KTA 📥
                           </span>
                         </div>
                       </div>

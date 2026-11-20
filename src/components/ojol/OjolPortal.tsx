@@ -24,10 +24,15 @@ import {
   CreditCard,
   Camera,
   Upload,
-  Printer
+  Printer,
+  Download,
+  Layers,
+  Loader2,
+  Share2
 } from 'lucide-react';
 import { MemberCardModal } from './MemberCardModal';
 import { compressImage } from '@/utils/imageUtils';
+import { downloadCardImage, getMemberCode } from '@/utils/cardGenerator';
 
 export const OjolPortal: React.FC = () => {
   const { 
@@ -62,6 +67,26 @@ export const OjolPortal: React.FC = () => {
   const [gpsSimulatedDistance, setGpsSimulatedDistance] = useState<number>(18);
   const [isSimulatingGps, setIsSimulatingGps] = useState(false);
   const [presensiFeedback, setPresensiFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  // KTA Download State & Feedback
+  const [downloadingKta, setDownloadingKta] = useState<string | null>(null);
+  const [ktaDownloadAlert, setKtaDownloadAlert] = useState<string | null>(null);
+
+  const handleDownloadKtaDirect = async (side: 'front' | 'both' = 'front') => {
+    try {
+      setDownloadingKta(side);
+      const sideName = side === 'front' ? 'Tampak Depan (HD)' : 'Lembar Lengkap (Depan & Belakang)';
+      const fileName = await downloadCardImage(participant, shelter, side);
+      setKtaDownloadAlert(`✓ KTA (${sideName}) berhasil diunduh: ${fileName}. Siap disimpan atau dicetak!`);
+      setTimeout(() => setKtaDownloadAlert(null), 5000);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal mendownload kartu langsung. Membuka jendela pratinjau kartu...');
+      setShowKtaModal(true);
+    } finally {
+      setDownloadingKta(null);
+    }
+  };
 
   const handlePhotoUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -183,14 +208,28 @@ export const OjolPortal: React.FC = () => {
               <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span className="truncate">{shelter.name}</span>
             </p>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setShowKtaModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md transition active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold shadow-md transition active:scale-95"
               >
                 <CreditCard className="w-3.5 h-3.5 text-slate-950" />
-                <span>Kartu Anggota (KTA)</span>
+                <span>Buka &amp; Download KTA</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadKtaDirect('front')}
+                disabled={!!downloadingKta}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-bold transition active:scale-95 disabled:opacity-50"
+                title="Download Cepat Kartu Depan (PNG HD)"
+              >
+                {downloadingKta === 'front' ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                ) : (
+                  <Download className="w-3.5 h-3.5 text-amber-300" />
+                )}
+                <span>Download PNG</span>
               </button>
             </div>
           </div>
@@ -213,6 +252,23 @@ export const OjolPortal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Global KTA Download Alert Banner */}
+      {ktaDownloadAlert && (
+        <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{ktaDownloadAlert}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setKtaDownloadAlert(null)}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-emerald-100 transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Mobile Nav Tabs */}
       <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-none border-b border-slate-200 sm:border-0">
@@ -240,6 +296,77 @@ export const OjolPortal: React.FC = () => {
       {/* TAB CONTENT: BERANDA */}
       {activeTab === 'beranda' && (
         <div className="space-y-5">
+          {/* Official KTA Digital Card Banner on Beranda */}
+          <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 rounded-2xl p-4 sm:p-5 text-white border border-emerald-700/60 shadow-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-15 rounded-xl overflow-hidden border-2 border-amber-400 bg-slate-900 shrink-0 shadow-md ring-2 ring-emerald-500/40">
+                  <img
+                    src={participant.selfiePhoto || participant.avatar}
+                    alt={participant.name}
+                    className="w-full h-full object-cover object-top"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-900/80 border border-amber-400/40 text-amber-300">
+                      {getMemberCode(participant)}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      Aktif Binaan
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white mt-1">
+                    Kartu Tanda Anggota (KTA) Digital
+                  </h3>
+                  <p className="text-[11px] text-slate-300">
+                    {participant.ojolPlatform} • {shelter.name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowKtaModal(true)}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-slate-950 transition shadow-sm active:scale-95"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Lihat KTA</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadKtaDirect('front')}
+                  disabled={!!downloadingKta}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95 disabled:opacity-50"
+                  title="Unduh Kartu Tampak Depan (PNG HD)"
+                >
+                  {downloadingKta === 'front' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-300" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 text-emerald-300" />
+                  )}
+                  <span>Download Depan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadKtaDirect('both')}
+                  disabled={!!downloadingKta}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition shadow-sm active:scale-95 disabled:opacity-50"
+                  title="Unduh Lembar Lengkap Depan & Belakang Siap Cetak"
+                >
+                  {downloadingKta === 'both' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Layers className="w-3.5 h-3.5 text-amber-300" />
+                  )}
+                  <span>Lembar Lengkap</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Main Quick Action: Presensi Button */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -656,7 +783,7 @@ export const OjolPortal: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
                 <input
                   type="file"
                   ref={portalFileInputRef}
@@ -676,11 +803,26 @@ export const OjolPortal: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={() => handleDownloadKtaDirect('front')}
+                  disabled={!!downloadingKta}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95 disabled:opacity-50"
+                  title="Unduh Kartu Sisi Depan (PNG HD)"
+                >
+                  {downloadingKta === 'front' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 text-amber-300" />
+                  )}
+                  <span>Download PNG</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowKtaModal(true)}
                   className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-slate-950 transition shadow-md active:scale-95"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Buka &amp; Cetak KTA</span>
+                  <span>Buka &amp; Download KTA</span>
                 </button>
               </div>
             </div>
