@@ -34,7 +34,10 @@ import {
   CreditCard,
   IdCard,
   FileSpreadsheet,
-  Table
+  Table,
+  Database,
+  Building,
+  Award
 } from 'lucide-react';
 import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType } from '@/types';
 import { MemberCardModal } from '../ojol/MemberCardModal';
@@ -227,7 +230,9 @@ export const AdminPortal: React.FC = () => {
 
   // Export CSV Modal State
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportReportType, setExportReportType] = useState<'rekap' | 'presensi' | 'evaluasi'>('rekap');
+  const [exportReportType, setExportReportType] = useState<
+    'peserta' | 'guru' | 'shelter' | 'kpi' | 'rekap' | 'presensi' | 'evaluasi'
+  >('peserta');
   const [exportDelimiter, setExportDelimiter] = useState<';' | ','>(';');
   const [exportScope, setExportScope] = useState<'all' | 'filtered'>('all');
 
@@ -547,6 +552,55 @@ export const AdminPortal: React.FC = () => {
     return (sum / 6).toFixed(1);
   };
 
+  const getExportColumnsList = (type: string): string[] => {
+    switch (type) {
+      case 'peserta':
+        return [
+          'No', 'No. Kartu Member', 'NIK KTP', 'Nama Lengkap Driver', 'Mitra Ojol', 'Plat Nomor Kendaraan',
+          'No. WhatsApp / HP', 'Email Driver', 'Shelter Binaan', 'Tingkat Mengaji', 'Tipe Akun Insentif',
+          'Nama Bank / E-Wallet', 'Nomor Rekening / Akun', 'Tanggal Bergabung', 'Status Akun',
+          'Total Kehadiran Sesi', 'Total Sesi Wajib', 'Persentase Kehadiran', 'Kualifikasi Insentif (>=75%)'
+        ];
+      case 'guru':
+        return [
+          'No', 'ID Guru', 'Nama Ustadz / Guru', 'NIK KTP', 'No. WhatsApp / HP', 'Email Guru',
+          'Spesialisasi Pengajaran', 'Shelter Binaan Ditugaskan', 'Jumlah Shelter Binaan', 'Total Driver Binaan',
+          'Nama Bank Insentif', 'Nomor Rekening Insentif', 'Total Sesi Mengajar Terjadwal',
+          'Total Penilaian Tilawah Dilakukan', 'Status Guru'
+        ];
+      case 'shelter':
+        return [
+          'No', 'ID Shelter', 'Nama Shelter Binaan', 'Alamat Lengkap', 'Latitude (GPS)', 'Longitude (GPS)',
+          'Radius Geofencing (Meter)', 'Ustadz Pengampu Ditugaskan', 'Total Driver Terdaftar', 'Driver Aktif',
+          'Total Sesi Halaqah Terjadwal', 'Total Presensi Tercatat', 'Catatan / Keterangan', 'Status Operasional'
+        ];
+      case 'kpi':
+        return [
+          'No', 'Kategori Analisis', 'Indikator Metrik KPI', 'Capaian / Nilai Sistem', 'Satuan / Standar Target',
+          'Keterangan & Analisis Manajerial'
+        ];
+      case 'rekap':
+        return [
+          'No', 'Nama Peserta', 'Mitra Ojol', 'Plat Nomor', 'No. WhatsApp/HP', 'Shelter Lokasi',
+          'Tingkat Saat Ini', 'Sesi Hadir', 'Total Sesi Wajib', 'Persentase Kehadiran',
+          'Status Kualifikasi (>=75%)', 'Materi Evaluasi Terakhir', 'Rata-rata Nilai Rubrik',
+          'Catatan / Rekomendasi Guru', 'Tanggal Bergabung', 'Status Akun'
+        ];
+      case 'presensi':
+        return [
+          'No', 'Tanggal Sesi', 'Waktu Check-In', 'Nama Peserta', 'Mitra Ojol', 'Plat Nomor',
+          'Lokasi Shelter', 'Status Kehadiran', 'Metode Presensi', 'Akurasi Jarak GPS', 'Catatan / Keterangan'
+        ];
+      case 'evaluasi':
+      default:
+        return [
+          'No', 'Tanggal Penilaian', 'Nama Peserta', 'Mitra Ojol', 'Shelter Lokasi', 'Ustadz / Guru Penguji',
+          'Materi / Surah & Ayat', 'Hijaiyah', 'Harakat', 'Kelancaran', 'Tajwid',
+          'Makhraj', 'Kemandirian', 'Rata-rata Skor', 'Kekuatan', 'Perbaikan', 'Rekomendasi', 'Status Publikasi'
+        ];
+    }
+  };
+
   const formatCSVCell = (val: any) => {
     if (val === null || val === undefined) return '""';
     const str = String(val).replace(/\r?\n|\r/g, ' ').trim();
@@ -569,13 +623,13 @@ export const AdminPortal: React.FC = () => {
     }, 200);
   };
 
-  const handleOpenExportModal = (type: 'rekap' | 'presensi' | 'evaluasi' = 'rekap') => {
+  const handleOpenExportModal = (type: 'peserta' | 'guru' | 'shelter' | 'kpi' | 'rekap' | 'presensi' | 'evaluasi' = 'peserta') => {
     setExportReportType(type);
     setShowExportModal(true);
   };
 
   const handleExportCSV = () => {
-    handleOpenExportModal('rekap');
+    handleOpenExportModal('peserta');
   };
 
   const handleExecuteExport = () => {
@@ -588,7 +642,235 @@ export const AdminPortal: React.FC = () => {
 
     const isFiltered = exportScope === 'filtered' && shelterFilter !== 'all';
 
-    if (exportReportType === 'rekap') {
+    if (exportReportType === 'peserta') {
+      filename = `database_peserta_ojol_mengaji_${dateToday}.csv`;
+      headers = [
+        'No',
+        'No. Kartu Member',
+        'NIK KTP',
+        'Nama Lengkap Driver',
+        'Mitra Ojol',
+        'Plat Nomor Kendaraan',
+        'No. WhatsApp / HP',
+        'Email Driver',
+        'Shelter Binaan',
+        'Tingkat Mengaji',
+        'Tipe Akun Insentif',
+        'Nama Bank / E-Wallet',
+        'Nomor Rekening / Akun',
+        'Tanggal Bergabung',
+        'Status Akun',
+        'Total Kehadiran Sesi',
+        'Total Sesi Wajib',
+        'Persentase Kehadiran',
+        'Kualifikasi Insentif (>=75%)'
+      ];
+
+      const targetParticipants = isFiltered
+        ? participants.filter(p => p.shelterId === shelterFilter)
+        : participants;
+
+      rows = targetParticipants.map((p, idx) => {
+        const sh = shelters.find(s => s.id === p.shelterId);
+        const { attendedSessions, totalSessions, rate } = getParticipantAttendanceStats(p.id);
+        const code = getMemberCode(p, sh, shelters);
+        const accType = p.accountType || (p.bankName ? 'Bank' : '-');
+        const kualifikasi = rate >= 75 ? 'Memenuhi Syarat (>=75%)' : 'Perlu Pendampingan (<75%)';
+
+        return [
+          String(idx + 1),
+          code,
+          p.nik || '-',
+          p.name,
+          p.ojolPlatform,
+          p.vehiclePlate || '-',
+          p.phone || '-',
+          p.email || '-',
+          sh?.name || '-',
+          p.currentLevel || 'Belum Dinilai',
+          accType,
+          p.bankName || '-',
+          p.bankAccount || '-',
+          p.joinedDate || '-',
+          p.isActive ? 'Aktif' : 'Nonaktif',
+          String(attendedSessions),
+          String(totalSessions),
+          `${rate}%`,
+          kualifikasi
+        ];
+      });
+    } else if (exportReportType === 'guru') {
+      filename = `database_guru_mengaji_${dateToday}.csv`;
+      headers = [
+        'No',
+        'ID Guru',
+        'Nama Ustadz / Guru',
+        'NIK KTP',
+        'No. WhatsApp / HP',
+        'Email Guru',
+        'Spesialisasi Pengajaran',
+        'Shelter Binaan Ditugaskan',
+        'Jumlah Shelter Binaan',
+        'Total Driver Binaan',
+        'Nama Bank Insentif',
+        'Nomor Rekening Insentif',
+        'Total Sesi Mengajar Terjadwal',
+        'Total Penilaian Tilawah Dilakukan',
+        'Status Guru'
+      ];
+
+      const targetTeachers = isFiltered
+        ? teachers.filter(t => (t.shelterIds || []).includes(shelterFilter))
+        : teachers;
+
+      rows = targetTeachers.map((t, idx) => {
+        const mySh = shelters.filter(s => (t.shelterIds || []).includes(s.id));
+        const totalDrivers = participants.filter(p => (t.shelterIds || []).includes(p.shelterId)).length;
+        const totalTeachingSchedules = schedules.filter(s => s.teacherId === t.id).length;
+        const totalEvaluations = assessments.filter(a => a.teacherId === t.id).length;
+        const shelterNames = mySh.length > 0 ? mySh.map(s => s.name).join('; ') : 'Belum Ditugaskan';
+
+        return [
+          String(idx + 1),
+          t.id,
+          t.name,
+          t.nik || '-',
+          t.phone || '-',
+          t.email || '-',
+          t.specialization || '-',
+          shelterNames,
+          String(mySh.length),
+          String(totalDrivers),
+          t.bankName || '-',
+          t.bankAccount || '-',
+          String(totalTeachingSchedules),
+          String(totalEvaluations),
+          t.isActive ? 'Aktif Mengajar' : 'Nonaktif'
+        ];
+      });
+    } else if (exportReportType === 'shelter') {
+      filename = `database_shelter_ojol_mengaji_${dateToday}.csv`;
+      headers = [
+        'No',
+        'ID Shelter',
+        'Nama Shelter Binaan',
+        'Alamat Lengkap',
+        'Latitude (GPS)',
+        'Longitude (GPS)',
+        'Radius Geofencing (Meter)',
+        'Ustadz Pengampu Ditugaskan',
+        'Total Driver Terdaftar',
+        'Driver Aktif',
+        'Total Sesi Halaqah Terjadwal',
+        'Total Presensi Tercatat',
+        'Catatan / Keterangan',
+        'Status Operasional'
+      ];
+
+      const targetShelters = isFiltered
+        ? shelters.filter(s => s.id === shelterFilter)
+        : shelters;
+
+      rows = targetShelters.map((s, idx) => {
+        const assignedTeachers = teachers.filter(t => (t.shelterIds || []).includes(s.id));
+        const teacherNames = assignedTeachers.length > 0 ? assignedTeachers.map(t => t.name).join('; ') : 'Belum Ditugaskan';
+        const totalDriversInSh = participants.filter(p => p.shelterId === s.id).length;
+        const activeDriversInSh = participants.filter(p => p.shelterId === s.id && p.isActive).length;
+        const totalSchedulesInSh = schedules.filter(sc => sc.shelterId === s.id).length;
+        const totalAttendanceInSh = attendance.filter(a => a.shelterId === s.id).length;
+
+        return [
+          String(idx + 1),
+          s.id,
+          s.name,
+          s.address,
+          String(s.latitude),
+          String(s.longitude),
+          `${s.radiusMeters} meter`,
+          teacherNames,
+          String(totalDriversInSh),
+          String(activeDriversInSh),
+          String(totalSchedulesInSh),
+          String(totalAttendanceInSh),
+          s.notes || '-',
+          s.isActive ? 'Aktif Beroperasi' : 'Nonaktif'
+        ];
+      });
+    } else if (exportReportType === 'kpi') {
+      filename = `ringkasan_dan_kpi_program_ojol_mengaji_${dateToday}.csv`;
+      headers = [
+        'No',
+        'Kategori Analisis',
+        'Indikator Metrik KPI',
+        'Capaian / Nilai Sistem',
+        'Satuan / Standar Target',
+        'Keterangan & Analisis Manajerial'
+      ];
+
+      const targetP = isFiltered ? participants.filter(p => p.shelterId === shelterFilter) : participants;
+      const targetA = isFiltered ? attendance.filter(a => a.shelterId === shelterFilter) : attendance;
+      const targetE = isFiltered ? assessments.filter(a => {
+        const p = participants.find(part => part.id === a.participantId);
+        return p?.shelterId === shelterFilter;
+      }) : assessments;
+      const targetS = isFiltered ? shelters.filter(s => s.id === shelterFilter) : shelters;
+      const targetT = isFiltered ? teachers.filter(t => (t.shelterIds || []).includes(shelterFilter)) : teachers;
+
+      const totalDrivers = targetP.length;
+      const activeDrivers = targetP.filter(p => p.isActive).length;
+      
+      let totalAttended = 0;
+      let totalSessionsPossible = 0;
+      let qualifiedDriversCount = 0;
+      let needsSupportDriversCount = 0;
+
+      targetP.forEach(p => {
+        const { attendedSessions, totalSessions, rate } = getParticipantAttendanceStats(p.id);
+        totalAttended += attendedSessions;
+        totalSessionsPossible += totalSessions;
+        if (rate >= 75) qualifiedDriversCount++;
+        else needsSupportDriversCount++;
+      });
+
+      const overallAttendanceRate = totalSessionsPossible > 0 
+        ? Math.round((totalAttended / totalSessionsPossible) * 100) 
+        : 0;
+
+      const gojekCount = targetP.filter(p => p.ojolPlatform === 'Gojek').length;
+      const grabCount = targetP.filter(p => p.ojolPlatform === 'Grab').length;
+      const maximCount = targetP.filter(p => p.ojolPlatform === 'Maxim').length;
+      const otherOjolCount = targetP.filter(p => p.ojolPlatform === 'InDrive' || p.ojolPlatform === 'ShopeeFood').length;
+
+      const iqro13Count = targetP.filter(p => p.currentLevel === 'Iqro 1-3').length;
+      const iqro46Count = targetP.filter(p => p.currentLevel === 'Iqro 4-6').length;
+      const alquranDasarCount = targetP.filter(p => p.currentLevel === 'Al-Qur\'an Dasar').length;
+      const tahsinMahirCount = targetP.filter(p => p.currentLevel === 'Al-Qur\'an Mahir / Tajwid').length;
+      const belumDinilaiCount = targetP.filter(p => p.currentLevel === 'Belum Dinilai').length;
+
+      const shelterScopeName = isFiltered ? (shelters.find(s => s.id === shelterFilter)?.name || shelterFilter) : 'Semua Shelter Binaan';
+
+      rows = [
+        ['1', '1. Master Data Program', 'Total Shelter Binaan', String(targetS.length), 'Shelter', `Cakupan: ${shelterScopeName}`],
+        ['2', '1. Master Data Program', 'Total Dewan Guru (Ustadz)', String(targetT.length), 'Ustadz', 'Dewan guru pengampu bimbingan mengaji'],
+        ['3', '1. Master Data Program', 'Total Pengemudi Ojol Terdaftar', String(totalDrivers), 'Mitra Driver', 'Akumulasi seluruh peserta terdaftar'],
+        ['4', '1. Master Data Program', 'Pengemudi Ojol Status Aktif', String(activeDrivers), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((activeDrivers / totalDrivers) * 100) : 0}% dari total driver terdaftar`],
+        ['5', '2. Kehadiran & Sesi Halaqah', 'Total Log Presensi Sesi Tercatat', String(targetA.length), 'Check-In Presensi', 'Presensi diverifikasi via GPS geofencing, QR & manual'],
+        ['6', '2. Kehadiran & Sesi Halaqah', 'Tingkat Kehadiran Kumulatif Program', `${overallAttendanceRate}%`, 'Persentase (>=75%)', overallAttendanceRate >= 75 ? 'Memenuhi Standar Target Program (Baik)' : 'Perlu Pendampingan dan Motivasi Tambahan'],
+        ['7', '2. Kehadiran & Sesi Halaqah', 'Mitra Memenuhi Syarat Kualifikasi (>=75%)', String(qualifiedDriversCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((qualifiedDriversCount / totalDrivers) * 100) : 0}% driver berhak atas insentif operasional`],
+        ['8', '2. Kehadiran & Sesi Halaqah', 'Mitra Perlu Pendampingan Khusus (<75%)', String(needsSupportDriversCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((needsSupportDriversCount / totalDrivers) * 100) : 0}% memerlukan kontak koordinator / follow-up WA`],
+        ['9', '3. Capaian & Evaluasi Tilawah', 'Total Penilaian Membaca Al-Qur\'an (Rubrik)', String(targetE.length), 'Data Evaluasi', 'Akumulasi uji tilawah 6 aspek talaqqi dari Dewan Guru'],
+        ['10', '3. Capaian & Evaluasi Tilawah', 'Mitra Telah Ditetapkan Tingkat Mengajinya', String(totalDrivers - belumDinilaiCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round(((totalDrivers - belumDinilaiCount) / totalDrivers) * 100) : 0}% telah menjalani tes talaqqi awal`],
+        ['11', '3. Capaian & Evaluasi Tilawah', 'Mitra Baru Menunggu Penilaian Level', String(belumDinilaiCount), 'Mitra Driver', 'Perlu dilakukan talaqqi awal penentuan level di shelter'],
+        ['12', '4. Distribusi Tingkat Tilawah', 'Peserta Level Iqro 1 - 3 (Pemula Dasar)', String(iqro13Count), 'Mitra Driver', 'Fokus pengenalan huruf hijaiyah tunggal & harakat dasar'],
+        ['13', '4. Distribusi Tingkat Tilawah', 'Peserta Level Iqro 4 - 6 (Menengah)', String(iqro46Count), 'Mitra Driver', 'Fokus huruf sambung, tanda sukun, tasydid, & mad panjang'],
+        ['14', '4. Distribusi Tingkat Tilawah', 'Peserta Level Al-Qur\'an Dasar (Lancar Mushaf)', String(alquranDasarCount), 'Mitra Driver', 'Membaca langsung dari mushaf Al-Qur\'an standar'],
+        ['15', '4. Distribusi Tingkat Tilawah', 'Peserta Level Tahsin & Tajwid (Mahir)', String(tahsinMahirCount), 'Mitra Driver', 'Pendalaman makhorijul huruf, hukum tajwid, & waqaf ibtida'],
+        ['16', '5. Komposisi Aplikasi Mitra Ojol', 'Pengemudi Aplikasi Gojek', String(gojekCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((gojekCount / totalDrivers) * 100) : 0}% mitra Gojek`],
+        ['17', '5. Komposisi Aplikasi Mitra Ojol', 'Pengemudi Aplikasi Grab', String(grabCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((grabCount / totalDrivers) * 100) : 0}% mitra Grab`],
+        ['18', '5. Komposisi Aplikasi Mitra Ojol', 'Pengemudi Aplikasi Maxim', String(maximCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((maximCount / totalDrivers) * 100) : 0}% mitra Maxim`],
+        ['19', '5. Komposisi Aplikasi Mitra Ojol', 'Pengemudi Aplikasi InDrive / ShopeeFood', String(otherOjolCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((otherOjolCount / totalDrivers) * 100) : 0}% mitra lainnya`]
+      ];
+    } else if (exportReportType === 'rekap') {
       filename = `rekap_laporan_ojol_mengaji_${dateToday}.csv`;
       headers = [
         'No',
@@ -745,8 +1027,15 @@ export const AdminPortal: React.FC = () => {
       });
     }
 
-    const headerLine = headers.map(formatCSVCell).join(sep);
-    const rowLines = rows.map(r => r.map(formatCSVCell).join(sep));
+    const headerLine = headers.map(h => formatCSVCell(h)).join(sep);
+    const rowLines = rows.map(r => r.map(c => {
+      const str = String(c || '').trim();
+      // If it looks like a long number (e.g. 10+ digits NIK, bank account) or leading 0 phone, wrap with ="..." for Excel
+      if (/^\d{10,}$/.test(str) || /^0\d{8,}$/.test(str)) {
+        return `="` + str.replace(/"/g, '""') + `"`;
+      }
+      return formatCSVCell(c);
+    }).join(sep));
     const csvContent = [headerLine, ...rowLines].join('\r\n');
 
     downloadCSV(csvContent, filename);
@@ -833,6 +1122,29 @@ export const AdminPortal: React.FC = () => {
       {/* TAB CONTENT: DASHBOARD & KPI */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
+          {/* Executive Summary Bar & Export Action */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Ringkasan Eksekutif &amp; KPI Performa Program
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Monitoring metrik kehadiran, kualifikasi insentif (&ge;75%), dan capaian literasi Al-Qur&apos;an secara terpusat.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleOpenExportModal('kpi')}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 shadow-2xs transition-all flex items-center gap-2 self-start sm:self-auto"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-purple-700" />
+              <span>Ekspor Ringkasan &amp; KPI (CSV)</span>
+            </button>
+          </div>
+
           {/* Top 4 KPI Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
@@ -959,13 +1271,22 @@ export const AdminPortal: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={handleOpenCreateShelter}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Shelter</span>
-            </button>
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleOpenExportModal('shelter')}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+                <span>Ekspor CSV Shelter</span>
+              </button>
+              <button
+                onClick={handleOpenCreateShelter}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Shelter</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1059,13 +1380,22 @@ export const AdminPortal: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={handleOpenCreateTeacher}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Daftarkan Guru Baru</span>
-            </button>
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleOpenExportModal('guru')}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                <span>Ekspor CSV Guru</span>
+              </button>
+              <button
+                onClick={handleOpenCreateTeacher}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Daftarkan Guru Baru</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1180,13 +1510,22 @@ export const AdminPortal: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => setShowPartModal(true)}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Daftarkan Driver Baru</span>
-            </button>
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleOpenExportModal('peserta')}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+                <span>Ekspor CSV Peserta Ojol</span>
+              </button>
+              <button
+                onClick={() => setShowPartModal(true)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Daftarkan Driver Baru</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -2571,92 +2910,229 @@ export const AdminPortal: React.FC = () => {
               </button>
             </div>
 
-            {/* 1. Pilihan Jenis Laporan */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">
-                1. Pilih Jenis Laporan yang Ingin Diekspor
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {/* Option 1: Rekap Utama */}
-                <button
-                  type="button"
-                  onClick={() => setExportReportType('rekap')}
-                  className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
-                    exportReportType === 'rekap'
-                      ? 'border-purple-600 bg-purple-50/70 ring-2 ring-purple-300'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-purple-700" />
-                        <span>Rekap Program</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
-                        {participants.length}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-snug">
-                      Data peserta, shelter, kehadiran %, status target, &amp; evaluasi tilawah.
-                    </p>
+            {/* 1. Pilihan Jenis Laporan & Database */}
+            <div className="space-y-4">
+              {/* Kategori A: Master Database (Sesuai Data yang Diinput) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Database className="w-4 h-4 text-purple-700" />
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                      A. Master Database (Sesuai Data Input)
+                    </span>
                   </div>
-                  <div className="mt-2 text-[10px] font-bold text-purple-700">Laporan Utama</div>
-                </button>
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                    Master Profil &amp; Rekening
+                  </span>
+                </div>
 
-                {/* Option 2: Log Presensi */}
-                <button
-                  type="button"
-                  onClick={() => setExportReportType('presensi')}
-                  className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
-                    exportReportType === 'presensi'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-300'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Log Presensi</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Database Peserta Ojol */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('peserta')}
+                    className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'peserta'
+                        ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-purple-700" />
+                          <span>Database Peserta Ojol</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                          {participants.length} Driver
+                        </span>
                       </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        {attendance.length}
-                      </span>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Master NIK, No. Member, WA, plat nomor, shelter, level, rekening/e-wallet insentif.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-snug">
-                      Detail tanggal, jam check-in, shelter, status presensi, &amp; metode GPS/QR.
-                    </p>
-                  </div>
-                  <div className="mt-2 text-[10px] font-bold text-emerald-700">Riwayat Sesi</div>
-                </button>
+                    <div className="mt-2 text-[10px] font-bold text-purple-700">19 Kolom Lengkap</div>
+                  </button>
 
-                {/* Option 3: Evaluasi Tilawah */}
-                <button
-                  type="button"
-                  onClick={() => setExportReportType('evaluasi')}
-                  className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
-                    exportReportType === 'evaluasi'
-                      ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-300'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-indigo-700" />
-                        <span>Nilai Tilawah</span>
+                  {/* Database Guru Mengaji */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('guru')}
+                    className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'guru'
+                        ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                          <GraduationCap className="w-3.5 h-3.5 text-indigo-700" />
+                          <span>Database Guru Mengaji</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                          {teachers.length} Ustadz
+                        </span>
                       </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                        {assessments.length}
-                      </span>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Master ustadz, NIK, kontak, spesialisasi, shelter ditugaskan, rekening insentif.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-snug">
-                      Skor rubrik 6 aspek tajwid, makhraj, kelancaran, &amp; rekomendasi ustadz.
-                    </p>
+                    <div className="mt-2 text-[10px] font-bold text-indigo-700">15 Kolom Lengkap</div>
+                  </button>
+
+                  {/* Database Shelter Mengaji */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('shelter')}
+                    className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'shelter'
+                        ? 'border-amber-600 bg-amber-50/80 ring-2 ring-amber-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Database Shelter Mengaji</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          {shelters.length} Shelter
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Master shelter, alamat, koordinat GPS (lat/long), radius geofencing, ustadz pengampu.
+                      </p>
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-amber-700">14 Kolom Lengkap</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Kategori B: Ringkasan, KPI & Laporan Aktivitas */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-emerald-700" />
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                      B. Ringkasan, KPI &amp; Laporan Aktivitas
+                    </span>
                   </div>
-                  <div className="mt-2 text-[10px] font-bold text-indigo-700">Rapor Al-Qur&apos;an</div>
-                </button>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Analitik &amp; Performa
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                  {/* Option: Ringkasan & KPI */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('kpi')}
+                    className={`p-3 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'kpi'
+                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
+                          <TrendingUp className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Ringkasan &amp; KPI</span>
+                        </div>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-200 text-emerald-900">
+                          KPI
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-snug">
+                        Executive summary metrik, capaian kehadiran %, kualifikasi &amp; sebaran level.
+                      </p>
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-emerald-700">Analisis Manajerial</div>
+                  </button>
+
+                  {/* Option: Rekap Akademik */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('rekap')}
+                    className={`p-3 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'rekap'
+                        ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5 text-purple-700" />
+                          <span>Rekap Akademik</span>
+                        </div>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800">
+                          16 Kolom
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-snug">
+                        Persentase kehadiran driver, kualifikasi target, nilai rubrik &amp; catatan ustadz.
+                      </p>
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-purple-700">Performa Driver</div>
+                  </button>
+
+                  {/* Option: Log Presensi */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('presensi')}
+                    className={`p-3 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'presensi'
+                        ? 'border-teal-600 bg-teal-50/80 ring-2 ring-teal-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
+                          <span>Log Presensi</span>
+                        </div>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-teal-100 text-teal-800">
+                          {attendance.length}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-snug">
+                        Detail tanggal, jam check-in, status presensi, metode geofencing GPS / QR.
+                      </p>
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-teal-700">Riwayat Check-In</div>
+                  </button>
+
+                  {/* Option: Nilai Tilawah */}
+                  <button
+                    type="button"
+                    onClick={() => setExportReportType('evaluasi')}
+                    className={`p-3 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                      exportReportType === 'evaluasi'
+                        ? 'border-rose-600 bg-rose-50/80 ring-2 ring-rose-300 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
+                          <BookOpen className="w-3.5 h-3.5 text-rose-700" />
+                          <span>Nilai Tilawah</span>
+                        </div>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
+                          {assessments.length}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-snug">
+                        Skor rubrik 6 aspek (tajwid, makhraj, kelancaran), materi surah &amp; rekomendasi.
+                      </p>
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-rose-700">Rapor Al-Qur&apos;an</div>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2785,21 +3261,16 @@ export const AdminPortal: React.FC = () => {
                   <Table className="w-3.5 h-3.5 text-purple-700" />
                   <span>Struktur Kolom Hasil Ekspor:</span>
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {exportReportType === 'rekap' ? '16 Kolom Lengkap' : exportReportType === 'presensi' ? '11 Kolom Lengkap' : '18 Kolom Lengkap'}
+                <span className="text-[11px] text-purple-700 font-bold bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200">
+                  {getExportColumnsList(exportReportType).length} Kolom Lengkap
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {(exportReportType === 'rekap'
-                  ? ['No', 'Nama Peserta', 'Mitra Ojol', 'Plat Nomor', 'No. WhatsApp/HP', 'Shelter Lokasi', 'Tingkat Saat Ini', 'Sesi Hadir', 'Total Sesi Wajib', 'Persentase Kehadiran', 'Status Kualifikasi (>=75%)', 'Materi Evaluasi Terakhir', 'Rata-rata Nilai Rubrik', 'Catatan / Rekomendasi Guru', 'Tanggal Bergabung', 'Status Akun']
-                  : exportReportType === 'presensi'
-                  ? ['No', 'Tanggal Sesi', 'Waktu Check-In', 'Nama Peserta', 'Mitra Ojol', 'Plat Nomor', 'Lokasi Shelter', 'Status Kehadiran', 'Metode Presensi', 'Akurasi Jarak GPS', 'Catatan / Keterangan']
-                  : ['No', 'Tanggal Penilaian', 'Nama Peserta', 'Mitra Ojol', 'Shelter Lokasi', 'Ustadz / Guru Penguji', 'Materi / Surah & Ayat', 'Hijaiyah', 'Harakat', 'Kelancaran', 'Tajwid', 'Makhraj', 'Kemandirian', 'Rata-rata Skor', 'Kekuatan', 'Perbaikan', 'Rekomendasi', 'Status Publikasi']
-                ).map((colName, cIdx) => (
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {getExportColumnsList(exportReportType).map((colName, cIdx) => (
                   <span
                     key={cIdx}
-                    className="text-[10px] font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-700"
+                    className="text-[10px] font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-700 shadow-2xs"
                   >
                     {colName}
                   </span>
