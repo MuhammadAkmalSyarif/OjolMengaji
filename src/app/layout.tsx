@@ -5,6 +5,9 @@ import { AppProvider } from "@/context/AppContext";
 export const metadata: Metadata = {
   title: "Ojol Mengaji - Platform Pembinaan Al-Qur'an Pengemudi Ojek Online",
   description: "Aplikasi manajemen program pembinaan membaca Al-Qur'an, presensi berbasis shelter, dan evaluasi capaian driver ojek online.",
+  icons: {
+    icon: '/logo-ojol-mengaji.png',
+  },
 };
 
 export default function RootLayout({

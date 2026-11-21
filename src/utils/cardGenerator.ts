@@ -202,7 +202,7 @@ export async function renderFrontCard(
   // 2. Pre-load Images (Logos, Photo, QR)
   const [logoOjol, logoDpw, photoImg] = await Promise.all([
     loadImageSafely('/logo-ojol-mengaji.png'),
-    loadImageSafely('/logo-dpw.jpg'),
+    loadImageSafely('/logo-dpw-emblem.png').then((img) => img || loadImageSafely('/logo-dpw.png') || loadImageSafely('/logo-dpw.jpg')),
     loadImageSafely(participant.selfiePhoto || participant.avatar || ''),
   ]);
 
@@ -239,7 +239,21 @@ export async function renderFrontCard(
   ctx.fillStyle = '#ffffff';
   ctx.fill();
   if (logoOjol) {
-    ctx.drawImage(logoOjol, logoContainerX + 11, logoContainerY + 11, 56, 50);
+    const boxW = 56;
+    const boxH = 50;
+    const ratio = logoOjol.width / logoOjol.height;
+    let dW = boxW;
+    let dH = boxH;
+    if (ratio > boxW / boxH) {
+      dW = boxW;
+      dH = boxW / ratio;
+    } else {
+      dH = boxH;
+      dW = boxH * ratio;
+    }
+    const dX = logoContainerX + 11 + (boxW - dW) / 2;
+    const dY = logoContainerY + 11 + (boxH - dH) / 2;
+    ctx.drawImage(logoOjol, dX, dY, dW, dH);
   } else {
     ctx.fillStyle = '#064e3b';
     ctx.font = 'bold 12px sans-serif';
@@ -252,7 +266,21 @@ export async function renderFrontCard(
   ctx.fillStyle = '#ffffff';
   ctx.fill();
   if (logoDpw) {
-    ctx.drawImage(logoDpw, logoContainerX + 81, logoContainerY + 11, 56, 50);
+    const boxW = 56;
+    const boxH = 50;
+    const ratio = logoDpw.width / logoDpw.height;
+    let dW = boxW;
+    let dH = boxH;
+    if (ratio > boxW / boxH) {
+      dW = boxW;
+      dH = boxW / ratio;
+    } else {
+      dH = boxH;
+      dW = boxH * ratio;
+    }
+    const dX = logoContainerX + 81 + (boxW - dW) / 2;
+    const dY = logoContainerY + 11 + (boxH - dH) / 2;
+    ctx.drawImage(logoDpw, dX, dY, dW, dH);
   } else {
     ctx.fillStyle = '#064e3b';
     ctx.font = 'bold 12px sans-serif';

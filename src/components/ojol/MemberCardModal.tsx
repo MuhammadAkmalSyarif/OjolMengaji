@@ -392,7 +392,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                   {/* Header Section */}
                   <div className="flex items-center justify-between pb-2 border-b border-emerald-600/40">
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md p-1 rounded-lg border border-white/20 shadow-xs">
+                      <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1 rounded-lg border border-white/20 shadow-xs">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-white p-0.5 flex items-center justify-center">
                           <img 
                             src="/logo-ojol-mengaji.png" 
@@ -403,10 +403,10 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                         </div>
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-white p-0.5 flex items-center justify-center">
                           <img 
-                            src="/logo-dpw.jpg" 
-                            alt="Logo DPW" 
+                            src="/logo-dpw-emblem.png" 
+                            alt="Logo DPW Hidayatullah" 
                             className="w-full h-full object-contain"
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/logo-dpw.png'; }}
                           />
                         </div>
                       </div>

@@ -350,13 +350,13 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   }}
                 />
               </div>
-              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm">
+              <div className="h-12 px-2.5 rounded-xl bg-white flex items-center justify-center shadow-sm">
                 <img
-                  src="/logo-dpw.jpg"
-                  alt="Logo DPW DKI Jakarta"
-                  className="w-full h-full object-contain"
+                  src="/logo-dpw.png"
+                  alt="Logo DPW Hidayatullah DKI Jakarta"
+                  className="h-8 w-auto max-w-[130px] sm:max-w-[155px] object-contain"
                   onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
+                    (e.target as HTMLImageElement).src = '/logo-dpw.jpg';
                   }}
                 />
               </div>
@@ -369,7 +369,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 </span>
                 <span className="inline-flex items-center gap-1 text-[11px] text-teal-200">
                   <Sparkles className="w-3 h-3 text-amber-300" />
-                  Didukung DPW DKI Jakarta
+                  Didukung DPW Hidayatullah DKI Jakarta
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight mt-1 text-white">
