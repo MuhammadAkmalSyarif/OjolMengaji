@@ -122,7 +122,83 @@ export interface Participant {
   bankName?: string;
   bankAccount?: string;
   memberNumber?: number;
+  pendingShelterId?: string; // ID shelter tujuan untuk pengajuan pindah
+  shelterTransferStatus?: 'pending' | 'approved' | 'rejected';
+  shelterTransferRequestedAt?: string;
+  shelterTransferReason?: string;
 }
+
+// Daftar opsi bank resmi lengkap di Indonesia
+export const BANK_OPTIONS: string[] = [
+  // Bank Syariah
+  'BSI (Bank Syariah Indonesia)',
+  'Bank Muamalat',
+  'BCA Syariah',
+  'Bank Mega Syariah',
+  'Bank Aladin Syariah',
+  'Bank BJB Syariah',
+  'Bank Panin Dubai Syariah',
+  'Bank Nano Syariah',
+
+  // Bank BUMN / Himbara
+  'Bank Mandiri',
+  'Bank BRI (Bank Rakyat Indonesia)',
+  'Bank BNI (Bank Negara Indonesia)',
+  'Bank BTN (Bank Tabungan Negara)',
+
+  // Bank Swasta Nasional
+  'Bank BCA (Bank Central Asia)',
+  'Bank CIMB Niaga',
+  'Bank Danamon',
+  'Bank Permata',
+  'Bank OCBC NISP',
+  'Bank Panin',
+  'Bank Mega',
+  'Bank Sinarmas',
+  'Bank Maybank Indonesia',
+  'Bank BTPN / Jenius',
+  'Bank Neo Commerce (BNC)',
+  'Bank Jago',
+  'Seabank Indonesia',
+  'Blu by BCA Digital',
+  'Line Bank (KEB Hana)',
+  'Bank Commonwealth',
+  'Bank UOB Indonesia',
+  'KB Bukopin',
+  'Bank Mayapada',
+  'Bank DBS Indonesia',
+  'Bank HSBC Indonesia',
+  'Bank Standard Chartered',
+  'Allo Bank Indonesia',
+
+  // Bank Pembangunan Daerah (BPD)
+  'Bank DKI / DKI Syariah',
+  'Bank BJB',
+  'Bank Jateng / Jateng Syariah',
+  'Bank Jatim / Jatim Syariah',
+  'Bank Banten',
+  'Bank Sumut',
+  'Bank Nagari (BPD Sumbar)',
+  'Bank Sumsel Babel',
+  'Bank Riau Kepri Syariah',
+  'Bank Kalbar',
+  'Bank Kalsel',
+  'Bank Kaltimtara',
+  'Bank Sulselbar',
+  'Bank SulutGo',
+  'Bank Papua',
+  'Bank NTB Syariah',
+  'Bank NTT',
+  'Bank Maluku Malut',
+  'Bank Bengkulu',
+  'Bank Jambi',
+  'Bank Lampung',
+  'Bank Sultra',
+  'Bank Sulteng',
+
+  // Bank Lainnya
+  'Bank Lainnya'
+];
 
 export interface Schedule {
   id: string;

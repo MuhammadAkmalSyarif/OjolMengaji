@@ -70,6 +70,10 @@ interface AppContextType {
   addParticipant: (participant: Omit<Participant, 'id' | 'userId' | 'email'>, email: string) => void;
   updateParticipant: (participant: Participant) => void;
   updateParticipantLevel: (participantId: string, newLevel: ParticipantLevel, notes?: string) => void;
+  requestShelterTransfer: (participantId: string, targetShelterId: string, reason?: string) => { success: boolean; message: string };
+  approveShelterTransfer: (participantId: string) => { success: boolean; message: string };
+  rejectShelterTransfer: (participantId: string, reason?: string) => { success: boolean; message: string };
+  cancelShelterTransferRequest: (participantId: string) => { success: boolean; message: string };
   
   // Schedules
   addSchedule: (schedule: Omit<Schedule, 'id'>) => void;
@@ -752,6 +756,139 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const requestShelterTransfer = (participantId: string, targetShelterId: string, reason?: string) => {
+    const part = participants.find(p => p.id === participantId);
+    const targetSh = shelters.find(s => s.id === targetShelterId);
+    if (!part || !targetSh) {
+      return { success: false, message: 'Data peserta atau shelter tujuan tidak ditemukan.' };
+    }
+    const currentSh = shelters.find(s => s.id === part.shelterId);
+
+    setParticipants(prev => {
+      const next = prev.map(p => {
+        if (p.id === participantId) {
+          return {
+            ...p,
+            pendingShelterId: targetShelterId,
+            shelterTransferStatus: 'pending' as const,
+            shelterTransferRequestedAt: new Date().toISOString(),
+            shelterTransferReason: reason || 'Permohonan mandiri mitra driver'
+          };
+        }
+        return p;
+      });
+      notifySync({ participants: next });
+      return next;
+    });
+
+    addAudit(
+      'REQUEST_SHELTER_TRANSFER',
+      'participants',
+      participantId,
+      `Peserta "${part.name}" mengajukan pindah shelter dari "${currentSh?.name || '-'}" ke "${targetSh.name}" (Wajib diverifikasi Admin)`
+    );
+
+    return {
+      success: true,
+      message: `Permohonan pindah ke ${targetSh.name} berhasil diajukan! Menunggu verifikasi dari Admin Pusat.`
+    };
+  };
+
+  const approveShelterTransfer = (participantId: string) => {
+    const part = participants.find(p => p.id === participantId);
+    if (!part || !part.pendingShelterId) {
+      return { success: false, message: 'Tidak ada permohonan pindah shelter yang menunggu verifikasi.' };
+    }
+    const targetSh = shelters.find(s => s.id === part.pendingShelterId);
+    const currentSh = shelters.find(s => s.id === part.shelterId);
+
+    setParticipants(prev => {
+      const next = prev.map(p => {
+        if (p.id === participantId) {
+          return {
+            ...p,
+            shelterId: p.pendingShelterId!,
+            pendingShelterId: undefined,
+            shelterTransferStatus: undefined,
+            shelterTransferReason: undefined,
+            shelterTransferRequestedAt: undefined
+          };
+        }
+        return p;
+      });
+      notifySync({ participants: next });
+      return next;
+    });
+
+    addAudit(
+      'APPROVE_SHELTER_TRANSFER',
+      'participants',
+      participantId,
+      `Admin menyetujui kepindahan shelter peserta "${part.name}" dari "${currentSh?.name || '-'}" ke "${targetSh?.name || '-'}"`
+    );
+
+    return {
+      success: true,
+      message: `Kepindahan shelter peserta "${part.name}" ke ${targetSh?.name || 'shelter baru'} berhasil disetujui!`
+    };
+  };
+
+  const rejectShelterTransfer = (participantId: string, reason?: string) => {
+    const part = participants.find(p => p.id === participantId);
+    if (!part) return { success: false, message: 'Peserta tidak ditemukan.' };
+    const targetSh = shelters.find(s => s.id === part.pendingShelterId);
+
+    setParticipants(prev => {
+      const next = prev.map(p => {
+        if (p.id === participantId) {
+          return {
+            ...p,
+            pendingShelterId: undefined,
+            shelterTransferStatus: 'rejected' as const,
+            shelterTransferReason: reason || 'Permohonan ditolak oleh Admin Pusat'
+          };
+        }
+        return p;
+      });
+      notifySync({ participants: next });
+      return next;
+    });
+
+    addAudit(
+      'REJECT_SHELTER_TRANSFER',
+      'participants',
+      participantId,
+      `Admin menolak pengajuan kepindahan shelter peserta "${part.name}" ke "${targetSh?.name || '-'}"`
+    );
+
+    return {
+      success: true,
+      message: `Pengajuan pindah shelter peserta "${part.name}" telah ditolak.`
+    };
+  };
+
+  const cancelShelterTransferRequest = (participantId: string) => {
+    setParticipants(prev => {
+      const next = prev.map(p => {
+        if (p.id === participantId) {
+          return {
+            ...p,
+            pendingShelterId: undefined,
+            shelterTransferStatus: undefined,
+            shelterTransferReason: undefined,
+            shelterTransferRequestedAt: undefined
+          };
+        }
+        return p;
+      });
+      notifySync({ participants: next });
+      return next;
+    });
+
+    addAudit('CANCEL_SHELTER_TRANSFER', 'participants', participantId, `Peserta membatalkan pengajuan pindah shelter`);
+    return { success: true, message: 'Pengajuan pindah shelter berhasil dibatalkan.' };
+  };
+
   // Schedules
   const addSchedule = (data: Omit<Schedule, 'id'>) => {
     const id = 'sched-' + Date.now();
@@ -967,6 +1104,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addParticipant,
       updateParticipant,
       updateParticipantLevel,
+      requestShelterTransfer,
+      approveShelterTransfer,
+      rejectShelterTransfer,
+      cancelShelterTransferRequest,
       addSchedule,
       updateSchedule,
       deleteSchedule,

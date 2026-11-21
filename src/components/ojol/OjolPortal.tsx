@@ -28,7 +28,9 @@ import {
   Download,
   Layers,
   Loader2,
-  Share2
+  Share2,
+  Clock,
+  Info
 } from 'lucide-react';
 import { MemberCardModal } from './MemberCardModal';
 import { compressImage } from '@/utils/imageUtils';
@@ -46,7 +48,9 @@ export const OjolPortal: React.FC = () => {
     announcements,
     recordAttendance,
     getParticipantAttendanceStats,
-    updateParticipant
+    updateParticipant,
+    requestShelterTransfer,
+    cancelShelterTransferRequest
   } = useApp();
 
   // Find participant profile corresponding to current logged in user
@@ -54,11 +58,13 @@ export const OjolPortal: React.FC = () => {
   const shelter = shelters.find(s => s.id === participant.shelterId) || shelters[0];
   const participantSchedules = schedules.filter(s => s.shelterId === shelter.id);
   const memberCode = getMemberCode(participant, shelter);
+  const pendingShelter = shelters.find(s => s.id === participant.pendingShelterId);
 
   // States
   const [activeTab, setActiveTab] = useState<'beranda' | 'presensi' | 'progres' | 'pengumuman' | 'profil'>('beranda');
   const [showChangeShelterModal, setShowChangeShelterModal] = useState(false);
   const [shelterModalSearch, setShelterModalSearch] = useState('');
+  const [shelterTransferFeedback, setShelterTransferFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [showKtaModal, setShowKtaModal] = useState(false);
   const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
   const portalFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -319,10 +325,10 @@ export const OjolPortal: React.FC = () => {
                     </span>
                   </div>
                   <h3 className="text-sm sm:text-base font-extrabold text-white mt-1">
-                    Kartu Member Ojol Mengaji
+                    Kartu Tanda Anggota Ojol Mengaji
                   </h3>
                   <p className="text-[11px] text-slate-300">
-                    No. Urut: {memberCode.split('-')[0]} • No. Shelter: {memberCode.split('-')[1]} • Bergabung: {memberCode.split('-')[2]}/{memberCode.split('-')[3]}
+                    No. Urut: {memberCode.split('-')[0]} • No. Shelter: {memberCode.split('-')[1]} • Bergabung: {participant.joinedDate || '-'}
                   </p>
                 </div>
               </div>
@@ -385,6 +391,47 @@ export const OjolPortal: React.FC = () => {
               </span>
             </div>
 
+            {/* Alert Status Pengajuan Pindah Shelter */}
+            {participant.shelterTransferStatus === 'pending' && (
+              <div className="mb-4 p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold text-amber-950 block">Pengajuan Pindah Shelter Sedang Diverifikasi Admin</span>
+                    <span className="text-amber-800 text-[11px]">
+                      Anda mengajukan perpindahan ke <strong>{pendingShelter?.name || 'Shelter Tujuan'}</strong>. Menunggu persetujuan Admin Pusat.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelShelterTransferRequest(participant.id);
+                    setShelterTransferFeedback({ success: true, message: 'Pengajuan pindah shelter berhasil dibatalkan.' });
+                  }}
+                  className="px-3 py-1 rounded-xl text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 transition shrink-0 self-start sm:self-auto"
+                >
+                  Batalkan Pengajuan
+                </button>
+              </div>
+            )}
+
+            {shelterTransferFeedback && (
+              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between gap-2 text-xs text-emerald-900">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{shelterTransferFeedback.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShelterTransferFeedback(null)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 mb-4 text-xs space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Shelter Tujuan:</span>
@@ -396,9 +443,20 @@ export const OjolPortal: React.FC = () => {
                       setShelterModalSearch('');
                       setShowChangeShelterModal(true);
                     }}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 transition"
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition text-left flex flex-col leading-tight ${
+                      participant.shelterTransferStatus === 'pending'
+                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
+                        : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+                    }`}
+                    title="Pindah ke shelter lain (perlu verifikasi Admin Pusat)"
                   >
-                    Ganti Shelter
+                    <span className="flex items-center gap-1 font-extrabold">
+                      {participant.shelterTransferStatus === 'pending' && <Clock className="w-3 h-3 text-amber-700" />}
+                      <span>{participant.shelterTransferStatus === 'pending' ? 'Status Pindah' : 'Pindah Shelter'}</span>
+                    </span>
+                    <span className="text-[8px] font-normal opacity-85">
+                      {participant.shelterTransferStatus === 'pending' ? '(Menunggu Verifikasi Admin)' : '(Perlu Verifikasi Admin)'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -539,9 +597,20 @@ export const OjolPortal: React.FC = () => {
                   setShelterModalSearch('');
                   setShowChangeShelterModal(true);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 shadow-sm transition"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 shadow-sm transition text-left flex flex-col items-start ${
+                  participant.shelterTransferStatus === 'pending'
+                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300'
+                    : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                }`}
+                title="Pindah ke shelter lain (perlu verifikasi Admin Pusat)"
               >
-                Pindah Shelter
+                <span className="flex items-center gap-1 font-bold">
+                  {participant.shelterTransferStatus === 'pending' && <Clock className="w-3.5 h-3.5 text-amber-700" />}
+                  <span>{participant.shelterTransferStatus === 'pending' ? 'Pengajuan Pindah' : 'Pindah Shelter'}</span>
+                </span>
+                <span className={`text-[9px] font-normal ${participant.shelterTransferStatus === 'pending' ? 'text-amber-800' : 'text-emerald-100'}`}>
+                  {participant.shelterTransferStatus === 'pending' ? '(Menunggu Verifikasi Admin)' : '(Perlu Verifikasi Admin)'}
+                </span>
               </button>
             </div>
 
@@ -859,9 +928,20 @@ export const OjolPortal: React.FC = () => {
                       setShelterModalSearch('');
                       setShowChangeShelterModal(true);
                     }}
-                    className="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition"
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition text-left flex flex-col leading-tight ${
+                      participant.shelterTransferStatus === 'pending'
+                        ? 'bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100'
+                        : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+                    }`}
+                    title="Pindah ke shelter lain (perlu verifikasi Admin Pusat)"
                   >
-                    Ubah
+                    <span className="flex items-center gap-1 font-bold">
+                      {participant.shelterTransferStatus === 'pending' && <Clock className="w-3 h-3 text-amber-700" />}
+                      <span>{participant.shelterTransferStatus === 'pending' ? 'Status Pengajuan' : 'Pindah Shelter'}</span>
+                    </span>
+                    <span className="text-[8px] font-normal text-slate-500">
+                      {participant.shelterTransferStatus === 'pending' ? '(Menunggu Verifikasi Admin)' : '(Perlu Verifikasi Admin)'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -920,8 +1000,8 @@ export const OjolPortal: React.FC = () => {
                   <MapPin className="w-5 h-5 text-emerald-300" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">Pilih / Ganti Shelter Binaan</h3>
-                  <p className="text-[11px] text-emerald-200">Terkoneksi langsung dengan master shelter Admin Pusat</p>
+                  <h3 className="text-base font-extrabold text-white">Pengajuan Pindah Shelter Binaan</h3>
+                  <p className="text-[11px] text-emerald-200">Perpindahan shelter wajib diverifikasi oleh Admin Pusat</p>
                 </div>
               </div>
               <button
@@ -931,6 +1011,14 @@ export const OjolPortal: React.FC = () => {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Notification on admin verification policy */}
+            <div className="p-3 bg-amber-50 border-b border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                <strong>Ketentuan Pindah Shelter:</strong> Pilihan shelter baru akan diajukan ke Admin Pusat untuk diverifikasi &amp; disetujui terlebih dahulu sebelum aktif pada sistem presensi Anda.
+              </p>
             </div>
 
             {/* Search Bar */}
@@ -967,21 +1055,17 @@ export const OjolPortal: React.FC = () => {
 
                 return filtered.map((s) => {
                   const isCurrent = participant.shelterId === s.id;
+                  const isPendingThis = participant.pendingShelterId === s.id && participant.shelterTransferStatus === 'pending';
                   const isPoltanganOrNew = s.name.toLowerCase().includes('poltangan') || s.name.toLowerCase().includes('baru');
 
                   return (
                     <div
                       key={s.id}
-                      onClick={() => {
-                        updateParticipant({
-                          ...participant,
-                          shelterId: s.id
-                        });
-                        setShowChangeShelterModal(false);
-                      }}
-                      className={`p-3.5 rounded-2xl cursor-pointer transition flex items-center justify-between gap-3 ${
+                      className={`p-3.5 rounded-2xl transition flex items-center justify-between gap-3 ${
                         isCurrent 
                           ? 'bg-emerald-50 border border-emerald-300 shadow-2xs' 
+                          : isPendingThis
+                          ? 'bg-amber-50 border border-amber-300 shadow-2xs'
                           : 'hover:bg-slate-50 border border-transparent'
                       }`}
                     >
@@ -1012,12 +1096,36 @@ export const OjolPortal: React.FC = () => {
                             <Check className="w-3.5 h-3.5" />
                             <span>Aktif</span>
                           </div>
+                        ) : isPendingThis ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Menunggu Verifikasi</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                cancelShelterTransferRequest(participant.id);
+                                setShelterTransferFeedback({ success: true, message: 'Pengajuan pindah shelter dibatalkan.' });
+                              }}
+                              className="text-[10px] text-rose-600 hover:text-rose-800 hover:underline"
+                            >
+                              Batalkan
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition"
+                            onClick={() => {
+                              const res = requestShelterTransfer(participant.id, s.id, 'Pindah lokasi shelter');
+                              setShelterTransferFeedback(res);
+                              setShowChangeShelterModal(false);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition shadow-2xs flex flex-col items-center"
+                            title="Ajukan pindah shelter untuk diverifikasi Admin Pusat"
                           >
-                            Pilih
+                            <span>Ajukan Pindah</span>
+                            <span className="text-[9px] font-normal text-amber-700">(Verifikasi Admin)</span>
                           </button>
                         )}
                       </div>

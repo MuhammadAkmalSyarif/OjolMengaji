@@ -34,7 +34,7 @@ import {
   Printer,
   QrCode
 } from 'lucide-react';
-import { RegisterDriverData, PaymentAccountType } from '@/types';
+import { RegisterDriverData, PaymentAccountType, BANK_OPTIONS } from '@/types';
 import { MemberCardModal } from './MemberCardModal';
 import { compressImage } from '@/utils/imageUtils';
 import { getMemberCode } from '@/utils/cardGenerator';
@@ -45,19 +45,6 @@ const ACCOUNT_TYPE_OPTIONS: { id: PaymentAccountType; label: string; badge: stri
   { id: 'Gojek', label: 'Akun Gojek (GoPay)', badge: 'Gojek / GoPay', icon: '🟢', desc: 'Nomor HP akun Gojek' },
   { id: 'Ovo', label: 'Akun OVO', badge: 'E-Wallet OVO', icon: '🟣', desc: 'Nomor HP akun OVO' },
   { id: 'Dana', label: 'Akun DANA', badge: 'E-Wallet DANA', icon: '🔵', desc: 'Nomor HP akun DANA' },
-];
-
-// Daftar opsi bank resmi untuk pencairan / insentif
-const BANK_OPTIONS = [
-  'BSI (Bank Syariah Indonesia)',
-  'Bank Muamalat',
-  'BCA Syariah',
-  'Bank Mandiri',
-  'Bank BCA',
-  'Bank BRI',
-  'Bank BNI',
-  'Bank DKI / DKI Syariah',
-  'Bank Lainnya'
 ];
 
 interface DriverAuthProps {
@@ -74,6 +61,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isAccountTypeDropdownOpen, setIsAccountTypeDropdownOpen] = useState(false);
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
+  const [bankSearch, setBankSearch] = useState('');
+  const [customBankInput, setCustomBankInput] = useState('');
   const [isShelterDropdownOpen, setIsShelterDropdownOpen] = useState(false);
   const [shelterSearch, setShelterSearch] = useState('');
 
@@ -1131,42 +1120,82 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                         )}
 
                         {isBankDropdownOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRegForm({ ...regForm, bankName: '' });
-                                setIsBankDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
-                            >
-                              -- Pilih Nama Bank --
-                            </button>
-                            {BANK_OPTIONS.map((bank) => {
-                              const isSelected = regForm.bankName === bank;
-                              return (
-                                <button
-                                  key={bank}
-                                  type="button"
-                                  onClick={() => {
-                                    setRegForm({ ...regForm, bankName: bank });
-                                    setIsBankDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
-                                    isSelected
-                                      ? 'bg-emerald-50 text-emerald-900 font-bold'
-                                      : 'text-slate-700 hover:bg-slate-50'
-                                  }`}
-                                >
-                                  <span>{bank}</span>
-                                  {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
-                                </button>
-                              );
-                            })}
+                          <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-64 overflow-hidden flex flex-col py-1 animate-fadeIn">
+                            {/* Search Filter for Complete Bank List */}
+                            <div className="p-2 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">
+                              <div className="relative">
+                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="text"
+                                  placeholder="Cari nama bank (BSI, BCA, Mandiri, Jago, dll)..."
+                                  value={bankSearch}
+                                  onChange={(e) => setBankSearch(e.target.value)}
+                                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+
+                            <div className="overflow-y-auto divide-y divide-slate-100 flex-1 max-h-52">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRegForm({ ...regForm, bankName: '' });
+                                  setIsBankDropdownOpen(false);
+                                  setBankSearch('');
+                                }}
+                                className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
+                              >
+                                -- Pilih Nama Bank --
+                              </button>
+                              {BANK_OPTIONS
+                                .filter((b) => b.toLowerCase().includes(bankSearch.toLowerCase()))
+                                .map((bank) => {
+                                  const isSelected = regForm.bankName === bank;
+                                  return (
+                                    <button
+                                      key={bank}
+                                      type="button"
+                                      onClick={() => {
+                                        setRegForm({ ...regForm, bankName: bank });
+                                        setIsBankDropdownOpen(false);
+                                        setBankSearch('');
+                                      }}
+                                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
+                                        isSelected
+                                          ? 'bg-emerald-50 text-emerald-900 font-bold'
+                                          : 'text-slate-700 hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      <span>{bank}</span>
+                                      {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                                    </button>
+                                  );
+                                })}
+                              {BANK_OPTIONS.filter((b) => b.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 && (
+                                <div className="p-4 text-center text-xs text-slate-500">
+                                  Bank &quot;{bankSearch}&quot; tidak ditemukan. Anda dapat memilih opsi &quot;Bank Lainnya&quot;.
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1">Pilih bank tempat rekening Anda dibuka</p>
+                      {regForm.bankName === 'Bank Lainnya' && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            placeholder="Ketikkan nama bank Anda..."
+                            value={customBankInput}
+                            onChange={(e) => {
+                              setCustomBankInput(e.target.value);
+                              setRegForm(prev => ({ ...prev, bankName: e.target.value || 'Bank Lainnya' }));
+                            }}
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                          />
+                        </div>
+                      )}
+                      <p className="text-[11px] text-slate-400 mt-1">Pilih bank dari daftar lengkap di atas untuk rekening Anda</p>
                     </div>
 
                     <div>
@@ -1573,13 +1602,13 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
 
             <div className="mt-5 flex items-center gap-2">
               <a
-                href="https://wa.me/6281234567890?text=Assalamu'alaikum%20Admin%20Ojol%20Mengaji,%20saya%20butuh%20bantuan%20terkait%20akun%20driver"
+                href="https://wa.me/6281247475178?text=Assalamu'alaikum%20Admin%20Ojol%20Mengaji,%20saya%20butuh%20bantuan%20terkait%20akun%20driver"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition text-xs shadow-md"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Hubungi Admin WhatsApp</span>
+                <span>Call Center (0812-4747-5178)</span>
               </a>
               <button
                 type="button"

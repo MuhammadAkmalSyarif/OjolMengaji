@@ -19,7 +19,7 @@ export const INITIAL_USERS: User[] = [
     email: 'admin@ojolmengaji.id',
     role: 'admin',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-    phone: '0812-3456-7890',
+    phone: '0812-4747-5178',
     password: 'OjolMengaji_Admin123',
     isActive: true,
   },

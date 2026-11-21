@@ -155,7 +155,20 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    const cleanName = (participant.name || 'Driver').trim().replace(/[/\\?%*:|"<>]/g, '_');
+    const memberCode = getMemberCode(participant, shelter);
+    document.title = `KTA-Ojol-Mengaji-${cleanName}-${memberCode}`;
+
+    const restoreTitle = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    window.addEventListener('afterprint', restoreTitle);
+
     window.print();
+
+    setTimeout(restoreTitle, 5000);
   };
 
   return (
@@ -176,7 +189,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                 </span>
               </h3>
               <p className="text-[11px] text-slate-300">
-                Identitas resmi binaan Al-Qur&apos;an Ojol Mengaji DPW DKI Jakarta • Format: {memberCode}
+                Identitas resmi binaan Al-Qur&apos;an Ojol Mengaji DPW Hidayatullah DKI Jakarta • Format: {memberCode}
               </p>
             </div>
           </div>
@@ -345,10 +358,10 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
               type="button"
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs"
-              title="Cetak Fisik atau Simpan sebagai Dokumen PDF"
+              title="Cetak Fisik atau Simpan sebagai Dokumen PDF (Nama file otomatis sesuai nama peserta)"
             >
               <Printer className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">PDF</span>
+              <span className="hidden sm:inline">Cetak / PDF</span>
             </button>
           </div>
         </div>
@@ -399,21 +412,21 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                       </div>
 
                       <div>
-                        <h4 className="text-[11px] sm:text-xs font-black tracking-wider uppercase text-amber-300 drop-shadow-xs">
-                          KARTU MEMBER OJOL MENGAJI
+                        <h4 className="text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-amber-300 drop-shadow-xs">
+                          KARTU TANDA ANGGOTA OJOL MENGAJI
                         </h4>
-                        <p className="text-[9px] sm:text-[10px] font-extrabold text-white tracking-tight uppercase">
-                          OJOL MENGAJI • DPW DKI JAKARTA
+                        <p className="text-[8.5px] sm:text-[9.5px] font-extrabold text-white tracking-tight uppercase">
+                          DPW HIDAYATULLAH DKI JAKARTA
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right flex flex-col items-end">
-                      <span className="text-[8px] font-mono tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-amber-400/50 text-amber-300 shadow-xs">
+                      <span className="text-[8px] sm:text-[9px] font-mono tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-amber-400/50 text-amber-300 shadow-xs">
                         {memberCode}
                       </span>
                       <span className="text-[7px] text-emerald-200 mt-0.5 font-sans">
-                        No.Urut-Shelter-Bulan-Tahun
+                        No. Anggota
                       </span>
                     </div>
                   </div>
@@ -442,7 +455,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     </div>
 
                     {/* Driver Information Details */}
-                    <div className="col-span-8 space-y-1 text-left pl-1">
+                    <div className="col-span-8 space-y-1.5 text-left pl-1">
                       <div>
                         <span className="text-[8px] uppercase tracking-wider text-emerald-300 font-semibold block">
                           Nama Lengkap Mitra
@@ -452,16 +465,16 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                         </h3>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                        <div>
-                          <span className="text-[7.5px] uppercase tracking-wider text-emerald-300/80 font-medium block">
-                            Nomor NIK / Plat
-                          </span>
-                          <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-100 truncate">
-                            {nik}
-                          </p>
-                        </div>
+                      <div className="pt-0.5">
+                        <span className="text-[7.5px] uppercase tracking-wider text-emerald-300/80 font-medium block">
+                          Pangkalan Shelter
+                        </span>
+                        <p className="text-[9.5px] sm:text-[10.5px] font-bold text-amber-200 truncate">
+                          {shelterName}
+                        </p>
+                      </div>
 
+                      <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                         <div>
                           <span className="text-[7.5px] uppercase tracking-wider text-emerald-300/80 font-medium block">
                             Aplikasi Mitra
@@ -469,17 +482,6 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                           <span className={`inline-block px-1.5 py-0.2 rounded text-[8.5px] sm:text-[9px] font-extrabold uppercase ${currentPlatformStyle.bg} ${currentPlatformStyle.text}`}>
                             {platform}
                           </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                        <div>
-                          <span className="text-[7.5px] uppercase tracking-wider text-emerald-300/80 font-medium block">
-                            Pangkalan Shelter
-                          </span>
-                          <p className="text-[9px] sm:text-[10px] font-bold text-amber-200 truncate">
-                            {shelterName}
-                          </p>
                         </div>
 
                         <div>
@@ -495,7 +497,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Footer Section: Hologram Security Barcode & Signature */}
+                  {/* Footer Section: Hologram Security Barcode (Bottom-right signature removed as requested) */}
                   <div className="pt-2 border-t border-emerald-600/30 flex items-center justify-between text-[8px] text-emerald-200/80">
                     <div className="flex items-center gap-2">
                       <div className="p-0.5 rounded bg-white text-slate-900 shadow-xs w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center overflow-hidden">
@@ -516,10 +518,9 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[7px] text-slate-300 uppercase tracking-wider">Dewan Pembina</div>
-                      <div className="font-serif italic font-bold text-amber-200 text-[9px]">
-                        DPW DKI Jakarta
-                      </div>
+                      <span className="text-[7px] font-mono text-emerald-300/60">
+                        ID: {memberCode}
+                      </span>
                     </div>
                   </div>
 
@@ -567,14 +568,15 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                   </div>
 
                   {/* Back Footer */}
-                  <div className="pt-2 border-t border-emerald-600/30 flex items-center justify-between text-[7.5px] text-slate-300">
-                    <div>
-                      <span className="font-bold text-amber-300 block">Sekretariat Pusat:</span>
-                      <span>Jl. Poltangan Raya No. 25, Jagakarsa, Jakarta Selatan</span>
+                  <div className="pt-2 border-t border-emerald-600/30 flex items-center justify-between text-[7.5px] text-slate-300 gap-2">
+                    <div className="text-left">
+                      <span className="font-bold text-amber-300 block">Sekretariat:</span>
+                      <span className="block leading-tight">Jl. Poltangan III No. 3A, RT. 02/10, Pejaten Timur, Pasar Minggu, Jakarta Selatan 12510</span>
+                      <span className="block text-slate-400 mt-0.5">Email: info@ojolmengaji.id • Web: https://ojolmengaji.id</span>
                     </div>
-                    <div className="text-right">
-                      <span className="font-bold text-emerald-300 block">Layanan Jamaah WhatsApp:</span>
-                      <span className="font-mono">0812-3456-7890</span>
+                    <div className="text-right shrink-0">
+                      <span className="font-bold text-emerald-300 block">Call Center:</span>
+                      <span className="font-mono text-white font-bold text-[8.5px]">0812-4747-5178</span>
                     </div>
                   </div>
 

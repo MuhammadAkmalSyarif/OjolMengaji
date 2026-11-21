@@ -107,22 +107,8 @@ export function getMemberCode(
   }
   const noShelter = String(shelterNum).padStart(2, '0');
 
-  // 3. Bulan bergabung (XX - 2 digit) & 4. Tahun bergabung (XX - 2 digit)
-  let month = '01';
-  let year = '26';
-  if (participant.joinedDate && participant.joinedDate.includes('-')) {
-    const parts = participant.joinedDate.split('-');
-    if (parts.length >= 2) {
-      year = parts[0].slice(-2);
-      month = parts[1].padStart(2, '0').slice(0, 2);
-    }
-  } else {
-    const now = new Date();
-    month = String(now.getMonth() + 1).padStart(2, '0');
-    year = String(now.getFullYear()).slice(-2);
-  }
-
-  return `${noUrut}-${noShelter}-${month}-${year}`;
+  // Penomoran anggota bagian setelah nomor urut dipersingkat: XXXX-XX
+  return `${noUrut}-${noShelter}`;
 }
 
 /**
@@ -277,19 +263,19 @@ export async function renderFrontCard(
   // Header Title beside Logos
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fde68a'; // Amber 200
-  ctx.font = '900 23px sans-serif';
-  ctx.fillText('KARTU TANDA ANGGOTA', 202, 52);
+  ctx.font = '900 20px sans-serif';
+  ctx.fillText('KARTU TANDA ANGGOTA OJOL MENGAJI', 202, 50);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = '800 15px sans-serif';
-  ctx.fillText('OJOL MENGAJI • DPW DKI JAKARTA', 202, 78);
+  ctx.fillText('DPW HIDAYATULLAH DKI JAKARTA', 202, 75);
 
   ctx.fillStyle = 'rgba(209, 250, 229, 0.85)';
   ctx.font = '500 12px sans-serif';
   ctx.fillText('Komunitas & Pembinaan Al-Qur\'an Pengemudi Ojek Online', 202, 96);
 
-  // Header Right: Member Code Pill (Format: XXXX-XX-XX-XX)
-  const codePillWidth = 265;
+  // Header Right: Member Code Pill (Format: XXXX-XX)
+  const codePillWidth = 230;
   const codePillX = CARD_WIDTH - codePillWidth - 36;
   const codePillY = 26;
   drawRoundedRect(ctx, codePillX, codePillY, codePillWidth, 54, 14);
@@ -302,10 +288,10 @@ export async function renderFrontCard(
   ctx.textAlign = 'center';
   ctx.fillStyle = '#a7f3d0';
   ctx.font = 'bold 9px sans-serif';
-  ctx.fillText('NO. KARTU MEMBER OJOL MENGAJI', codePillX + codePillWidth / 2, codePillY + 18);
+  ctx.fillText('NO. KARTU ANGGOTA', codePillX + codePillWidth / 2, codePillY + 18);
 
   ctx.fillStyle = '#fef08a';
-  ctx.font = '900 17px monospace';
+  ctx.font = '900 18px monospace';
   ctx.fillText(memberCode, codePillX + codePillWidth / 2, codePillY + 41);
 
   // Header Separator Line
@@ -382,65 +368,57 @@ export async function renderFrontCard(
   ctx.textAlign = 'left';
   ctx.fillStyle = '#6ee7b7'; // Emerald 300
   ctx.font = '700 13px sans-serif';
-  ctx.fillText('NAMA LENGKAP MITRA', infoX, 156);
+  ctx.fillText('NAMA LENGKAP MITRA', infoX, 160);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 28px sans-serif';
+  ctx.font = '900 30px sans-serif';
   // Truncate name if too long
   let displayName = name;
   if (ctx.measureText(displayName).width > 480) {
     displayName = displayName.slice(0, 24) + '...';
   }
-  ctx.fillText(displayName, infoX, 192);
+  ctx.fillText(displayName, infoX, 204);
 
-  // Row 1: NIK & Platform Badge
-  const row1Y = 222;
+  // Pangkalan Shelter Binaan
+  const row1Y = 262;
+  ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
+  ctx.font = '600 13px sans-serif';
+  ctx.fillText('PANGKALAN SHELTER BINAAN', infoX, row1Y);
+
+  ctx.fillStyle = '#fde68a';
+  ctx.font = 'bold 22px sans-serif';
+  let displayShelter = shelterName;
+  if (ctx.measureText(displayShelter).width > 460) {
+    displayShelter = displayShelter.slice(0, 30) + '...';
+  }
+  ctx.fillText(displayShelter, infoX, row1Y + 32);
+
+  // Aplikasi Mitra & Status Anggota
+  const row2Y = 345;
   ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
   ctx.font = '600 12px sans-serif';
-  ctx.fillText('NOMOR NIK / PLAT KENDARAAN', infoX, row1Y);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText(nik, infoX, row1Y + 25);
-
-  const col2X = 640;
-  ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
-  ctx.font = '600 12px sans-serif';
-  ctx.fillText('APLIKASI MITRA OJOL', col2X, row1Y);
+  ctx.fillText('APLIKASI MITRA', infoX, row2Y);
 
   // Platform colored badge
   const platWidth = 140;
-  drawRoundedRect(ctx, col2X, row1Y + 8, platWidth, 30, 8);
+  drawRoundedRect(ctx, infoX, row2Y + 8, platWidth, 32, 8);
   ctx.fillStyle = platformStyle.hex;
   ctx.fill();
 
   ctx.fillStyle = platform === 'Maxim' ? '#0f172a' : '#ffffff';
   ctx.font = '900 14px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(platform.toUpperCase(), col2X + platWidth / 2, row1Y + 28);
+  ctx.fillText(platform.toUpperCase(), infoX + platWidth / 2, row2Y + 29);
 
-  // Row 2: Shelter & Status
-  const row2Y = 296;
+  // Status Badge
+  const colStatusX = infoX + platWidth + 24;
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
   ctx.font = '600 12px sans-serif';
-  ctx.fillText('PANGKALAN SHELTER BINAAN', infoX, row2Y);
+  ctx.fillText('STATUS KEANGGOTAAN', colStatusX, row2Y);
 
-  ctx.fillStyle = '#fde68a';
-  ctx.font = 'bold 18px sans-serif';
-  let displayShelter = shelterName;
-  if (ctx.measureText(displayShelter).width > 340) {
-    displayShelter = displayShelter.slice(0, 24) + '...';
-  }
-  ctx.fillText(displayShelter, infoX, row2Y + 25);
-
-  ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
-  ctx.font = '600 12px sans-serif';
-  ctx.fillText('STATUS KEANGGOTAAN', col2X, row2Y);
-
-  // Status Badge
-  const statusWidth = 170;
-  drawRoundedRect(ctx, col2X, row2Y + 8, statusWidth, 30, 15);
+  const statusWidth = 160;
+  drawRoundedRect(ctx, colStatusX, row2Y + 8, statusWidth, 32, 16);
   ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
   ctx.fill();
   ctx.strokeStyle = '#34d399';
@@ -450,21 +428,7 @@ export async function renderFrontCard(
   ctx.fillStyle = '#6ee7b7';
   ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('✓ AKTIF BINAAN', col2X + statusWidth / 2, row2Y + 28);
-
-  // Row 3: Level Mengaji & Al-Qur'an
-  const row3Y = 362;
-  ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
-  ctx.font = '600 12px sans-serif';
-  ctx.fillText('TINGKAT PEMBELAJARAN', infoX, row3Y);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px sans-serif';
-  const levelText = participant.currentLevel === 'Belum Dinilai' 
-    ? 'Iqro (Menunggu Penilaian)' 
-    : (participant.currentLevel || 'Iqro');
-  ctx.fillText(levelText, infoX, row3Y + 24);
+  ctx.fillText('✓ AKTIF BINAAN', colStatusX + statusWidth / 2, row2Y + 29);
 
   // 6. Bottom Footer Section (y: 450 -> 640)
   ctx.beginPath();
@@ -506,33 +470,7 @@ export async function renderFrontCard(
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.font = '400 11px monospace';
-  ctx.fillText(`ID: ${participant.id || memberCode}`, qrTextX, 590);
-
-  // Signature & Dewan Pembina on the right
-  const sigX = CARD_WIDTH - 50;
-  ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(209, 250, 229, 0.85)';
-  ctx.font = '600 12px sans-serif';
-  ctx.fillText('DEWAN PEMBINA & KOORDINATOR', sigX, 500);
-
-  // Simulated calligraphy signature look
-  ctx.fillStyle = '#fde68a';
-  ctx.font = 'italic 700 24px serif';
-  ctx.fillText('DPW DKI Jakarta', sigX, 545);
-
-  // Stamp / seal badge
-  const stampWidth = 200;
-  drawRoundedRect(ctx, sigX - stampWidth, 566, stampWidth, 26, 13);
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
-  ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-
-  ctx.fillStyle = '#fde68a';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('TERVERIFIKASI SISTEM PUSAT', sigX - stampWidth / 2, 583);
+  ctx.fillText(`No. Anggota: ${memberCode}`, qrTextX, 590);
 
   // Thin outer border
   ctx.restore();
@@ -689,11 +627,11 @@ export async function renderBackCard(
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 14px sans-serif';
-  ctx.fillText('SEKRETARIAT PUSAT:', 60, footerY + 36);
+  ctx.fillText('SEKRETARIAT:', 60, footerY + 36);
 
   ctx.fillStyle = '#cbd5e1';
   ctx.font = '400 13px sans-serif';
-  ctx.fillText('Jl. Poltangan Raya No. 25, Jagakarsa, Jakarta Selatan', 60, footerY + 62);
+  ctx.fillText('Jl. Poltangan III No. 3A, RT. 02/10, Pejaten Timur, Pasar Minggu, Jakarta Selatan 12510', 60, footerY + 62);
   ctx.fillText('Email: info@ojolmengaji.id • Web: https://ojolmengaji.id', 60, footerY + 86);
 
   // Right: Hotline & Social
@@ -701,11 +639,11 @@ export async function renderBackCard(
   ctx.textAlign = 'right';
   ctx.fillStyle = '#34d399';
   ctx.font = 'bold 14px sans-serif';
-  ctx.fillText('LAYANAN JAMAAH & CALL CENTER:', rightX, footerY + 36);
+  ctx.fillText('CALL CENTER:', rightX, footerY + 36);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 15px monospace';
-  ctx.fillText('WhatsApp: 0812-3456-7890', rightX, footerY + 62);
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('0812-4747-5178', rightX, footerY + 62);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '400 12px sans-serif';
@@ -751,7 +689,7 @@ export async function renderBothCardsSheet(
 
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 18px sans-serif';
-  ctx.fillText('KOMUNITAS PEMBINAAN AL-QUR\'AN OJOL MENGAJI • DPW DKI JAKARTA', sheetWidth / 2, 102);
+  ctx.fillText('KOMUNITAS PEMBINAAN AL-QUR\'AN OJOL MENGAJI • DPW HIDAYATULLAH DKI JAKARTA', sheetWidth / 2, 102);
 
   const memberCode = getMemberCode(participant, shelter);
   const name = (participant.name || 'Nama Driver Peserta').toUpperCase();
@@ -840,11 +778,11 @@ export async function downloadCardImage(
   side: 'front' | 'back' | 'both' = 'front'
 ): Promise<string> {
   const dataUrl = await generateCardDataUrl(participant, shelter, side);
-  const cleanName = (participant.name || 'Driver').replace(/[^a-zA-Z0-9]/g, '_');
+  const cleanName = (participant.name || 'Driver').trim().replace(/[/\\?%*:|"<>]/g, '_');
   const platform = participant.ojolPlatform || 'Gojek';
   const sideName = side === 'front' ? 'Depan' : side === 'back' ? 'Belakang' : 'Lengkap';
   const memberCode = getMemberCode(participant, shelter);
-  const fileName = `Kartu-Member-Ojol-Mengaji-${memberCode}-${cleanName}-${sideName}.png`;
+  const fileName = `KTA-Ojol-Mengaji-${cleanName}-${memberCode}-${sideName}.png`;
 
   const link = document.createElement('a');
   link.download = fileName;
@@ -866,10 +804,10 @@ export async function shareCardImage(
 ): Promise<{ success: boolean; shared: boolean; message: string }> {
   try {
     const dataUrl = await generateCardDataUrl(participant, shelter, side);
-    const cleanName = (participant.name || 'Driver').replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanName = (participant.name || 'Driver').trim().replace(/[/\\?%*:|"<>]/g, '_');
     const sideName = side === 'front' ? 'Depan' : side === 'back' ? 'Belakang' : 'Lengkap';
     const memberCode = getMemberCode(participant, shelter);
-    const fileName = `Kartu-Member-Ojol-Mengaji-${memberCode}-${cleanName}-${sideName}.png`;
+    const fileName = `KTA-Ojol-Mengaji-${cleanName}-${memberCode}-${sideName}.png`;
 
     // Convert Data URL to Blob
     const res = await fetch(dataUrl);

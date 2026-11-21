@@ -38,9 +38,10 @@ import {
   Database,
   Building,
   Award,
-  Printer
+  Printer,
+  Clock
 } from 'lucide-react';
-import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType } from '@/types';
+import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType, BANK_OPTIONS } from '@/types';
 import { MemberCardModal } from '../ojol/MemberCardModal';
 import { getMemberCode } from '@/utils/cardGenerator';
 
@@ -158,8 +159,12 @@ export const AdminPortal: React.FC = () => {
     correctAttendance,
     createAnnouncement,
     deleteAnnouncement,
-    getParticipantAttendanceStats
+    getParticipantAttendanceStats,
+    approveShelterTransfer,
+    rejectShelterTransfer
   } = useApp();
+
+  const [shelterTransferAdminFeedback, setShelterTransferAdminFeedback] = useState<string | null>(null);
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<
@@ -1540,6 +1545,111 @@ export const AdminPortal: React.FC = () => {
             </div>
           </div>
 
+          {/* Feedback Notifikasi Verifikasi Pindah Shelter */}
+          {shelterTransferAdminFeedback && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between text-xs text-emerald-900 font-bold">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>{shelterTransferAdminFeedback}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShelterTransferAdminFeedback(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Permohonan Pindah Shelter Menunggu Verifikasi Admin */}
+          {(() => {
+            const pendingTransfers = participants.filter(p => p.shelterTransferStatus === 'pending');
+            if (pendingTransfers.length === 0) return null;
+
+            return (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-amber-950 flex items-center gap-2">
+                        <span>Permohonan Pindah Shelter Menunggu Verifikasi Admin</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-extrabold border border-amber-300">
+                          {pendingTransfers.length} Driver
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-amber-800">
+                        Sesuai regulasi Ojol Mengaji, pengajuan pindah pangkalan binaan wajib diverifikasi dan disetujui Admin Pusat.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-amber-200/80 bg-white/90 rounded-xl border border-amber-200 overflow-hidden">
+                  {pendingTransfers.map((p) => {
+                    const currentSh = shelters.find(s => s.id === p.shelterId);
+                    const targetSh = shelters.find(s => s.id === p.pendingShelterId);
+
+                    return (
+                      <div key={p.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <img src={p.avatar} alt={p.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-amber-300" />
+                          <div>
+                            <div className="font-extrabold text-slate-900 flex items-center gap-2">
+                              <span>{p.name}</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700">
+                                {p.ojolPlatform}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap mt-0.5">
+                              <span>Shelter Asal: <strong className="text-slate-800">{currentSh?.name || '-'}</strong></span>
+                              <span>➔</span>
+                              <span>Shelter Tujuan: <strong className="text-emerald-700">{targetSh?.name || '-'}</strong></span>
+                            </div>
+                            {p.shelterTransferRequestedAt && (
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                Diajukan: {p.shelterTransferRequestedAt.split('T')[0]} • {p.shelterTransferReason || 'Permohonan driver'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const res = approveShelterTransfer(p.id);
+                              setShelterTransferAdminFeedback(res.message);
+                              setTimeout(() => setShelterTransferAdminFeedback(null), 4000);
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 shadow-xs transition active:scale-95 flex items-center gap-1"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Setujui Pindah</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const res = rejectShelterTransfer(p.id);
+                              setShelterTransferAdminFeedback(res.message);
+                              setTimeout(() => setShelterTransferAdminFeedback(null), 4000);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 transition active:scale-95"
+                          >
+                            Tolak
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-y border-slate-200">
@@ -1581,7 +1691,17 @@ export const AdminPortal: React.FC = () => {
                       </td>
 
                       <td className="py-3 px-4 font-mono font-semibold text-slate-700">{part.vehiclePlate}</td>
-                      <td className="py-3 px-4 text-slate-700">{sh?.name}</td>
+                      <td className="py-3 px-4 text-slate-700">
+                        <div className="font-semibold">{sh?.name}</div>
+                        {part.shelterTransferStatus === 'pending' && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                              <Clock className="w-3 h-3 text-amber-700" />
+                              <span>Ajukan Pindah: {shelters.find(s => s.id === part.pendingShelterId)?.name}</span>
+                            </span>
+                          </div>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-0.5 rounded border text-[11px] font-medium ${
                           part.currentLevel === 'Belum Dinilai'
@@ -2369,15 +2489,9 @@ export const AdminPortal: React.FC = () => {
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
                     >
                       <option value="">-- Pilih Bank --</option>
-                      <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
-                      <option value="Bank Muamalat">Bank Muamalat</option>
-                      <option value="BCA Syariah">BCA Syariah</option>
-                      <option value="Bank Mandiri">Bank Mandiri</option>
-                      <option value="Bank BCA">Bank BCA</option>
-                      <option value="Bank BRI">Bank BRI</option>
-                      <option value="Bank BNI">Bank BNI</option>
-                      <option value="Bank DKI / DKI Syariah">Bank DKI / DKI Syariah</option>
-                      <option value="Bank Lainnya">Bank Lainnya</option>
+                      {BANK_OPTIONS.map((bank) => (
+                        <option key={bank} value={bank}>{bank}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -2579,15 +2693,9 @@ export const AdminPortal: React.FC = () => {
                         className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
                       >
                         <option value="">-- Pilih Bank --</option>
-                        <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
-                        <option value="Bank Muamalat">Bank Muamalat</option>
-                        <option value="BCA Syariah">BCA Syariah</option>
-                        <option value="Bank Mandiri">Bank Mandiri</option>
-                        <option value="Bank BCA">Bank BCA</option>
-                        <option value="Bank BRI">Bank BRI</option>
-                        <option value="Bank BNI">Bank BNI</option>
-                        <option value="Bank DKI / DKI Syariah">Bank DKI / DKI Syariah</option>
-                        <option value="Bank Lainnya">Bank Lainnya</option>
+                        {BANK_OPTIONS.map((bank) => (
+                          <option key={bank} value={bank}>{bank}</option>
+                        ))}
                       </select>
                     </div>
 
