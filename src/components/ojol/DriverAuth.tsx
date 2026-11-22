@@ -61,10 +61,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const [isAccountTypeDropdownOpen, setIsAccountTypeDropdownOpen] = useState(false);
-  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
-  const [bankSearch, setBankSearch] = useState('');
-  const [customBankInput, setCustomBankInput] = useState('');
   const [isShelterDropdownOpen, setIsShelterDropdownOpen] = useState(false);
   const [shelterSearch, setShelterSearch] = useState('');
 
@@ -76,6 +72,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [regForm, setRegForm] = useState<RegisterDriverData>({
     name: '',
     phone: '',
+    address: '',
     email: '',
     password: '',
     ojolPlatform: 'Gojek',
@@ -260,11 +257,13 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       errList.push('Nomor WhatsApp: Minimal 9 digit angka aktif');
     }
 
-    // 3. Format Email (jika diisi, harus valid)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (regForm.email.trim() && !emailRegex.test(regForm.email.trim())) {
-      errs.email = 'Format email tidak valid (contoh: nama@gmail.com).';
-      errList.push('Alamat Email: Format email tidak valid (contoh: nama@gmail.com)');
+    // 3. Alamat Tempat Tinggal / Domisili
+    if (!regForm.address || !regForm.address.trim()) {
+      errs.address = 'Alamat tempat tinggal / domisili wajib diisi.';
+      errList.push('Alamat Tempat Tinggal: Wajib diisi');
+    } else if (regForm.address.trim().length < 5) {
+      errs.address = 'Alamat terlalu pendek, tuliskan alamat dengan lebih lengkap (minimal 5 karakter).';
+      errList.push('Alamat Tempat Tinggal: Minimal 5 karakter');
     }
 
     // 4. NIK KTP (16 digit)
@@ -283,24 +282,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       errList.push('Shelter Binaan: Wajib memilih shelter pembinaan mengaji terdekat terlebih dahulu');
     }
 
-    // 6. Akun Pencairan (Opsional, tapi jika dipilih harus lengkap)
-    if (regForm.accountType === 'Bank') {
-      if (!regForm.bankName) {
-        errs.bankName = 'Harap pilih nama bank dari dropdown daftar bank.';
-        errList.push('Daftar Bank: Harap pilih nama bank untuk rekening Anda');
-      }
-      if (!regForm.bankAccount || !regForm.bankAccount.trim()) {
-        errs.bankAccount = 'Nomor rekening bank wajib diisi.';
-        errList.push('Nomor Rekening Bank: Wajib diisi');
-      }
-    } else if (regForm.accountType === 'Gojek' || regForm.accountType === 'Ovo' || regForm.accountType === 'Dana') {
-      if (!regForm.bankAccount || !regForm.bankAccount.trim()) {
-        errs.bankAccount = `Nomor akun ${regForm.accountType} wajib diisi.`;
-        errList.push(`Nomor Akun: Harap isi nomor HP aktif untuk akun ${regForm.accountType}`);
-      }
-    }
-
-    // 7. Kata Sandi
+    // 6. Kata Sandi
     if (!regForm.password) {
       errs.password = 'Kata sandi wajib diisi (minimal 4 karakter).';
       errList.push('Kata Sandi: Wajib diisi minimal 4 karakter');
@@ -309,7 +291,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       errList.push('Kata Sandi: Terlalu pendek (minimal 4 karakter)');
     }
 
-    // 8. Konfirmasi Kata Sandi
+    // 7. Konfirmasi Kata Sandi
     if (!confirmPassword) {
       errs.confirmPassword = 'Ulangi kata sandi wajib diisi.';
       errList.push('Konfirmasi Kata Sandi: Wajib diisi ulang');
@@ -318,7 +300,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       errList.push('Konfirmasi Kata Sandi: Tidak cocok dengan kata sandi di atas');
     }
 
-    // 9. Komitmen Niat
+    // 8. Komitmen Niat
     if (!agreeTerms) {
       errs.agreeTerms = 'Harap centang persetujuan niat dan komitmen belajar mengaji.';
       errList.push('Komitmen Belajar: Harap centang persetujuan ikhlas belajar mengaji');
@@ -352,7 +334,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       if (res.success) {
         // Setelah daftar, tidak langsung login, melainkan langsung beralih ke tab 'login' (Masuk Akun) di sebelahnya
         setActiveTab('login');
-        setLoginIdentifier(regForm.phone || regForm.email);
+        setLoginIdentifier(regForm.phone);
         setLoginPassword('');
         setSuccessMsg(res.message);
 
@@ -360,6 +342,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
         setRegForm({
           name: '',
           phone: '',
+          address: '',
           email: '',
           password: '',
           ojolPlatform: 'Gojek',
@@ -587,7 +570,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     type="button"
                     onClick={() => {
                       setActiveTab('login');
-                      setLoginIdentifier(regForm.phone || regForm.email);
+                      setLoginIdentifier(regForm.phone || regForm.email || '');
                       setErrorMsg(null);
                       setValidationErrorList([]);
                     }}
@@ -685,77 +668,79 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 )}
               </div>
 
-              {/* No WhatsApp & Email */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div id="reg-field-phone">
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Nomor WhatsApp / HP Aktif <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Phone className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="tel"
-                      placeholder="081234567890"
-                      value={regForm.phone}
-                      onChange={(e) => {
-                        setRegForm({ ...regForm, phone: e.target.value });
-                        if (fieldErrors.phone) {
-                          setFieldErrors(prev => { const n = { ...prev }; delete n.phone; return n; });
-                        }
-                      }}
-                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
-                        fieldErrors.phone 
-                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
-                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
-                      }`}
-                    />
+              {/* No WhatsApp */}
+              <div id="reg-field-phone">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Nomor WhatsApp / HP Aktif <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Phone className="w-4 h-4" />
                   </div>
-                  {fieldErrors.phone ? (
-                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span>{fieldErrors.phone}</span>
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 mt-1">Digunakan untuk login &amp; info jadwal</p>
-                  )}
+                  <input
+                    type="tel"
+                    placeholder="Contoh: 081234567890"
+                    value={regForm.phone}
+                    onChange={(e) => {
+                      setRegForm({ ...regForm, phone: e.target.value });
+                      if (fieldErrors.phone) {
+                        setFieldErrors(prev => { const n = { ...prev }; delete n.phone; return n; });
+                      }
+                    }}
+                    className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
+                      fieldErrors.phone 
+                        ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                        : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                    }`}
+                  />
                 </div>
+                {fieldErrors.phone ? (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>{fieldErrors.phone}</span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-1">Digunakan untuk masuk akun &amp; informasi jadwal</p>
+                )}
+              </div>
 
-                <div id="reg-field-email">
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Alamat Email <span className="text-slate-400 font-normal">(Opsional)</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="email"
-                      placeholder="driver@gmail.com"
-                      value={regForm.email}
-                      onChange={(e) => {
-                        setRegForm({ ...regForm, email: e.target.value });
-                        if (fieldErrors.email) {
-                          setFieldErrors(prev => { const n = { ...prev }; delete n.email; return n; });
-                        }
-                      }}
-                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
-                        fieldErrors.email 
-                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
-                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
-                      }`}
-                    />
+              {/* Alamat Tempat Tinggal / Domisili */}
+              <div id="reg-field-address">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Alamat Tempat Tinggal / Domisili <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute top-3 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <MapPin className="w-4 h-4" />
                   </div>
-                  {fieldErrors.email ? (
-                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span>{fieldErrors.email}</span>
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 mt-1">Opsional, bisa juga login dengan No. WA</p>
-                  )}
+                  <textarea
+                    rows={2}
+                    placeholder="Contoh: Jl. Tebet Barat Dalam No. 12, RT 05 / RW 03, Jakarta Selatan"
+                    value={regForm.address || ''}
+                    onChange={(e) => {
+                      setRegForm({ ...regForm, address: e.target.value });
+                      if (fieldErrors.address) {
+                        setFieldErrors(prev => { const n = { ...prev }; delete n.address; return n; });
+                      }
+                    }}
+                    className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium resize-none ${
+                      fieldErrors.address 
+                        ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                        : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                    }`}
+                  />
                 </div>
+                {fieldErrors.address ? (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>{fieldErrors.address}</span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                    <Info className="w-3 h-3 text-slate-400 inline" />
+                    Alamat tempat tinggal / domisili saat ini untuk pemetaan shelter terdekat
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1109,7 +1094,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       type="button"
                       onClick={() => {
                         setIsShelterDropdownOpen(!isShelterDropdownOpen);
-                        setIsBankDropdownOpen(false);
                       }}
                       className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
                         fieldErrors.shelterId
@@ -1238,326 +1222,6 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     <p className="text-[11px] text-slate-400 mt-1">Lokasi pangkalan presensi &amp; belajar</p>
                   )}
                 </div>
-              </div>
-
-              {/* Permintaan: "Nomor Akun Bank/Gojek/Ovo/Dana" (Dropdown) */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                    <CreditCard className="w-4 h-4 text-emerald-700" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800">Nomor Akun Bank / Gojek / OVO / DANA</span>
-                    <p className="text-[10px] text-slate-500">Penyaluran insentif kafalah, bantuan kuota &amp; beasiswa mengaji mitra ojol</p>
-                  </div>
-                </div>
-
-                {/* Dropdown 1: "Nomor Akun Bank/Gojek/Ovo/Dana" */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Nomor Akun Bank/Gojek/Ovo/Dana <span className="text-slate-400 font-normal">(Opsional)</span>
-                  </label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAccountTypeDropdownOpen(!isAccountTypeDropdownOpen);
-                        setIsBankDropdownOpen(false);
-                        setIsShelterDropdownOpen(false);
-                      }}
-                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
-                        isAccountTypeDropdownOpen
-                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                          : 'border-slate-300 hover:border-slate-400 text-slate-800'
-                      }`}
-                    >
-                      <span className={`truncate pr-2 ${regForm.accountType ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
-                        {regForm.accountType 
-                          ? ACCOUNT_TYPE_OPTIONS.find(a => a.id === regForm.accountType)?.icon + ' ' + ACCOUNT_TYPE_OPTIONS.find(a => a.id === regForm.accountType)?.label
-                          : '-- Pilih Akun Bank / Gojek / Ovo / Dana --'}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isAccountTypeDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
-                    </button>
-
-                    {isAccountTypeDropdownOpen && (
-                      <div 
-                        className="fixed inset-0 z-30" 
-                        onClick={() => setIsAccountTypeDropdownOpen(false)} 
-                      />
-                    )}
-
-                    {isAccountTypeDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 py-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRegForm({ ...regForm, accountType: undefined, bankName: '', bankAccount: '' });
-                            setIsAccountTypeDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
-                        >
-                          -- Kosongkan / Belum Memiliki --
-                        </button>
-                        {ACCOUNT_TYPE_OPTIONS.map((opt) => {
-                          const isSelected = regForm.accountType === opt.id;
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => {
-                                setRegForm({ 
-                                  ...regForm, 
-                                  accountType: opt.id,
-                                  bankName: opt.id === 'Bank' ? regForm.bankName : opt.id,
-                                });
-                                setIsAccountTypeDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
-                                isSelected
-                                  ? 'bg-emerald-50 text-emerald-900 font-bold'
-                                  : 'text-slate-700 hover:bg-slate-50'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-base">{opt.icon}</span>
-                                <div>
-                                  <div className="font-bold text-slate-900">{opt.label}</div>
-                                  <div className="text-[10px] text-slate-400">{opt.desc}</div>
-                                </div>
-                              </div>
-                              {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-1">Pilih jenis akun penerima pencairan atau insentif</p>
-                </div>
-
-                {/* Conditional: Kalau pilihnya akun bank, maka disusul dengan field baru yaitu dropdown "daftar bank" & nomor rekening */}
-                {regForm.accountType === 'Bank' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200/80 animate-fadeIn">
-                    <div id="reg-field-bankName">
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        Daftar Bank <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsBankDropdownOpen(!isBankDropdownOpen);
-                            setIsAccountTypeDropdownOpen(false);
-                            setIsShelterDropdownOpen(false);
-                          }}
-                          className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
-                            fieldErrors.bankName
-                              ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20 text-slate-900'
-                              : isBankDropdownOpen
-                                ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                                : 'border-slate-300 hover:border-slate-400 text-slate-800'
-                          }`}
-                        >
-                          <span className={`truncate pr-2 ${regForm.bankName ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
-                            {regForm.bankName || '-- Pilih dari Daftar Bank --'}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isBankDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
-                        </button>
-
-                        {isBankDropdownOpen && (
-                          <div 
-                            className="fixed inset-0 z-30" 
-                            onClick={() => setIsBankDropdownOpen(false)} 
-                          />
-                        )}
-
-                        {isBankDropdownOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-64 overflow-hidden flex flex-col py-1 animate-fadeIn">
-                            {/* Search Filter for Complete Bank List */}
-                            <div className="p-2 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">
-                              <div className="relative">
-                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                                <input
-                                  type="text"
-                                  placeholder="Cari nama bank (BSI, BCA, Mandiri, Jago, dll)..."
-                                  value={bankSearch}
-                                  onChange={(e) => setBankSearch(e.target.value)}
-                                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
-                                  autoFocus
-                                />
-                              </div>
-                            </div>
-
-                            <div className="overflow-y-auto divide-y divide-slate-100 flex-1 max-h-52">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRegForm({ ...regForm, bankName: '' });
-                                  setIsBankDropdownOpen(false);
-                                  setBankSearch('');
-                                }}
-                                className="w-full text-left px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 transition-colors italic"
-                              >
-                                -- Pilih Nama Bank --
-                              </button>
-                              {BANK_OPTIONS
-                                .filter((b) => b.toLowerCase().includes(bankSearch.toLowerCase()))
-                                .map((bank) => {
-                                  const isSelected = regForm.bankName === bank;
-                                  return (
-                                    <button
-                                      key={bank}
-                                      type="button"
-                                      onClick={() => {
-                                        setRegForm({ ...regForm, bankName: bank });
-                                        setIsBankDropdownOpen(false);
-                                        setBankSearch('');
-                                        if (fieldErrors.bankName) {
-                                          setFieldErrors(prev => { const n = { ...prev }; delete n.bankName; return n; });
-                                        }
-                                      }}
-                                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
-                                        isSelected
-                                          ? 'bg-emerald-50 text-emerald-900 font-bold'
-                                          : 'text-slate-700 hover:bg-slate-50'
-                                      }`}
-                                    >
-                                      <span>{bank}</span>
-                                      {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
-                                    </button>
-                                  );
-                                })}
-                              {BANK_OPTIONS.filter((b) => b.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 && (
-                                <div className="p-4 text-center text-xs text-slate-500">
-                                  Bank &quot;{bankSearch}&quot; tidak ditemukan. Anda dapat memilih opsi &quot;Bank Lainnya&quot;.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {fieldErrors.bankName && (
-                        <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
-                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                          <span>{fieldErrors.bankName}</span>
-                        </p>
-                      )}
-                      {regForm.bankName === 'Bank Lainnya' && (
-                        <div className="mt-2">
-                          <input
-                            type="text"
-                            placeholder="Ketikkan nama bank Anda..."
-                            value={customBankInput}
-                            onChange={(e) => {
-                              setCustomBankInput(e.target.value);
-                              setRegForm(prev => ({ ...prev, bankName: e.target.value || 'Bank Lainnya' }));
-                              if (fieldErrors.bankName) {
-                                setFieldErrors(prev => { const n = { ...prev }; delete n.bankName; return n; });
-                              }
-                            }}
-                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
-                          />
-                        </div>
-                      )}
-                      <p className="text-[11px] text-slate-400 mt-1">Pilih bank dari daftar lengkap di atas untuk rekening Anda</p>
-                    </div>
-
-                    <div id="reg-field-bankAccount">
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        Nomor Rekening Bank <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                          <CreditCard className="w-4 h-4" />
-                        </div>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="Contoh: 1234567890"
-                          value={regForm.bankAccount || ''}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9-]/g, '');
-                            setRegForm({ ...regForm, bankAccount: val });
-                            if (fieldErrors.bankAccount) {
-                              setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
-                            }
-                          }}
-                          className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-mono font-bold ${
-                            fieldErrors.bankAccount
-                              ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
-                              : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
-                          }`}
-                        />
-                      </div>
-                      {fieldErrors.bankAccount ? (
-                        <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
-                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                          <span>{fieldErrors.bankAccount}</span>
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-slate-400 mt-1">Sesuai buku tabungan / m-banking aktif</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Conditional: Kalau pilihnya Gojek, Ovo, atau Dana */}
-                {(regForm.accountType === 'Gojek' || regForm.accountType === 'Ovo' || regForm.accountType === 'Dana') && (
-                  <div id="reg-field-bankAccount" className="pt-2 border-t border-slate-200/80 animate-fadeIn">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-slate-700">
-                        Nomor Akun {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} <span className="text-rose-500">*</span>
-                      </label>
-                      {regForm.phone && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRegForm({ ...regForm, bankAccount: regForm.phone });
-                            if (fieldErrors.bankAccount) {
-                              setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
-                            }
-                          }}
-                          className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition"
-                        >
-                          Gunakan No. WhatsApp ({regForm.phone})
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        placeholder="Contoh: 081234567890"
-                        value={regForm.bankAccount || ''}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9-]/g, '');
-                          setRegForm({ ...regForm, bankAccount: val });
-                          if (fieldErrors.bankAccount) {
-                            setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
-                          }
-                        }}
-                        className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-mono font-bold ${
-                          fieldErrors.bankAccount
-                            ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
-                            : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
-                        }`}
-                      />
-                    </div>
-                    {fieldErrors.bankAccount ? (
-                      <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                        <span>{fieldErrors.bankAccount}</span>
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Nomor ponsel yang terdaftar aktif pada aplikasi {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} Anda
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Informative Note: Kemampuan Mengaji Dinilai Ustadz */}

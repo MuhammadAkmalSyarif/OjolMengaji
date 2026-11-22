@@ -811,7 +811,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const registerDriver = (data: RegisterDriverData): { success: boolean; message: string; user?: User } => {
-    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanEmail = (data.email || '').trim().toLowerCase();
     const cleanPhone = normalizePhone(data.phone);
 
     // Check if phone or email already registered
@@ -840,11 +840,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const partId = 'part-' + Date.now();
     const avatarUrl = data.selfiePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`;
 
+    const cleanAddress = data.address?.trim() || '';
+
     const newUser: User = {
       id: userId,
       name: data.name.trim(),
       email: cleanEmail || `${cleanPhone || Date.now()}@ojolmengaji.id`,
       phone: data.phone.trim(),
+      address: cleanAddress,
       role: 'ojol',
       avatar: avatarUrl,
       password: data.password || '123',
@@ -863,6 +866,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: data.name.trim(),
       phone: data.phone.trim(),
       email: cleanEmail || `${cleanPhone || Date.now()}@ojolmengaji.id`,
+      address: cleanAddress,
       avatar: avatarUrl,
       selfiePhoto: data.selfiePhoto || avatarUrl,
       ojolPlatform: data.ojolPlatform,

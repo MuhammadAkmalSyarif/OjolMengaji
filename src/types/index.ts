@@ -53,6 +53,7 @@ export interface User {
   name: string;
   username?: string; // Username resmi (digenerate admin untuk guru / pengelola)
   email: string;
+  address?: string; // Alamat tempat tinggal / domisili
   role: UserRole;
   avatar?: string;
   phone: string;
@@ -63,8 +64,9 @@ export interface User {
 
 export interface RegisterDriverData {
   name: string;
-  email: string;
+  email?: string;
   phone: string;
+  address?: string; // Alamat tempat tinggal / domisili driver
   password?: string;
   ojolPlatform: 'Gojek' | 'Grab' | 'Maxim' | 'InDrive' | 'ShopeeFood';
   nik?: string;
@@ -113,6 +115,7 @@ export interface Participant {
   name: string;
   phone: string;
   email: string;
+  address?: string; // Alamat domisili mitra driver
   avatar: string;
   selfiePhoto?: string; // Foto selfie asli untuk pembuatan kartu anggota
   ojolPlatform: 'Gojek' | 'Grab' | 'Maxim' | 'InDrive' | 'ShopeeFood';

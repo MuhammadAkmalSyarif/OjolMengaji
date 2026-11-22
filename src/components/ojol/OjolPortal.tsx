@@ -1057,6 +1057,12 @@ export const OjolPortal: React.FC = () => {
                 <span className="text-slate-500">No. WhatsApp / HP</span>
                 <span className="font-bold text-slate-800">{participant.phone}</span>
               </div>
+              {participant.address && (
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="text-slate-500">Alamat Tempat Tinggal</span>
+                  <span className="font-bold text-slate-800 text-right max-w-[200px] sm:max-w-xs">{participant.address}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Shelter Binaan</span>
                 <div className="flex items-center gap-2">
