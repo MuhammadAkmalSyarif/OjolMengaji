@@ -1639,7 +1639,14 @@ export const AdminPortal: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
-                        <img src={teacher.avatar} alt={teacher.name} className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-2xs" />
+                        <div className="relative group shrink-0">
+                          <img 
+                            src={teacher.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'} 
+                            alt={teacher.name} 
+                            className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-2xs" 
+                          />
+                          <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-2xs" title="Foto Profil Guru Aktif" />
+                        </div>
                         <div>
                           <h4 className="font-bold text-sm text-slate-900">{teacher.name}</h4>
                           <p className="text-xs text-slate-500">{teacher.phone} • {teacher.email}</p>
@@ -2860,6 +2867,30 @@ export const AdminPortal: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveTeacher} className="space-y-4">
+              {/* Pratinjau Foto Profil Guru Terkini */}
+              {editingTeacher && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-slate-50 border border-emerald-200/80 flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={editingTeacher.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'}
+                      alt={teacherName || 'Guru'}
+                      className="w-12 h-12 rounded-xl object-cover border-2 border-emerald-500 shadow-xs shrink-0"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-800">Foto Profil Guru Terkini</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+                          Sinkron Otomatis
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Foto ini diupload mandiri oleh Guru di portal bimbingan dan otomatis tersinkron ke panel Admin ini.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Nama Lengkap & Gelar */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">

@@ -163,7 +163,7 @@ export default function GuruPage() {
                 </div>
 
                 <img
-                  src={currentUser?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'}
+                  src={currentTeacher?.avatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'}
                   alt={currentUser?.name || 'User'}
                   className="w-9 h-9 rounded-full border-2 border-teal-500 object-cover shadow-2xs ring-2 ring-teal-100"
                 />

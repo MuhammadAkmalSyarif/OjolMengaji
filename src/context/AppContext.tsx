@@ -369,6 +369,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const userMatch = (loadedUsers as User[] | undefined)?.find(u => u.id === t.userId);
           return {
             ...t,
+            avatar: t.avatar || userMatch?.avatar || initMatch?.avatar || '',
             username: t.username || initMatch?.username || userMatch?.username || ('ust.' + (t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)),
             generatedPassword: t.generatedPassword || initMatch?.generatedPassword || userMatch?.password || 'guru',
             nik: t.nik || initMatch?.nik || '',
@@ -412,6 +413,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
             setDriverUser(syncedDriver);
             localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(syncedDriver));
+          } catch {}
+        }
+
+        // Selaraskan sesi guru di localStorage dengan data yang sudah di-heal/diperbarui
+        if (savedGuru) {
+          try {
+            const parsedGuru = JSON.parse(savedGuru);
+            const matchedTeacher = (loadedTeachers as Teacher[] | undefined)?.find(
+              t => t.userId === parsedGuru.id || t.id === parsedGuru.id || (parsedGuru.username && t.username === parsedGuru.username)
+            );
+            const matchedUser = (loadedUsers as User[] | undefined)?.find(u => u.id === parsedGuru.id);
+            const exactAvatar = matchedTeacher?.avatar || matchedUser?.avatar || parsedGuru.avatar;
+            const exactName = (matchedTeacher?.name || matchedUser?.name || parsedGuru.name || '').trim();
+            const syncedGuru: User = {
+              ...parsedGuru,
+              ...(matchedUser || {}),
+              name: exactName || parsedGuru.name,
+              avatar: exactAvatar,
+            };
+            setGuruUser(syncedGuru);
+            localStorage.setItem(GURU_SESSION_KEY, JSON.stringify(syncedGuru));
           } catch {}
         }
 
@@ -798,9 +820,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    setGuruUser(foundGuru);
-    setRawCurrentUser(foundGuru);
-    localStorage.setItem(GURU_SESSION_KEY, JSON.stringify(foundGuru));
+    const matchingTeacher = teachers.find(t => t.userId === foundGuru.id || t.id === foundGuru.id);
+    const bestGuruAvatar = matchingTeacher?.avatar || foundGuru.avatar;
+    const syncedGuru: User = {
+      ...foundGuru,
+      avatar: bestGuruAvatar
+    };
+    setGuruUser(syncedGuru);
+    setRawCurrentUser(syncedGuru);
+    localStorage.setItem(GURU_SESSION_KEY, JSON.stringify(syncedGuru));
     const roleTitle = 'Guru Mengaji (Ustadz)';
     addAudit('LOGIN_STAFF', 'users', foundGuru.id, `${roleTitle} @${foundGuru.username || foundGuru.name} (${foundGuru.name}) berhasil masuk ke portal bimbingan guru`);
     return {
@@ -1103,7 +1131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTeachers(nextTeachers);
 
     const nextUsers = users.map(u => {
-      if (u.id === updated.userId) {
+      if (u.id === updated.userId || u.id === updated.id || (updated.username && u.username === updated.username)) {
         return {
           ...u,
           name: updated.name,
@@ -1118,9 +1146,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return u;
     });
     setUsers(nextUsers);
+
+    // Update active guru session if matching
+    if (guruUser && (guruUser.id === updated.userId || guruUser.id === updated.id || (updated.username && guruUser.username === updated.username))) {
+      const updatedGuruUser: User = {
+        ...guruUser,
+        name: updated.name,
+        username: updated.username || guruUser.username,
+        email: updated.email || guruUser.email,
+        phone: updated.phone || guruUser.phone,
+        avatar: updated.avatar || guruUser.avatar,
+        nik: updated.nik || guruUser.nik,
+        ...(updated.password ? { password: updated.password } : {})
+      };
+      setGuruUser(updatedGuruUser);
+      localStorage.setItem(GURU_SESSION_KEY, JSON.stringify(updatedGuruUser));
+    }
+
+    if (rawCurrentUser && (rawCurrentUser.id === updated.userId || rawCurrentUser.id === updated.id || (updated.username && rawCurrentUser.username === updated.username))) {
+      const updatedCurrUser: User = {
+        ...rawCurrentUser,
+        name: updated.name,
+        username: updated.username || rawCurrentUser.username,
+        email: updated.email || rawCurrentUser.email,
+        phone: updated.phone || rawCurrentUser.phone,
+        avatar: updated.avatar || rawCurrentUser.avatar,
+        nik: updated.nik || rawCurrentUser.nik,
+        ...(updated.password ? { password: updated.password } : {})
+      };
+      setRawCurrentUser(updatedCurrUser);
+    }
+
     notifySync({ teachers: nextTeachers, users: nextUsers });
 
-    addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui data dan kredensial guru "${updated.name}"`);
+    addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui data dan foto/kredensial guru "${updated.name}"`);
   };
 
   // Participants

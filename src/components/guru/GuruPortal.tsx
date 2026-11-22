@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { 
   GraduationCap, 
@@ -18,8 +18,12 @@ import {
   Sparkles, 
   X,
   Shield,
-  Building
+  Building,
+  Camera,
+  Upload,
+  Loader2
 } from 'lucide-react';
+import { compressImage } from '@/utils/imageUtils';
 import { 
   Participant, 
   ParticipantLevel, 
@@ -41,14 +45,63 @@ export const GuruPortal: React.FC = () => {
     correctAttendance, 
     addAssessment, 
     getParticipantAttendanceStats, 
-    updateParticipantLevel 
+    updateParticipantLevel,
+    updateTeacher
   } = useApp();
 
   // Find active teacher profile
-  // If currentUser is guru, strictly match userId
-  // If currentUser is admin, simulate first teacher or selected
-  const currentGuru = teachers.find(t => t.userId === currentUser?.id);
+  // Match strictly by userId, teacher ID, username, or email
+  const currentGuru = teachers.find(t => 
+    t.userId === currentUser?.id ||
+    t.id === currentUser?.id ||
+    (currentUser?.username && t.username && t.username.toLowerCase() === currentUser.username.toLowerCase()) ||
+    (currentUser?.email && t.email && t.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
   const teacher = currentGuru || (currentUser?.role === 'admin' ? teachers[0] : null);
+
+  // Teacher Photo Upload State
+  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
+  const [photoSuccessToast, setPhotoSuccessToast] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Handle Photo Upload with Compression
+  const handleTeacherPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar yang valid (JPG, PNG, atau WEBP).');
+      return;
+    }
+
+    if (!teacher) {
+      alert('Profil guru tidak ditemukan.');
+      return;
+    }
+
+    try {
+      setIsUpdatingPhoto(true);
+      // Kompresi foto agar ukuran berkas hemat (~40KB-70KB) dan tidak melampaui kuota
+      const compressed = await compressImage(file, 480, 480, 0.82);
+
+      // Perbarui guru di AppContext
+      updateTeacher({
+        ...teacher,
+        avatar: compressed,
+      });
+
+      setPhotoSuccessToast(`Alhamdulillah! Foto profil ${teacher.name} berhasil diperbarui dan langsung tersinkronisasi ke Administrator Pusat.`);
+      setTimeout(() => {
+        setPhotoSuccessToast(null);
+      }, 5000);
+    } catch (err) {
+      console.error('Gagal mengupload foto profil guru:', err);
+      alert('Terjadi kesalahan saat memproses foto profil. Silakan coba kembali dengan gambar lain.');
+    } finally {
+      setIsUpdatingPhoto(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Filter shelters explicitly assigned to this teacher by Admin (or fallback to all shelters)
   const myShelterIds = (teacher?.shelterIds && teacher.shelterIds.length > 0)
@@ -300,24 +353,84 @@ export const GuruPortal: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-8 space-y-6">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl">
-          <div className="flex items-center gap-4">
-            <img
-              src={teacher.avatar}
-              alt={teacher.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shadow-md"
-            />
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 mb-1">
-                <GraduationCap className="w-3.5 h-3.5 text-emerald-300" />
-                Dewan Guru Mengaji
+        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative group shrink-0">
+                <img
+                  src={teacher.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'}
+                  alt={teacher.name}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-400 shadow-md"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUpdatingPhoto}
+                  title="Upload / Ganti Foto Profil"
+                  className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl shadow-md border-2 border-slate-900 transition-all cursor-pointer"
+                >
+                  {isUpdatingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                </button>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold">{teacher.name}</h1>
-              <p className="text-xs sm:text-sm text-emerald-200 mt-0.5">
-                Spesialisasi: {teacher.specialization}
-              </p>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 mb-1">
+                  <GraduationCap className="w-3.5 h-3.5 text-emerald-300" />
+                  Dewan Guru Mengaji
+                </div>
+                <h1 className="text-xl sm:text-2xl font-bold">{teacher.name}</h1>
+                <p className="text-xs sm:text-sm text-emerald-200 mt-0.5">
+                  Spesialisasi: {teacher.specialization}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUpdatingPhoto}
+                    className="text-[11px] font-semibold bg-white/10 hover:bg-white/20 active:scale-95 text-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    {isUpdatingPhoto ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-300" />
+                        <span>Mengompres Foto...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>Ganti Foto Profil</span>
+                      </>
+                    )}
+                  </button>
+                  <span className="text-[10px] text-emerald-300/80 hidden sm:inline">
+                    Sinkron otomatis ke Admin
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleTeacherPhotoUpload}
+          />
+
+          {photoSuccessToast && (
+            <div className="mt-4 p-3 rounded-xl bg-emerald-800/90 border border-emerald-400/50 text-white text-xs flex items-center justify-between gap-2 shadow-md animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+                <span>{photoSuccessToast}</span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setPhotoSuccessToast(null)}
+                className="text-emerald-200 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Warning / Explanation Card */}
@@ -347,32 +460,108 @@ export const GuruPortal: React.FC = () => {
       <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-80 h-80 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex items-center gap-4">
-          <img
-            src={teacher.avatar}
-            alt={teacher.name}
-            className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg ring-4 ring-emerald-500/20"
-          />
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 mb-1">
-              <GraduationCap className="w-3.5 h-3.5 text-emerald-300" />
-              Ustadz Pengampu Shelter Binaan
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {/* Foto Profil dengan Tombol Ganti Foto / Kamera Overlay */}
+            <div className="relative group shrink-0">
+              <img
+                src={teacher.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'}
+                alt={teacher.name}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg ring-4 ring-emerald-500/20"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUpdatingPhoto}
+                title="Ganti Foto Profil Anda (Tersinkronisasi ke Admin)"
+                className="absolute -bottom-1.5 -right-1.5 p-1.5 sm:p-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl shadow-md border-2 border-slate-900 transition-all cursor-pointer group-hover:scale-110 flex items-center justify-center"
+              >
+                {isUpdatingPhoto ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
+              </button>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold">{teacher.name}</h1>
-            <p className="text-xs sm:text-sm text-emerald-200 mt-0.5">
-              Spesialisasi: {teacher.specialization}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="text-[11px] font-medium bg-emerald-950/70 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-800 flex items-center gap-2 shadow-2xs">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                <span>Shelter Penugasan: <strong className="text-white text-xs">{assignedShelter ? assignedShelter.name : 'Belum Ditugaskan'}</strong></span>
-                <span className="text-[10px] bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-700 font-bold">
-                  {myParticipants.length} Ojol Binaan
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 mb-1">
+                <GraduationCap className="w-3.5 h-3.5 text-emerald-300" />
+                Ustadz Pengampu Shelter Binaan
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold">{teacher.name}</h1>
+              <p className="text-xs sm:text-sm text-emerald-200 mt-0.5">
+                Spesialisasi: {teacher.specialization}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="text-[11px] font-medium bg-emerald-950/70 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-800 flex items-center gap-2 shadow-2xs">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Shelter Penugasan: <strong className="text-white text-xs">{assignedShelter ? assignedShelter.name : 'Belum Ditugaskan'}</strong></span>
+                  <span className="text-[10px] bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-700 font-bold">
+                    {myParticipants.length} Ojol Binaan
+                  </span>
                 </span>
-              </span>
+
+                {/* Upload Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUpdatingPhoto}
+                  className="text-[11px] font-semibold bg-white/10 hover:bg-white/20 active:scale-95 text-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                >
+                  {isUpdatingPhoto ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-300" />
+                      <span>Mengompres Foto...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Ganti Foto Profil</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
+
+          <div className="hidden lg:flex flex-col items-end justify-center text-right">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300/80">Status Profil Guru</span>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-100 mt-0.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Tersinkronisasi ke Admin Pusat</span>
+            </div>
+            <p className="text-[11px] text-emerald-300/70 mt-1 max-w-[220px]">
+              Foto yang Anda upload langsung tampil di dashboard &amp; master data Administrator.
+            </p>
+          </div>
         </div>
+
+        {/* Input File Tersembunyi untuk Upload Foto */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleTeacherPhotoUpload}
+        />
+
+        {/* Toast Notifikasi Berhasil Upload */}
+        {photoSuccessToast && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-800/95 border border-emerald-400/60 text-white text-xs flex items-center justify-between gap-2 shadow-lg animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>{photoSuccessToast}</span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setPhotoSuccessToast(null)}
+              className="text-emerald-200 hover:text-white p-1 rounded-lg"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Shelter Penugasan Resmi (Ditetapkan oleh Admin - Guru Tidak Memilih Shelter) */}
