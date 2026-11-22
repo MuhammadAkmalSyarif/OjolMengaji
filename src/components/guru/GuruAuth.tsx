@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 import { 
   GraduationCap, 
   Lock, 
@@ -27,6 +28,7 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -162,7 +164,17 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
                 <label className="block text-xs font-semibold text-slate-700">
                   Kata Sandi (Password) <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[11px] text-slate-500">Default: <span className="font-mono font-bold text-teal-700">guru</span></span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400">Default: <span className="font-mono font-bold text-teal-700">guru</span></span>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(true)}
+                    className="text-[11px] text-teal-700 font-bold hover:underline"
+                  >
+                    Lupa sandi?
+                  </button>
+                </div>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -200,6 +212,17 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
           </form>
         </div>
       </div>
+
+      {/* Modal Lupa Password via Email OTP (SMTP) */}
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        defaultEmail={identifier.includes('@') ? identifier : ''}
+        onSuccessReset={(resetEmail) => {
+          setIdentifier(resetEmail);
+          setSuccessMsg('Kata sandi dewan guru berhasil diatur ulang! Silakan masuk dengan kata sandi baru Anda.');
+        }}
+      />
     </div>
   );
 };

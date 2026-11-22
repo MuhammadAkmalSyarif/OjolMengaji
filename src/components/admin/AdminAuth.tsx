@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 import { 
   Shield, 
   Lock, 
@@ -27,6 +28,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -162,6 +164,13 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
                 <label className="block text-xs font-semibold text-slate-700">
                   Kata Sandi (Password) <span className="text-rose-500">*</span>
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPasswordModal(true)}
+                  className="text-[11px] text-purple-700 font-bold hover:underline"
+                >
+                  Lupa kata sandi?
+                </button>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -199,6 +208,17 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({ onSuccess }) => {
           </form>
         </div>
       </div>
+
+      {/* Modal Lupa Password via Email OTP (SMTP) */}
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        defaultEmail={identifier.includes('@') ? identifier : 'admin@ojolmengaji.id'}
+        onSuccessReset={(resetEmail) => {
+          setIdentifier(resetEmail);
+          setSuccessMsg('Kata sandi administrator berhasil diatur ulang! Silakan masuk dengan kata sandi baru Anda.');
+        }}
+      />
     </div>
   );
 };

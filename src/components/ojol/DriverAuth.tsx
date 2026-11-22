@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { RegisterDriverData, PaymentAccountType, BANK_OPTIONS } from '@/types';
 import { MemberCardModal } from './MemberCardModal';
+import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 import { compressImage } from '@/utils/imageUtils';
 import { getMemberCode } from '@/utils/cardGenerator';
 
@@ -59,6 +60,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [isAccountTypeDropdownOpen, setIsAccountTypeDropdownOpen] = useState(false);
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const [bankSearch, setBankSearch] = useState('');
@@ -1460,7 +1462,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowHelpModal(true)}
+                    onClick={() => setShowForgotPasswordModal(true)}
                     className="text-[11px] text-emerald-700 font-bold hover:underline"
                   >
                     Lupa kata sandi?
@@ -1703,6 +1705,18 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
         }}
         shelter={shelters.find(s => s.id === regForm.shelterId)}
         isRegistrationPreview={true}
+      />
+
+      {/* Modal Lupa Password via Email OTP (SMTP) */}
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        defaultEmail={loginIdentifier.includes('@') ? loginIdentifier : ''}
+        onSuccessReset={(resetEmail) => {
+          setActiveTab('login');
+          setLoginIdentifier(resetEmail);
+          setSuccessMsg('Kata sandi berhasil diatur ulang! Silakan masuk menggunakan kata sandi baru Anda.');
+        }}
       />
     </div>
   );

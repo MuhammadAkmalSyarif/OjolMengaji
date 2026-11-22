@@ -53,6 +53,7 @@ interface AppContextType {
   loginDriver: (identifier: string, password?: string) => { success: boolean; message: string; user?: User };
   loginStaff: (identifier: string, password?: string) => { success: boolean; message: string; user?: User };
   registerDriver: (data: RegisterDriverData) => { success: boolean; message: string; user?: User };
+  resetPassword: (email: string, newPassword: string) => { success: boolean; message: string };
   logout: () => void;
   switchUser: (userId: string) => void;
   quickSwitchRole: (role: UserRole) => void;
@@ -612,6 +613,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const resetPassword = (email: string, newPassword: string): { success: boolean; message: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+
+    if (userIndex === -1) {
+      return {
+        success: false,
+        message: 'Akun dengan alamat email tersebut tidak ditemukan dalam sistem.',
+      };
+    }
+
+    const targetUser = users[userIndex];
+    const updatedUser = { ...targetUser, password: newPassword };
+    const updatedUsers = [...users];
+    updatedUsers[userIndex] = updatedUser;
+
+    setUsers(updatedUsers);
+
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+    }
+
+    notifySync({ users: updatedUsers });
+    addAudit(
+      'RESET_PASSWORD',
+      'users',
+      updatedUser.id,
+      `Kata sandi akun ${updatedUser.name} (${updatedUser.email} - role: ${updatedUser.role}) berhasil diperbarui via verifikasi OTP Email SMTP`
+    );
+
+    return {
+      success: true,
+      message: `Kata sandi akun ${updatedUser.name} berhasil diperbarui. Silakan masuk menggunakan kata sandi baru Anda.`,
+    };
+  };
+
   // Shelters
   const addShelter = (newShelterData: Omit<Shelter, 'id'>) => {
     const id = 'shelter-' + Date.now();
@@ -1093,6 +1130,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loginDriver,
       loginStaff,
       registerDriver,
+      resetPassword,
       logout,
       switchUser,
       quickSwitchRole,
