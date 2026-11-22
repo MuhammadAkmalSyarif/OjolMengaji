@@ -57,6 +57,7 @@ interface AppContextType {
   logout: () => void;
   switchUser: (userId: string) => void;
   quickSwitchRole: (role: UserRole) => void;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
   
   // Shelters
   addShelter: (shelter: Omit<Shelter, 'id'>) => void;
@@ -64,8 +65,15 @@ interface AppContextType {
   deleteShelter: (id: string) => void;
   
   // Teachers
-  addTeacher: (teacher: Omit<Teacher, 'id' | 'userId' | 'email'>, email: string) => void;
-  updateTeacher: (teacher: Teacher) => void;
+  addTeacher: (
+    teacher: Omit<Teacher, 'id' | 'userId' | 'email'> & {
+      username?: string;
+      password?: string;
+      email?: string;
+    },
+    email?: string
+  ) => { success: boolean; message: string; teacher?: Teacher; user?: User };
+  updateTeacher: (teacher: Teacher & { password?: string }) => void;
   
   // Participants
   addParticipant: (participant: Omit<Participant, 'id' | 'userId' | 'email'>, email: string) => void;
@@ -111,6 +119,18 @@ interface AppContextType {
   resetAllData: () => void;
 }
 
+// Helper normalisasi nomor telepon Indonesia (+62 / 62 / 08 / spasi / strip)
+export const normalizePhone = (phone?: string): string => {
+  if (!phone) return '';
+  let cleaned = phone.replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+62')) {
+    cleaned = '0' + cleaned.slice(3);
+  } else if (cleaned.startsWith('62')) {
+    cleaned = '0' + cleaned.slice(2);
+  }
+  return cleaned;
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'ojol_mengaji_state_v1';
@@ -148,6 +168,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 isActive: true
               };
             }
+            if (u.id === 'user-guru-1') {
+              return {
+                ...u,
+                username: u.username || 'ust.ahmad',
+                password: u.password || 'guru',
+              };
+            }
+            if (u.id === 'user-guru-2') {
+              return {
+                ...u,
+                username: u.username || 'ust.ridwan',
+                password: u.password || 'guru',
+              };
+            }
+            if (u.role === 'guru' && !u.username) {
+              return {
+                ...u,
+                username: 'ust.' + (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10),
+                password: u.password || 'guru',
+              };
+            }
             return u;
           });
           setUsers(updatedUsers);
@@ -180,8 +221,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (parsed.teachers) {
           const hydratedTeachers = parsed.teachers.map((t: Teacher) => {
             const initMatch = INITIAL_TEACHERS.find(it => it.id === t.id);
+            const userMatch = (parsed.users as User[] | undefined)?.find(u => u.id === t.userId);
             return {
               ...t,
+              username: t.username || initMatch?.username || userMatch?.username || ('ust.' + (t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)),
+              generatedPassword: t.generatedPassword || initMatch?.generatedPassword || userMatch?.password || 'guru',
               nik: t.nik || initMatch?.nik || '',
               bankName: t.bankName || initMatch?.bankName || '',
               bankAccount: t.bankAccount || initMatch?.bankAccount || '',
@@ -341,12 +385,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loginDriver = (identifier: string, password?: string): { success: boolean; message: string; user?: User } => {
     const cleanId = identifier.trim().toLowerCase();
-    const cleanPhone = identifier.replace(/[\s-]/g, '');
+    const cleanPhone = normalizePhone(identifier);
 
     const found = users.find(u => 
       u.role === 'ojol' && (
         u.email.toLowerCase() === cleanId ||
-        u.phone.replace(/[\s-]/g, '') === cleanPhone ||
+        (cleanPhone && normalizePhone(u.phone) === cleanPhone) ||
         u.name.toLowerCase() === cleanId
       )
     );
@@ -455,8 +499,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Verifikasi untuk akun Dewan Guru (Ustadz)
+    // Cocokkan berdasarkan username, email, nomor HP, atau nama
     const foundGuru = users.find(u => 
       u.role === 'guru' && (
+        (u.username && u.username.toLowerCase() === cleanId) ||
         u.email.toLowerCase() === cleanId ||
         u.phone.replace(/[\s-]/g, '') === cleanPhone ||
         u.name.toLowerCase() === cleanId
@@ -467,6 +513,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Check if an ojol account was entered
       const isOjol = users.find(u => 
         u.role === 'ojol' && (
+          (u.username && u.username.toLowerCase() === cleanId) ||
           u.email.toLowerCase() === cleanId ||
           u.phone.replace(/[\s-]/g, '') === cleanPhone ||
           u.name.toLowerCase() === cleanId
@@ -482,26 +529,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return {
         success: false,
-        message: 'Kredensial tidak ditemukan. Pastikan email atau nomor HP admin/guru sudah terdaftar dalam sistem.'
+        message: 'Username atau akun guru tidak ditemukan. Hanya Dewan Guru yang telah mendapatkan generate Username & Password resmi dari Administrator Pusat yang dapat masuk ke portal ini.'
       };
     }
 
     if (!foundGuru.isActive) {
       return {
         success: false,
-        message: 'Status akun pengelola Anda sedang tidak aktif. Silakan hubungi Administrator Sistem.'
+        message: 'Status akun pengelola/guru Anda sedang tidak aktif. Silakan hubungi Administrator Sistem.'
       };
     }
 
     if (password && foundGuru.password && foundGuru.password !== password) {
       return {
         success: false,
-        message: 'Kata sandi pengelola tidak cocok. Silakan coba kembali.'
+        message: 'Kata sandi akun guru tidak sesuai. Silakan gunakan kata sandi yang telah digenerate/diberikan oleh Administrator Pusat.'
       };
     }
 
     setCurrentUser(foundGuru);
     const roleTitle = 'Guru Mengaji (Ustadz)';
+    addAudit('LOGIN_STAFF', 'users', foundGuru.id, `${roleTitle} @${foundGuru.username || foundGuru.name} (${foundGuru.name}) berhasil masuk ke portal bimbingan guru`);
     addAudit('LOGIN_STAFF', 'users', foundGuru.id, `${roleTitle} ${foundGuru.name} berhasil masuk ke portal manajemen`);
     return {
       success: true,
@@ -512,18 +560,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const registerDriver = (data: RegisterDriverData): { success: boolean; message: string; user?: User } => {
     const cleanEmail = data.email.trim().toLowerCase();
-    const cleanPhone = data.phone.replace(/[\s-]/g, '');
+    const cleanPhone = normalizePhone(data.phone);
 
     // Check if phone or email already registered
     const exists = users.find(u => 
       (cleanEmail && u.email.toLowerCase() === cleanEmail) ||
-      (cleanPhone && u.phone.replace(/[\s-]/g, '') === cleanPhone)
+      (cleanPhone && normalizePhone(u.phone) === cleanPhone)
     );
 
     if (exists) {
+      const isSamePhone = Boolean(cleanPhone && normalizePhone(exists.phone) === cleanPhone);
+      const isSameEmail = Boolean(cleanEmail && exists.email.toLowerCase() === cleanEmail);
+      const matchedField = isSamePhone && isSameEmail 
+        ? 'Nomor WhatsApp dan Alamat Email' 
+        : isSamePhone 
+          ? 'Nomor WhatsApp' 
+          : 'Alamat Email';
       return {
         success: false,
-        message: `Nomor WhatsApp atau Email sudah terdaftar atas nama ${exists.name}. Silakan langsung masuk.`
+        message: `${matchedField} sudah terdaftar atas nama ${exists.name}. Silakan langsung masuk (login) menggunakan akun Anda.`
       };
     }
 
@@ -534,7 +589,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newUser: User = {
       id: userId,
       name: data.name.trim(),
-      email: cleanEmail || `${cleanPhone}@ojolmengaji.id`,
+      email: cleanEmail || `${cleanPhone || Date.now()}@ojolmengaji.id`,
       phone: data.phone.trim(),
       role: 'ojol',
       avatar: avatarUrl,
@@ -552,7 +607,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userId,
       name: data.name.trim(),
       phone: data.phone.trim(),
-      email: cleanEmail || `${cleanPhone}@ojolmengaji.id`,
+      email: cleanEmail || `${cleanPhone || Date.now()}@ojolmengaji.id`,
       avatar: avatarUrl,
       selfiePhoto: data.selfiePhoto,
       ojolPlatform: data.ojolPlatform,
@@ -568,9 +623,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bankAccount: data.bankAccount?.trim() || undefined,
     };
 
-    setUsers(prev => [...prev, newUser]);
-    setParticipants(prev => [...prev, newParticipant]);
-    // Jangan langsung login otomatis (setCurrentUser), driver harus melalui proses login terlebih dahulu
+    setUsers(prev => {
+      const next = [...prev, newUser];
+      notifySync({ users: next });
+      return next;
+    });
+    setParticipants(prev => {
+      const next = [...prev, newParticipant];
+      notifySync({ participants: next });
+      return next;
+    });
+    // Otomatis login akun baru driver agar langsung masuk dashboard
+    setCurrentUser(newUser);
 
     const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
     const idInfo = nikVal ? `NIK: ${nikVal}` : (data.vehiclePlate || '-');
@@ -579,7 +643,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       success: true,
-      message: `Alhamdulillah! Pendaftaran akun berhasil. Selamat datang di Ojol Mengaji, Akhina ${data.name}. Silakan masuk menggunakan nomor WhatsApp atau email serta kata sandi Anda.`,
+      message: `Alhamdulillah! Pendaftaran akun berhasil. Selamat datang di Ojol Mengaji, Akhina ${data.name}. Anda telah otomatis masuk ke dashboard driver.`,
       user: newUser
     };
   };
@@ -683,17 +747,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Teachers
-  const addTeacher = (data: Omit<Teacher, 'id' | 'userId' | 'email'>, email: string) => {
+  const addTeacher = (
+    data: Omit<Teacher, 'id' | 'userId' | 'email'> & {
+      username?: string;
+      password?: string;
+      email?: string;
+    },
+    email?: string
+  ): { success: boolean; message: string; teacher?: Teacher; user?: User } => {
+    const cleanUsername = (data.username || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^@/, '')
+      .replace(/\s+/g, '_') ||
+      ('ust.' + data.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12));
+
+    const passwordVal = data.password?.trim() || 'guru';
+
+    // Periksa apakah username sudah terdaftar
+    const usernameTaken = users.some(u => u.username && u.username.toLowerCase() === cleanUsername);
+    if (usernameTaken) {
+      return {
+        success: false,
+        message: `Username "@${cleanUsername}" sudah digunakan oleh akun lain. Silakan buat atau generate username yang berbeda.`
+      };
+    }
+
     const userId = 'user-guru-' + Date.now();
     const teacherId = 'teacher-' + Date.now();
+    const resolvedEmail = (email && email.trim()) || data.email?.trim() || `${cleanUsername}@ojolmengaji.id`;
 
     const newUser: User = {
       id: userId,
-      name: data.name,
-      email: email,
+      name: data.name.trim(),
+      username: cleanUsername,
+      email: resolvedEmail,
       role: 'guru',
-      avatar: data.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      phone: data.phone,
+      avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
+      phone: data.phone.trim(),
+      password: passwordVal,
       nik: data.nik,
       isActive: true,
     };
@@ -702,20 +794,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...data,
       id: teacherId,
       userId,
-      email,
+      username: cleanUsername,
+      email: resolvedEmail,
+      generatedPassword: passwordVal,
     };
 
-    setUsers(prev => [...prev, newUser]);
-    setTeachers(prev => [...prev, newTeacher]);
+    setUsers(prev => {
+      const next = [...prev, newUser];
+      notifySync({ users: next });
+      return next;
+    });
+
+    setTeachers(prev => {
+      const next = [...prev, newTeacher];
+      notifySync({ teachers: next });
+      return next;
+    });
+
     const nikInfo = data.nik ? ` [NIK: ${data.nik}]` : '';
     const bankInfo = data.bankAccount ? ` [Rek: ${data.bankName ? data.bankName + ' ' : ''}${data.bankAccount}]` : '';
-    addAudit('CREATE_TEACHER', 'teachers', teacherId, `Mendaftarkan guru "${data.name}"${nikInfo}${bankInfo}`);
+    addAudit(
+      'CREATE_TEACHER',
+      'teachers',
+      teacherId,
+      `Admin men-generate akun Guru "${data.name}" [Username: @${cleanUsername}] [Password: ${passwordVal}]${nikInfo}${bankInfo}`
+    );
+
+    return {
+      success: true,
+      message: `Akun Guru "${data.name}" berhasil digenerate dengan Username @${cleanUsername}!`,
+      teacher: newTeacher,
+      user: newUser
+    };
   };
 
-  const updateTeacher = (updated: Teacher) => {
-    setTeachers(prev => prev.map(t => t.id === updated.id ? updated : t));
-    setUsers(prev => prev.map(u => u.id === updated.userId ? { ...u, name: updated.name, phone: updated.phone, nik: updated.nik } : u));
-    addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui data guru "${updated.name}"`);
+  const updateTeacher = (updated: Teacher & { password?: string }) => {
+    const cleanUsername = updated.username
+      ? updated.username.trim().toLowerCase().replace(/^@/, '').replace(/\s+/g, '_')
+      : undefined;
+
+    setTeachers(prev => {
+      const next = prev.map(t => {
+        if (t.id === updated.id) {
+          return {
+            ...updated,
+            username: cleanUsername || t.username,
+            generatedPassword: updated.password || updated.generatedPassword || t.generatedPassword
+          };
+        }
+        return t;
+      });
+      notifySync({ teachers: next });
+      return next;
+    });
+
+    setUsers(prev => {
+      const next = prev.map(u => {
+        if (u.id === updated.userId) {
+          return {
+            ...u,
+            name: updated.name,
+            username: cleanUsername || u.username,
+            phone: updated.phone,
+            nik: updated.nik,
+            ...(updated.password ? { password: updated.password } : {})
+          };
+        }
+        return u;
+      });
+      notifySync({ users: next });
+      return next;
+    });
+
+    addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui data dan kredensial guru "${updated.name}"`);
   };
 
   // Participants
@@ -1134,6 +1285,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logout,
       switchUser,
       quickSwitchRole,
+      setCurrentUser,
       addShelter,
       updateShelter,
       deleteShelter,

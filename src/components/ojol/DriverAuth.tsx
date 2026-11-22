@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import { useApp, normalizePhone } from '@/context/AppContext';
 import { 
   Bike, 
   BookOpen, 
@@ -53,7 +53,7 @@ interface DriverAuthProps {
 }
 
 export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
-  const { shelters, users, registerDriver, loginDriver } = useApp();
+  const { shelters, users, registerDriver, loginDriver, setCurrentUser } = useApp();
 
   const [activeTab, setActiveTab] = useState<'register' | 'login'>('register');
   const [showPassword, setShowPassword] = useState(false);
@@ -67,6 +67,10 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
   const [customBankInput, setCustomBankInput] = useState('');
   const [isShelterDropdownOpen, setIsShelterDropdownOpen] = useState(false);
   const [shelterSearch, setShelterSearch] = useState('');
+
+  // Field-level error messages & validation error list
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [validationErrorList, setValidationErrorList] = useState<string[]>([]);
 
   // Registration Form State
   const [regForm, setRegForm] = useState<RegisterDriverData>({
@@ -234,74 +238,128 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    // Validation
+    const errs: Record<string, string> = {};
+    const errList: string[] = [];
+
+    // 1. Nama Lengkap
     if (!regForm.name.trim()) {
-      setErrorMsg('Nama lengkap wajib diisi sesuai KTP atau akun ojol Anda.');
-      return;
+      errs.name = 'Nama lengkap wajib diisi sesuai KTP atau aplikasi ojol Anda.';
+      errList.push('Nama Lengkap: Wajib diisi');
+    } else if (regForm.name.trim().length < 3) {
+      errs.name = 'Nama lengkap minimal 3 karakter.';
+      errList.push('Nama Lengkap: Minimal 3 karakter');
     }
-    if (!regForm.phone.trim() || regForm.phone.trim().length < 9) {
-      setErrorMsg('Nomor WhatsApp aktif wajib diisi (minimal 9 digit).');
-      return;
+
+    // 2. Nomor WhatsApp / HP Aktif
+    const cleanPhone = normalizePhone(regForm.phone);
+    if (!regForm.phone.trim()) {
+      errs.phone = 'Nomor WhatsApp / HP aktif wajib diisi.';
+      errList.push('Nomor WhatsApp / HP: Wajib diisi');
+    } else if (cleanPhone.length < 9) {
+      errs.phone = 'Nomor WhatsApp minimal 9 digit angka (contoh: 081234567890).';
+      errList.push('Nomor WhatsApp: Minimal 9 digit angka aktif');
     }
+
+    // 3. Format Email (jika diisi, harus valid)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (regForm.email.trim() && !emailRegex.test(regForm.email.trim())) {
+      errs.email = 'Format email tidak valid (contoh: nama@gmail.com).';
+      errList.push('Alamat Email: Format email tidak valid (contoh: nama@gmail.com)');
+    }
+
+    // 4. NIK KTP (16 digit)
     const cleanNik = (regForm.nik || regForm.vehiclePlate || '').replace(/\D/g, '');
     if (!cleanNik) {
-      setErrorMsg('NIK (Nomor Induk Kependudukan) wajib diisi sesuai KTP.');
-      return;
+      errs.nik = 'NIK (Nomor Induk Kependudukan) wajib diisi 16 digit sesuai KTP.';
+      errList.push('NIK KTP: Wajib diisi 16 digit angka');
+    } else if (cleanNik.length !== 16) {
+      errs.nik = `NIK harus terdiri dari 16 digit angka sesuai KTP (saat ini ${cleanNik.length} digit).`;
+      errList.push(`NIK KTP: Harus tepat 16 digit angka (saat ini ${cleanNik.length}/16 digit)`);
     }
-    if (cleanNik.length !== 16) {
-      setErrorMsg('NIK harus terdiri dari 16 digit angka sesuai KTP.');
-      return;
-    }
+
+    // 5. Shelter Pilihan
     if (!regForm.shelterId) {
-      setErrorMsg('Silakan pilih shelter pembinaan terdekat.');
-      return;
+      errs.shelterId = 'Silakan pilih shelter pembinaan mengaji terdekat.';
+      errList.push('Shelter Binaan: Wajib memilih shelter mengaji terdekat');
     }
-    if (regForm.accountType === 'Bank' && regForm.bankAccount && !regForm.bankName) {
-      setErrorMsg('Harap pilih nama bank dari dropdown daftar bank untuk nomor rekening Anda.');
-      return;
+
+    // 6. Akun Pencairan (Opsional, tapi jika dipilih harus lengkap)
+    if (regForm.accountType === 'Bank') {
+      if (!regForm.bankName) {
+        errs.bankName = 'Harap pilih nama bank dari dropdown daftar bank.';
+        errList.push('Daftar Bank: Harap pilih nama bank untuk rekening Anda');
+      }
+      if (!regForm.bankAccount || !regForm.bankAccount.trim()) {
+        errs.bankAccount = 'Nomor rekening bank wajib diisi.';
+        errList.push('Nomor Rekening Bank: Wajib diisi');
+      }
+    } else if (regForm.accountType === 'Gojek' || regForm.accountType === 'Ovo' || regForm.accountType === 'Dana') {
+      if (!regForm.bankAccount || !regForm.bankAccount.trim()) {
+        errs.bankAccount = `Nomor akun ${regForm.accountType} wajib diisi.`;
+        errList.push(`Nomor Akun: Harap isi nomor HP aktif untuk akun ${regForm.accountType}`);
+      }
     }
-    if (regForm.password && regForm.password.length < 4) {
-      setErrorMsg('Kata sandi minimal 4 karakter demi keamanan akun Anda.');
-      return;
+
+    // 7. Kata Sandi
+    if (!regForm.password) {
+      errs.password = 'Kata sandi wajib diisi (minimal 4 karakter).';
+      errList.push('Kata Sandi: Wajib diisi minimal 4 karakter');
+    } else if (regForm.password.length < 4) {
+      errs.password = 'Kata sandi minimal 4 karakter demi keamanan akun Anda.';
+      errList.push('Kata Sandi: Terlalu pendek (minimal 4 karakter)');
     }
-    if (regForm.password && regForm.password !== confirmPassword) {
-      setErrorMsg('Konfirmasi kata sandi tidak cocok. Harap periksa kembali.');
-      return;
+
+    // 8. Konfirmasi Kata Sandi
+    if (!confirmPassword) {
+      errs.confirmPassword = 'Ulangi kata sandi wajib diisi.';
+      errList.push('Konfirmasi Kata Sandi: Wajib diisi ulang');
+    } else if (regForm.password && regForm.password !== confirmPassword) {
+      errs.confirmPassword = 'Konfirmasi kata sandi tidak cocok. Harap periksa kembali.';
+      errList.push('Konfirmasi Kata Sandi: Tidak cocok dengan kata sandi di atas');
     }
+
+    // 9. Komitmen Niat
     if (!agreeTerms) {
-      setErrorMsg('Harap centang persetujuan niat dan komitmen belajar mengaji.');
+      errs.agreeTerms = 'Harap centang persetujuan niat dan komitmen belajar mengaji.';
+      errList.push('Komitmen Belajar: Harap centang persetujuan ikhlas belajar mengaji');
+    }
+
+    // Jika formulir belum lengkap, tampilkan rincian peringatan & scroll ke field pertama
+    if (errList.length > 0) {
+      setFieldErrors(errs);
+      setValidationErrorList(errList);
+      setErrorMsg(`Formulir pendaftaran belum lengkap (${errList.length} data perlu dilengkapi). Harap periksa kolom yang bertanda merah di bawah.`);
+
+      const firstKey = Object.keys(errs)[0];
+      const targetElement = document.getElementById(`reg-field-${firstKey}`) || document.getElementById('reg-error-banner-top');
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const inputToFocus = targetElement.querySelector('input, select, button') as HTMLElement;
+        if (inputToFocus && typeof inputToFocus.focus === 'function') {
+          inputToFocus.focus();
+        }
+      }
       return;
     }
 
+    setFieldErrors({});
+    setValidationErrorList([]);
     setIsSubmitting(true);
+
     setTimeout(() => {
       const res = registerDriver(regForm);
       setIsSubmitting(false);
       if (res.success) {
         setSuccessMsg(res.message);
-        // Alihkan ke tab login dan isi otomatis nomor telepon / email untuk mempermudah login
-        setActiveTab('login');
-        setLoginIdentifier(regForm.phone || regForm.email);
-        setLoginPassword('');
-        // Reset formulir pendaftaran
-        setRegForm({
-          name: '',
-          phone: '',
-          email: '',
-          password: '',
-          ojolPlatform: 'Gojek',
-          nik: '',
-          vehiclePlate: '',
-          shelterId: shelters[0]?.id || '',
-          currentLevel: 'Belum Dinilai',
-          accountType: undefined,
-          bankName: '',
-          bankAccount: '',
-          selfiePhoto: '',
-        });
-        setConfirmPassword('');
+        // Otomatis login akun baru driver agar langsung masuk dashboard
+        if (res.user) {
+          setCurrentUser(res.user);
+          if (onSuccess) onSuccess();
+        }
       } else {
         setErrorMsg(res.message);
+        const banner = document.getElementById('reg-error-banner-top');
+        if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 600);
   };
@@ -408,6 +466,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 setActiveTab('register');
                 setErrorMsg(null);
                 setSuccessMsg(null);
+                setFieldErrors({});
+                setValidationErrorList([]);
               }}
               className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
                 activeTab === 'register'
@@ -430,6 +490,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 setActiveTab('login');
                 setErrorMsg(null);
                 setSuccessMsg(null);
+                setFieldErrors({});
+                setValidationErrorList([]);
               }}
               className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
                 activeTab === 'login'
@@ -450,20 +512,67 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
 
         {/* Notification Messages */}
         <div className="px-5 sm:px-7 pt-5">
-          {errorMsg && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs sm:text-sm flex items-start gap-3 animate-fadeIn">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-bold text-rose-950">Mohon Periksa Kembali</p>
-                <p className="mt-0.5 text-rose-800 leading-relaxed">{errorMsg}</p>
+          {(errorMsg || validationErrorList.length > 0) && (
+            <div 
+              id="reg-error-banner-top"
+              className="p-4 sm:p-5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs sm:text-sm space-y-2.5 animate-fadeIn shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 font-bold text-rose-900 text-sm sm:text-base">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <span>Peringatan: Formulir Pendaftaran Belum Lengkap!</span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setErrorMsg(null);
+                    setValidationErrorList([]);
+                  }}
+                  className="text-rose-400 hover:text-rose-700 p-1 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setErrorMsg(null)}
-                className="text-rose-400 hover:text-rose-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
+
+              {errorMsg && (
+                <p className="text-xs sm:text-sm text-rose-800 leading-relaxed font-medium">
+                  {errorMsg}
+                </p>
+              )}
+
+              {validationErrorList.length > 0 && (
+                <div className="bg-white/85 rounded-xl p-3 border border-rose-200 space-y-1.5 mt-2">
+                  <p className="text-[11px] font-bold text-rose-900 uppercase tracking-wider">
+                    Rincian data yang wajib dilengkapi ({validationErrorList.length}):
+                  </p>
+                  <ul className="space-y-1 text-xs text-rose-800">
+                    {validationErrorList.map((err, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5">
+                        <span className="text-rose-500 font-bold shrink-0">•</span>
+                        <span>{err}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {errorMsg && errorMsg.includes('sudah terdaftar') && (
+                <div className="pt-2 border-t border-rose-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('login');
+                      setLoginIdentifier(regForm.phone || regForm.email);
+                      setErrorMsg(null);
+                      setValidationErrorList([]);
+                    }}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Langsung Masuk ke Akun Anda di Sini →</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -473,18 +582,10 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               <div className="flex-1">
                 <p className="font-bold text-emerald-900">Alhamdulillah Berhasil!</p>
                 <p className="mt-0.5 text-emerald-800 leading-relaxed">{successMsg}</p>
-                {activeTab === 'login' && !isSubmitting && (
-                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Silakan masukkan kata sandi Anda di bawah ini untuk masuk ke dashboard driver.
-                  </p>
-                )}
-                {isSubmitting && (
-                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                    Membuka dashboard akun driver Anda...
-                  </p>
-                )}
+                <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Mengalihkan ke dashboard akun driver Anda...
+                </p>
               </div>
               <button 
                 type="button" 
@@ -500,7 +601,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
 
         {/* TAB CONTENT: FORM REGISTER */}
         {activeTab === 'register' && (
-          <form onSubmit={handleRegister} className="p-5 sm:p-7 space-y-6">
+          <form noValidate onSubmit={handleRegister} className="p-5 sm:p-7 space-y-6">
             {/* Section 1: Data Diri */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
@@ -514,7 +615,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               </div>
 
               {/* Nama Lengkap */}
-              <div>
+              <div id="reg-field-name">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Nama Lengkap Driver <span className="text-rose-500">*</span>
                 </label>
@@ -524,22 +625,37 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   </div>
                   <input
                     type="text"
-                    required
                     placeholder="Contoh: Rian Hidayat"
                     value={regForm.name}
-                    onChange={(e) => setRegForm({ ...regForm, name: e.target.value })}
-                    className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-medium"
+                    onChange={(e) => {
+                      setRegForm({ ...regForm, name: e.target.value });
+                      if (fieldErrors.name) {
+                        setFieldErrors(prev => { const n = { ...prev }; delete n.name; return n; });
+                      }
+                    }}
+                    className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
+                      fieldErrors.name 
+                        ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                        : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                    }`}
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                  <Info className="w-3 h-3 text-slate-400 inline" />
-                  Tuliskan nama lengkap sesuai KTP atau nama di aplikasi ojol Anda.
-                </p>
+                {fieldErrors.name ? (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>{fieldErrors.name}</span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                    <Info className="w-3 h-3 text-slate-400 inline" />
+                    Tuliskan nama lengkap sesuai KTP atau nama di aplikasi ojol Anda.
+                  </p>
+                )}
               </div>
 
               {/* No WhatsApp & Email */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div id="reg-field-phone">
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Nomor WhatsApp / HP Aktif <span className="text-rose-500">*</span>
                   </label>
@@ -549,17 +665,32 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     </div>
                     <input
                       type="tel"
-                      required
                       placeholder="081234567890"
                       value={regForm.phone}
-                      onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-medium"
+                      onChange={(e) => {
+                        setRegForm({ ...regForm, phone: e.target.value });
+                        if (fieldErrors.phone) {
+                          setFieldErrors(prev => { const n = { ...prev }; delete n.phone; return n; });
+                        }
+                      }}
+                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
+                        fieldErrors.phone 
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                      }`}
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">Digunakan untuk login &amp; info jadwal</p>
+                  {fieldErrors.phone ? (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.phone}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">Digunakan untuk login &amp; info jadwal</p>
+                  )}
                 </div>
 
-                <div>
+                <div id="reg-field-email">
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Alamat Email <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
@@ -571,11 +702,27 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       type="email"
                       placeholder="driver@gmail.com"
                       value={regForm.email}
-                      onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-medium"
+                      onChange={(e) => {
+                        setRegForm({ ...regForm, email: e.target.value });
+                        if (fieldErrors.email) {
+                          setFieldErrors(prev => { const n = { ...prev }; delete n.email; return n; });
+                        }
+                      }}
+                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
+                        fieldErrors.email 
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                      }`}
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">Opsional, bisa juga login dengan No. WA</p>
+                  {fieldErrors.email ? (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.email}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">Opsional, bisa juga login dengan No. WA</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -846,27 +993,47 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
 
               {/* NIK KTP & Shelter */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    NIK (Nomor Induk Kependudukan) <span className="text-rose-500">*</span>
-                  </label>
+                <div id="reg-field-nik">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      NIK (Nomor Induk Kependudukan) <span className="text-rose-500">*</span>
+                    </label>
+                    <span className={`text-[10px] font-mono font-bold ${
+                      (regForm.nik || '').length === 16 ? 'text-emerald-600' : 'text-slate-400'
+                    }`}>
+                      {(regForm.nik || '').length}/16 digit
+                    </span>
+                  </div>
                   <input
                     type="text"
                     inputMode="numeric"
                     maxLength={16}
-                    required
-                    placeholder="CONTOH: 3171012345670001"
+                    placeholder="Contoh: 3171012345670001"
                     value={regForm.nik || ''}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 16);
                       setRegForm({ ...regForm, nik: val, vehiclePlate: val });
+                      if (fieldErrors.nik) {
+                        setFieldErrors(prev => { const n = { ...prev }; delete n.nik; return n; });
+                      }
                     }}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
+                    className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-mono font-bold ${
+                      fieldErrors.nik
+                        ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                    }`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">Sesuai NIK pada KTP (16 digit)</p>
+                  {fieldErrors.nik ? (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.nik}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">Sesuai NIK pada KTP (16 digit angka)</p>
+                  )}
                 </div>
 
-                <div>
+                <div id="reg-field-shelterId">
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Shelter Binaan Terdekat <span className="text-rose-500">*</span>
                   </label>
@@ -878,9 +1045,11 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                         setIsBankDropdownOpen(false);
                       }}
                       className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
-                        isShelterDropdownOpen
-                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                          : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                        fieldErrors.shelterId
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20 text-slate-900'
+                          : isShelterDropdownOpen
+                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                            : 'border-slate-300 hover:border-slate-400 text-slate-800'
                       }`}
                     >
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
@@ -946,6 +1115,9 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                                     setRegForm({ ...regForm, shelterId: s.id });
                                     setIsShelterDropdownOpen(false);
                                     setShelterSearch('');
+                                    if (fieldErrors.shelterId) {
+                                      setFieldErrors(prev => { const n = { ...prev }; delete n.shelterId; return n; });
+                                    }
                                   }}
                                   className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
                                     isSelected
@@ -988,7 +1160,14 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       </div>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">Lokasi pangkalan presensi &amp; belajar</p>
+                  {fieldErrors.shelterId ? (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.shelterId}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">Lokasi pangkalan presensi &amp; belajar</p>
+                  )}
                 </div>
               </div>
 
@@ -1090,7 +1269,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 {/* Conditional: Kalau pilihnya akun bank, maka disusul dengan field baru yaitu dropdown "daftar bank" & nomor rekening */}
                 {regForm.accountType === 'Bank' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200/80 animate-fadeIn">
-                    <div>
+                    <div id="reg-field-bankName">
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">
                         Daftar Bank <span className="text-rose-500">*</span>
                       </label>
@@ -1103,9 +1282,11 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                             setIsShelterDropdownOpen(false);
                           }}
                           className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
-                            isBankDropdownOpen
-                              ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                              : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                            fieldErrors.bankName
+                              ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20 text-slate-900'
+                              : isBankDropdownOpen
+                                ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                                : 'border-slate-300 hover:border-slate-400 text-slate-800'
                           }`}
                         >
                           <span className={`truncate pr-2 ${regForm.bankName ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal'}`}>
@@ -1162,6 +1343,9 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                                         setRegForm({ ...regForm, bankName: bank });
                                         setIsBankDropdownOpen(false);
                                         setBankSearch('');
+                                        if (fieldErrors.bankName) {
+                                          setFieldErrors(prev => { const n = { ...prev }; delete n.bankName; return n; });
+                                        }
                                       }}
                                       className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors flex items-center justify-between ${
                                         isSelected
@@ -1183,6 +1367,12 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                           </div>
                         )}
                       </div>
+                      {fieldErrors.bankName && (
+                        <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>{fieldErrors.bankName}</span>
+                        </p>
+                      )}
                       {regForm.bankName === 'Bank Lainnya' && (
                         <div className="mt-2">
                           <input
@@ -1192,6 +1382,9 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                             onChange={(e) => {
                               setCustomBankInput(e.target.value);
                               setRegForm(prev => ({ ...prev, bankName: e.target.value || 'Bank Lainnya' }));
+                              if (fieldErrors.bankName) {
+                                setFieldErrors(prev => { const n = { ...prev }; delete n.bankName; return n; });
+                              }
                             }}
                             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                           />
@@ -1200,7 +1393,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       <p className="text-[11px] text-slate-400 mt-1">Pilih bank dari daftar lengkap di atas untuk rekening Anda</p>
                     </div>
 
-                    <div>
+                    <div id="reg-field-bankAccount">
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">
                         Nomor Rekening Bank <span className="text-rose-500">*</span>
                       </label>
@@ -1216,18 +1409,32 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                           onChange={(e) => {
                             const val = e.target.value.replace(/[^0-9-]/g, '');
                             setRegForm({ ...regForm, bankAccount: val });
+                            if (fieldErrors.bankAccount) {
+                              setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
+                            }
                           }}
-                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
+                          className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-mono font-bold ${
+                            fieldErrors.bankAccount
+                              ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
+                              : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                          }`}
                         />
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1">Sesuai buku tabungan / m-banking aktif</p>
+                      {fieldErrors.bankAccount ? (
+                        <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>{fieldErrors.bankAccount}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 mt-1">Sesuai buku tabungan / m-banking aktif</p>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {/* Conditional: Kalau pilihnya Gojek, Ovo, atau Dana */}
                 {(regForm.accountType === 'Gojek' || regForm.accountType === 'Ovo' || regForm.accountType === 'Dana') && (
-                  <div className="pt-2 border-t border-slate-200/80 animate-fadeIn">
+                  <div id="reg-field-bankAccount" className="pt-2 border-t border-slate-200/80 animate-fadeIn">
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-bold text-slate-700">
                         Nomor Akun {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} <span className="text-rose-500">*</span>
@@ -1235,7 +1442,12 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       {regForm.phone && (
                         <button
                           type="button"
-                          onClick={() => setRegForm({ ...regForm, bankAccount: regForm.phone })}
+                          onClick={() => {
+                            setRegForm({ ...regForm, bankAccount: regForm.phone });
+                            if (fieldErrors.bankAccount) {
+                              setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
+                            }
+                          }}
                           className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition"
                         >
                           Gunakan No. WhatsApp ({regForm.phone})
@@ -1254,13 +1466,27 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9-]/g, '');
                           setRegForm({ ...regForm, bankAccount: val });
+                          if (fieldErrors.bankAccount) {
+                            setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
+                          }
                         }}
-                        className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-mono font-bold"
+                        className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-mono font-bold ${
+                          fieldErrors.bankAccount
+                            ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
+                            : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                        }`}
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Nomor ponsel yang terdaftar aktif pada aplikasi {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} Anda
-                    </p>
+                    {fieldErrors.bankAccount ? (
+                      <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span>{fieldErrors.bankAccount}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Nomor ponsel yang terdaftar aktif pada aplikasi {regForm.accountType === 'Gojek' ? 'Gojek / GoPay' : regForm.accountType.toUpperCase()} Anda
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1287,7 +1513,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div id="reg-field-password">
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Buat Kata Sandi (Password) <span className="text-rose-500">*</span>
                   </label>
@@ -1297,11 +1523,19 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     </div>
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      required
                       placeholder="Minimal 4 karakter"
                       value={regForm.password}
-                      onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                      className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-medium"
+                      onChange={(e) => {
+                        setRegForm({ ...regForm, password: e.target.value });
+                        if (fieldErrors.password) {
+                          setFieldErrors(prev => { const n = { ...prev }; delete n.password; return n; });
+                        }
+                      }}
+                      className={`w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
+                        fieldErrors.password
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
+                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                      }`}
                     />
                     <button
                       type="button"
@@ -1311,6 +1545,12 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                   </div>
+                  {fieldErrors.password && (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.password}</span>
+                    </p>
+                  )}
 
                   {/* Password strength indicator */}
                   {regForm.password && (
@@ -1326,7 +1566,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   )}
                 </div>
 
-                <div>
+                <div id="reg-field-confirmPassword">
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Ulangi Kata Sandi <span className="text-rose-500">*</span>
                   </label>
@@ -1336,11 +1576,19 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     </div>
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
-                      required
                       placeholder="Ketik ulang kata sandi"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs font-medium"
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (fieldErrors.confirmPassword) {
+                          setFieldErrors(prev => { const n = { ...prev }; delete n.confirmPassword; return n; });
+                        }
+                      }}
+                      className={`w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-medium ${
+                        fieldErrors.confirmPassword
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
+                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                      }`}
                     />
                     <button
                       type="button"
@@ -1350,8 +1598,14 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       {showConfirmPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                   </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.confirmPassword}</span>
+                    </p>
+                  )}
 
-                  {confirmPassword && (
+                  {!fieldErrors.confirmPassword && confirmPassword && (
                     <p className={`text-[10px] mt-1 font-semibold flex items-center gap-1 ${
                       confirmPassword === regForm.password ? 'text-emerald-600' : 'text-rose-600'
                     }`}>
@@ -1373,12 +1627,21 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
             </div>
 
             {/* Komitmen Niat Driver */}
-            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+            <div id="reg-field-agreeTerms" className={`p-4 rounded-2xl border transition ${
+              fieldErrors.agreeTerms 
+                ? 'bg-rose-50/60 border-2 border-rose-300 ring-2 ring-rose-200' 
+                : 'bg-emerald-50/70 border-emerald-200'
+            }`}>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  onChange={(e) => {
+                    setAgreeTerms(e.target.checked);
+                    if (fieldErrors.agreeTerms) {
+                      setFieldErrors(prev => { const n = { ...prev }; delete n.agreeTerms; return n; });
+                    }
+                  }}
                   className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                 />
                 <div className="text-xs text-slate-700 leading-relaxed">
@@ -1386,7 +1649,46 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   Bismillah, saya berniat ikhlas mengikuti bimbingan Al-Qur&apos;an di shelter, menjaga adab majelis ilmu, mematuhi arahan asatidz, serta berkomitmen hadir istiqamah saat jadwal mengaji.
                 </div>
               </label>
+              {fieldErrors.agreeTerms && (
+                <p className="text-[11px] text-rose-600 font-bold mt-2 flex items-center gap-1 animate-fadeIn">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span>{fieldErrors.agreeTerms}</span>
+                </p>
+              )}
             </div>
+
+            {/* Peringatan / Notifikasi Tambahan Di Atas Tombol Daftar Jika Belum Lengkap */}
+            {validationErrorList.length > 0 && (
+              <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-xs text-rose-950 space-y-2.5 animate-fadeIn shadow-sm">
+                <div className="flex items-center gap-2 font-bold text-rose-900 text-sm">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <span>Peringatan: Ada {validationErrorList.length} Kolom Data Belum Lengkap!</span>
+                </div>
+                <p className="text-[11px] text-rose-800 leading-relaxed">
+                  Mohon lengkapi isian bertanda merah di atas agar pendaftaran akun Anda dapat diproses:
+                </p>
+                <ul className="space-y-1 text-[11px] text-rose-800 list-disc list-inside bg-white/80 p-3 rounded-xl border border-rose-200">
+                  {validationErrorList.map((err, idx) => (
+                    <li key={idx} className="leading-tight">{err}</li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstKey = Object.keys(fieldErrors)[0];
+                    const el = document.getElementById(`reg-field-${firstKey}`) || document.getElementById('reg-error-banner-top');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      const inp = el.querySelector('input, select, button') as HTMLElement;
+                      if (inp && typeof inp.focus === 'function') inp.focus();
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 underline"
+                >
+                  <span>↑ Klik di sini untuk lompat ke kolom pertama yang perlu dilengkapi</span>
+                </button>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div>

@@ -26,6 +26,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-guru-1',
     name: 'Ust. Ahmad Fauzi, S.Q.',
+    username: 'ust.ahmad',
     email: 'ahmad.fauzi@ojolmengaji.id',
     role: 'guru',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
@@ -36,6 +37,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-guru-2',
     name: 'Ust. Muhammad Ridwan',
+    username: 'ust.ridwan',
     email: 'ridwan@ojolmengaji.id',
     role: 'guru',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
@@ -80,6 +82,26 @@ export const INITIAL_USERS: User[] = [
     role: 'ojol',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     phone: '0819-2233-4455',
+    password: '123',
+    isActive: true,
+  },
+  {
+    id: 'user-ojol-5',
+    name: 'Hendra Setiawan',
+    email: 'hendra.driver@gmail.com',
+    role: 'ojol',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    phone: '0812-4455-6677',
+    password: '123',
+    isActive: true,
+  },
+  {
+    id: 'user-ojol-6',
+    name: 'Joko Susilo',
+    email: 'joko.susilo@gmail.com',
+    role: 'ojol',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    phone: '0852-6677-8899',
     password: '123',
     isActive: true,
   },
@@ -153,6 +175,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     id: 'teacher-1',
     userId: 'user-guru-1',
     name: 'Ust. Ahmad Fauzi, S.Q.',
+    username: 'ust.ahmad',
     phone: '0813-8899-1234',
     email: 'ahmad.fauzi@ojolmengaji.id',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
@@ -162,11 +185,13 @@ export const INITIAL_TEACHERS: Teacher[] = [
     nik: '3201011505800001',
     bankName: 'BSI (Bank Syariah Indonesia)',
     bankAccount: '7123456789',
+    generatedPassword: 'guru',
   },
   {
     id: 'teacher-2',
     userId: 'user-guru-2',
     name: 'Ust. Muhammad Ridwan',
+    username: 'ust.ridwan',
     phone: '0815-7766-5544',
     email: 'ridwan@ojolmengaji.id',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
@@ -176,6 +201,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     nik: '3201022008820002',
     bankName: 'Bank Muamalat',
     bankAccount: '1029384756',
+    generatedPassword: 'guru',
   }
 ];
 

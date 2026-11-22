@@ -51,6 +51,7 @@ export const LEVEL_OPTIONS: LevelOption[] = [
 export interface User {
   id: string;
   name: string;
+  username?: string; // Username resmi (digenerate admin untuk guru / pengelola)
   email: string;
   role: UserRole;
   avatar?: string;
@@ -92,6 +93,7 @@ export interface Teacher {
   id: string;
   userId: string;
   name: string;
+  username?: string; // Username resmi login guru
   phone: string;
   email: string;
   avatar: string;
@@ -101,6 +103,7 @@ export interface Teacher {
   nik?: string;
   bankName?: string;
   bankAccount?: string;
+  generatedPassword?: string; // Password yang digenerate oleh admin untuk dibagikan ke Ustadz
 }
 
 export interface Participant {

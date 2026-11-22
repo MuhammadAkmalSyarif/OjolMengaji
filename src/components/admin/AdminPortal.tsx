@@ -39,7 +39,16 @@ import {
   Building,
   Award,
   Printer,
-  Clock
+  Clock,
+  Key,
+  Copy,
+  Share2,
+  Send,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  UserCheck,
+  AtSign
 } from 'lucide-react';
 import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType, BANK_OPTIONS } from '@/types';
 import { MemberCardModal } from '../ojol/MemberCardModal';
@@ -139,6 +148,7 @@ const PRESET_SHELTERS = [
 
 export const AdminPortal: React.FC = () => {
   const { 
+    users,
     shelters, 
     teachers, 
     participants, 
@@ -191,10 +201,13 @@ export const AdminPortal: React.FC = () => {
   const [allowManualCoordEdit, setAllowManualCoordEdit] = useState(false);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
-  // Teacher Modal
+  // Teacher Modal & Generated Credentials State
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [teacherName, setTeacherName] = useState('');
+  const [teacherUsername, setTeacherUsername] = useState('');
+  const [teacherPassword, setTeacherPassword] = useState('');
+  const [showTeacherPassword, setShowTeacherPassword] = useState(true);
   const [teacherEmail, setTeacherEmail] = useState('');
   const [teacherPhone, setTeacherPhone] = useState('');
   const [teacherSpec, setTeacherSpec] = useState('');
@@ -202,6 +215,65 @@ export const AdminPortal: React.FC = () => {
   const [teacherBankName, setTeacherBankName] = useState('');
   const [teacherBankAccount, setTeacherBankAccount] = useState('');
   const [teacherSelectedShelters, setTeacherSelectedShelters] = useState<string[]>([]);
+  const [teacherModalError, setTeacherModalError] = useState<string | null>(null);
+
+  // Credential View & Share Modal
+  const [showCredentialModal, setShowCredentialModal] = useState(false);
+  const [credentialModalData, setCredentialModalData] = useState<{
+    name: string;
+    username: string;
+    password?: string;
+    phone: string;
+    email: string;
+    shelters: string[];
+    isNew?: boolean;
+  } | null>(null);
+  const [copiedCredentialToast, setCopiedCredentialToast] = useState(false);
+  const [revealedPasswordIds, setRevealedPasswordIds] = useState<string[]>([]);
+
+  // Generator Helper: Sugesti Username dari Nama Ustadz
+  const generateSuggestedUsername = (fullName: string): string => {
+    if (!fullName) return '';
+    const clean = fullName
+      .toLowerCase()
+      .replace(/(ust|ustadz|kyai|kiai|habib|syekh|drs|m\.pd|s\.pd\.i|s\.pd|s\.q|l\.c|m\.ag|h\.)/gi, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'ust.guru';
+    if (parts.length === 1) return `ust.${parts[0]}`;
+    return `ust.${parts[0]}`;
+  };
+
+  // Generator Helper: Alternatif Username Acak
+  const generateAlternateUsername = (fullName: string): string => {
+    const clean = fullName
+      .toLowerCase()
+      .replace(/(ust|ustadz|kyai|kiai|habib|syekh|drs|m\.pd|s\.pd\.i|s\.pd|s\.q|l\.c|m\.ag|h\.)/gi, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    const base = parts[0] || 'guru';
+    const randSuffix = Math.floor(10 + Math.random() * 90);
+    const variations = [
+      `ust.${base}`,
+      `ustadz.${base}`,
+      parts[1] ? `${parts[0]}.${parts[1]}` : `ust.${base}${randSuffix}`,
+      `guru.${base}`,
+      `pembimbing.${base}`
+    ];
+    return variations[Math.floor(Math.random() * variations.length)];
+  };
+
+  // Generator Helper: Password Kuat & Bersahabat untuk Ustadz
+  const generateTeacherPassword = (): string => {
+    const words = ['Mengaji', 'Talaqqi', 'Tahsin', 'Bismillah', 'Berkah', 'Ustadz', 'Dakwah', 'Iqro'];
+    const symbols = ['!', '@', '#', '$', '*'];
+    const word = words[Math.floor(Math.random() * words.length)];
+    const num = Math.floor(100 + Math.random() * 900);
+    const sym = symbols[Math.floor(Math.random() * symbols.length)];
+    return `${word}${sym}${num}`;
+  };
 
   // Teacher Shelter Assignment Modal
   const [showAssignShelterModal, setShowAssignShelterModal] = useState(false);
@@ -408,20 +480,28 @@ export const AdminPortal: React.FC = () => {
   const handleOpenCreateTeacher = () => {
     setEditingTeacher(null);
     setTeacherName('');
+    setTeacherUsername('');
+    setTeacherPassword(generateTeacherPassword());
+    setShowTeacherPassword(true);
     setTeacherEmail('');
     setTeacherPhone('');
-    setTeacherSpec('');
+    setTeacherSpec('Tahsin & Bimbingan Mengaji');
     setTeacherNik('');
     setTeacherBankName('BSI (Bank Syariah Indonesia)');
     setTeacherBankAccount('');
-    setTeacherSelectedShelters([]);
+    setTeacherSelectedShelters(shelters[0] ? [shelters[0].id] : []);
+    setTeacherModalError(null);
     setShowTeacherModal(true);
   };
 
   // Open Teacher Modal for Edit
   const handleOpenEditTeacher = (t: Teacher) => {
+    const matchingUser = users.find(u => u.id === t.userId);
     setEditingTeacher(t);
     setTeacherName(t.name);
+    setTeacherUsername(t.username || matchingUser?.username || generateSuggestedUsername(t.name));
+    setTeacherPassword(matchingUser?.password || t.generatedPassword || 'guru');
+    setShowTeacherPassword(false);
     setTeacherEmail(t.email);
     setTeacherPhone(t.phone);
     setTeacherSpec(t.specialization || '');
@@ -429,49 +509,117 @@ export const AdminPortal: React.FC = () => {
     setTeacherBankName(t.bankName || 'BSI (Bank Syariah Indonesia)');
     setTeacherBankAccount(t.bankAccount || '');
     setTeacherSelectedShelters(t.shelterIds || []);
+    setTeacherModalError(null);
     setShowTeacherModal(true);
   };
 
-  // Save Teacher
+  // Open Share Credential Modal from Teacher Card
+  const handleOpenShareCredential = (teacher: Teacher) => {
+    const matchingUser = users.find(u => u.id === teacher.userId);
+    const shelterNames = shelters.filter(s => (teacher.shelterIds || []).includes(s.id)).map(s => s.name);
+    setCredentialModalData({
+      name: teacher.name,
+      username: teacher.username || matchingUser?.username || generateSuggestedUsername(teacher.name),
+      password: matchingUser?.password || teacher.generatedPassword || 'guru',
+      phone: teacher.phone,
+      email: teacher.email,
+      shelters: shelterNames,
+      isNew: false
+    });
+    setShowCredentialModal(true);
+  };
+
+  // Toggle reveal password on card
+  const handleToggleRevealPassword = (teacherId: string) => {
+    setRevealedPasswordIds(prev => 
+      prev.includes(teacherId) ? prev.filter(id => id !== teacherId) : [...prev, teacherId]
+    );
+  };
+
+  // Save Teacher (with Generated Credentials)
   const handleSaveTeacher = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teacherName || (!editingTeacher && !teacherEmail)) return;
+    setTeacherModalError(null);
+
+    if (!teacherName.trim()) {
+      setTeacherModalError('Nama Ustadz / Pembimbing wajib diisi.');
+      return;
+    }
+
+    const cleanUsername = (teacherUsername || generateSuggestedUsername(teacherName))
+      .trim()
+      .toLowerCase()
+      .replace(/^@/, '')
+      .replace(/\s+/g, '_');
+
+    if (!cleanUsername) {
+      setTeacherModalError('Username Ustadz wajib diisi.');
+      return;
+    }
+
+    const resolvedPassword = teacherPassword.trim() || 'guru';
+    const resolvedEmail = teacherEmail.trim() || `${cleanUsername}@ojolmengaji.id`;
+    const resolvedShelters = teacherSelectedShelters.length > 0 ? teacherSelectedShelters : [shelters[0]?.id || ''];
 
     if (editingTeacher) {
       updateTeacher({
         ...editingTeacher,
-        name: teacherName,
+        name: teacherName.trim(),
+        username: cleanUsername,
+        password: resolvedPassword,
         phone: teacherPhone || '0812-0000-0000',
         specialization: teacherSpec || 'Tahsin & Bimbingan Mengaji',
         nik: teacherNik.trim() || undefined,
         bankName: teacherBankName.trim() || undefined,
         bankAccount: teacherBankAccount.trim() || undefined,
-        shelterIds: teacherSelectedShelters.length > 0 ? teacherSelectedShelters : editingTeacher.shelterIds,
+        shelterIds: resolvedShelters,
       });
+
+      setShowTeacherModal(false);
+      const shelterNames = shelters.filter(s => resolvedShelters.includes(s.id)).map(s => s.name);
+      setCredentialModalData({
+        name: teacherName.trim(),
+        username: cleanUsername,
+        password: resolvedPassword,
+        phone: teacherPhone,
+        email: resolvedEmail,
+        shelters: shelterNames,
+        isNew: false
+      });
+      setShowCredentialModal(true);
     } else {
-      addTeacher({
-        name: teacherName,
+      const res = addTeacher({
+        name: teacherName.trim(),
+        username: cleanUsername,
+        password: resolvedPassword,
         phone: teacherPhone || '0812-0000-0000',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(teacherName.trim())}`,
         specialization: teacherSpec || 'Tahsin & Bimbingan Mengaji',
         nik: teacherNik.trim() || undefined,
         bankName: teacherBankName.trim() || undefined,
         bankAccount: teacherBankAccount.trim() || undefined,
-        shelterIds: teacherSelectedShelters.length > 0 ? teacherSelectedShelters : [shelters[0]?.id || ''],
+        shelterIds: resolvedShelters,
         isActive: true,
-      }, teacherEmail);
-    }
+      }, resolvedEmail);
 
-    setShowTeacherModal(false);
-    setEditingTeacher(null);
-    setTeacherName('');
-    setTeacherEmail('');
-    setTeacherPhone('');
-    setTeacherSpec('');
-    setTeacherNik('');
-    setTeacherBankName('');
-    setTeacherBankAccount('');
-    setTeacherSelectedShelters([]);
+      if (res && !res.success) {
+        setTeacherModalError(res.message);
+        return;
+      }
+
+      setShowTeacherModal(false);
+      const shelterNames = shelters.filter(s => resolvedShelters.includes(s.id)).map(s => s.name);
+      setCredentialModalData({
+        name: teacherName.trim(),
+        username: cleanUsername,
+        password: resolvedPassword,
+        phone: teacherPhone,
+        email: resolvedEmail,
+        shelters: shelterNames,
+        isNew: true
+      });
+      setShowCredentialModal(true);
+    }
   };
 
   // Open Shelter Assignment Modal for Teacher
@@ -570,7 +718,7 @@ export const AdminPortal: React.FC = () => {
         ];
       case 'guru':
         return [
-          'No', 'ID Guru', 'Nama Ustadz / Guru', 'NIK KTP', 'No. WhatsApp / HP', 'Email Guru',
+          'No', 'ID Guru', 'Nama Ustadz / Guru', 'Username Login', 'Kata Sandi Akun', 'NIK KTP', 'No. WhatsApp / HP', 'Email Guru',
           'Spesialisasi Pengajaran', 'Shelter Binaan Ditugaskan', 'Jumlah Shelter Binaan', 'Total Driver Binaan',
           'Nama Bank Insentif', 'Nomor Rekening Insentif', 'Total Sesi Mengajar Terjadwal',
           'Total Penilaian Tilawah Dilakukan', 'Status Guru'
@@ -712,6 +860,8 @@ export const AdminPortal: React.FC = () => {
         'No',
         'ID Guru',
         'Nama Ustadz / Guru',
+        'Username Login',
+        'Kata Sandi Akun',
         'NIK KTP',
         'No. WhatsApp / HP',
         'Email Guru',
@@ -736,11 +886,14 @@ export const AdminPortal: React.FC = () => {
         const totalTeachingSchedules = schedules.filter(s => s.teacherId === t.id).length;
         const totalEvaluations = assessments.filter(a => a.teacherId === t.id).length;
         const shelterNames = mySh.length > 0 ? mySh.map(s => s.name).join('; ') : 'Belum Ditugaskan';
+        const matchingUser = users.find(u => u.id === t.userId);
 
         return [
           String(idx + 1),
           t.id,
           t.name,
+          t.username || matchingUser?.username || '-',
+          matchingUser?.password || t.generatedPassword || 'guru',
           t.nik || '-',
           t.phone || '-',
           t.email || '-',
@@ -1419,6 +1572,10 @@ export const AdminPortal: React.FC = () => {
             {teachers.map(teacher => {
               const mySheltersList = shelters.filter(s => (teacher.shelterIds || []).includes(s.id));
               const totalDrivers = participants.filter(p => (teacher.shelterIds || []).includes(p.shelterId)).length;
+              const matchingUser = users.find(u => u.id === teacher.userId);
+              const teacherUname = teacher.username || matchingUser?.username || generateSuggestedUsername(teacher.name);
+              const teacherPass = matchingUser?.password || teacher.generatedPassword || 'guru';
+
               return (
                 <div key={teacher.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3 flex flex-col justify-between">
                   <div className="space-y-3">
@@ -1435,6 +1592,73 @@ export const AdminPortal: React.FC = () => {
                       <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
                         {mySheltersList.length} Shelter • {totalDrivers} Ojol
                       </span>
+                    </div>
+
+                    {/* Kredensial Akun Guru (Digenerate oleh Admin) */}
+                    <div className="bg-gradient-to-r from-purple-50 via-indigo-50/70 to-slate-50 p-3 rounded-xl border border-purple-200 text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-purple-950 flex items-center gap-1.5 text-[11px]">
+                          <Key className="w-3.5 h-3.5 text-purple-700" />
+                          <span>Kredensial Login Guru (Generated Admin):</span>
+                        </span>
+                        <span className="text-[10px] font-semibold text-purple-700 bg-white px-2 py-0.5 rounded-full border border-purple-200">
+                          Khusus Ustadz
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="bg-white p-2 rounded-lg border border-purple-100 flex items-center justify-between">
+                          <div>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold block">Username Login:</span>
+                            <span className="font-mono font-bold text-purple-900 text-xs">
+                              @{teacherUname}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(teacherUname);
+                              setCopiedCredentialToast(true);
+                              setTimeout(() => setCopiedCredentialToast(false), 2000);
+                            }}
+                            title="Salin Username"
+                            className="p-1 rounded text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="bg-white p-2 rounded-lg border border-purple-100 flex items-center justify-between">
+                          <div>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold block">Password Akun:</span>
+                            <span className="font-mono font-bold text-slate-800 text-xs">
+                              {revealedPasswordIds.includes(teacher.id) ? teacherPass : '••••••••'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRevealPassword(teacher.id)}
+                              title={revealedPasswordIds.includes(teacher.id) ? "Sembunyikan Password" : "Lihat Password"}
+                              className="p-1 rounded text-slate-400 hover:text-purple-700 hover:bg-slate-50"
+                            >
+                              {revealedPasswordIds.includes(teacher.id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(teacherPass);
+                                setCopiedCredentialToast(true);
+                                setTimeout(() => setCopiedCredentialToast(false), 2000);
+                              }}
+                              title="Salin Password"
+                              className="p-1 rounded text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Data Identitas & Rekening (NIK & Nomor Rekening) */}
@@ -1491,14 +1715,23 @@ export const AdminPortal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200 flex items-center justify-end gap-2">
+                  <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenShareCredential(teacher)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-200 transition-colors flex items-center gap-1.5"
+                      title="Lihat & Bagikan Kredensial ke WhatsApp Ustadz"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-purple-700" />
+                      <span>Bagikan Akun</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleOpenEditTeacher(teacher)}
                       className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs transition-colors flex items-center gap-1.5"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit Data &amp; Rekening</span>
+                      <span>Edit &amp; Reset Sandi</span>
                     </button>
                     <button
                       type="button"
@@ -1506,7 +1739,7 @@ export const AdminPortal: React.FC = () => {
                       className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition-colors flex items-center gap-1.5"
                     >
                       <MapPin className="w-3.5 h-3.5" />
-                      <span>Atur Penugasan Shelter</span>
+                      <span>Atur Penugasan</span>
                     </button>
                   </div>
                 </div>
@@ -2371,9 +2604,9 @@ export const AdminPortal: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: TEACHER CREATE / EDIT */}
+      {/* MODAL: TEACHER CREATE / EDIT WITH CREDENTIAL GENERATION */}
       {showTeacherModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-100">
             <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
               <div>
@@ -2382,58 +2615,167 @@ export const AdminPortal: React.FC = () => {
                     <GraduationCap className="w-4 h-4 text-purple-700" />
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900">
-                    {editingTeacher ? 'Edit Data Guru Mengaji' : 'Pendaftaran Guru Mengaji (Ustadz)'}
+                    {editingTeacher ? 'Edit Data & Kredensial Guru Mengaji' : 'Pendaftaran & Generate Akun Guru (Ustadz)'}
                   </h3>
                 </div>
                 <p className="text-xs text-slate-500">
                   {editingTeacher 
-                    ? 'Perbarui data identitas, NIK KTP, rekening honorarium, dan penugasan guru' 
-                    : 'Buat akun guru, lengkapi NIK & nomor rekening honorarium, serta tetapkan penempatan shelter'}
+                    ? 'Perbarui identitas, reset kata sandi, data rekening, dan shelter binaan guru' 
+                    : 'Admin men-generate Username, Password resmi, identitas, rekening honorarium, dan shelter binaan'}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowTeacherModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                 title="Tutup Formulir"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {teacherModalError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Terjadi Kesalahan</p>
+                  <p>{teacherModalError}</p>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSaveTeacher} className="space-y-4">
+              {/* Nama Lengkap & Gelar */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nama Lengkap &amp; Gelar <span className="text-rose-500">*</span>
+                  Nama Lengkap &amp; Gelar Ustadz / Pembimbing <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: Ust. Ahmad Fauzi, S.Q."
                   value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTeacherName(val);
+                    if (!editingTeacher && (!teacherUsername || teacherUsername === generateSuggestedUsername(teacherName))) {
+                      const suggested = generateSuggestedUsername(val);
+                      setTeacherUsername(suggested);
+                      if (!teacherEmail || teacherEmail.endsWith('@ojolmengaji.id')) {
+                        setTeacherEmail(`${suggested.replace(/^ust\./, '')}@ojolmengaji.id`);
+                      }
+                    }
+                  }}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Email Login <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    disabled={!!editingTeacher}
-                    placeholder="guru@ojolmengaji.id"
-                    value={teacherEmail}
-                    onChange={(e) => setTeacherEmail(e.target.value)}
-                    className={`w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none ${
-                      editingTeacher ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
-                    }`}
-                  />
+              {/* Kredensial Login Resmi Guru (Digenerate oleh Admin) */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-indigo-50/70 to-slate-50 border border-purple-200/90 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Key className="w-4 h-4 text-purple-700" />
+                    <span className="text-xs font-bold text-purple-950">
+                      Kredensial Akun Guru (Generated by Admin)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/70 text-purple-800 border border-purple-300">
+                    Khusus Guru
+                  </span>
                 </div>
+                <p className="text-[11px] text-slate-600">
+                  Akun guru bersifat eksklusif. Ustadz akan login menggunakan Username dan Kata Sandi yang Anda generate di bawah ini.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Username Field */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <AtSign className="w-3 h-3 text-purple-600" />
+                        <span>Username Login</span>
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setTeacherUsername(generateAlternateUsername(teacherName))}
+                        className="text-[10px] font-bold text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        title="Generate alternatif username"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        <span>Acak</span>
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400 font-bold text-xs">
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        placeholder="ust.ahmad"
+                        value={teacherUsername}
+                        onChange={(e) => setTeacherUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                        className="w-full text-xs pl-7 pr-2.5 py-2 rounded-xl border border-purple-200 bg-white font-mono font-bold text-purple-900 focus:ring-2 focus:ring-purple-400 outline-none"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Digunakan login di /guru</span>
+                  </div>
+
+                  {/* Password Field */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <Key className="w-3 h-3 text-purple-600" />
+                        <span>Kata Sandi (Password)</span>
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setTeacherPassword('guru')}
+                          className="text-[10px] text-slate-500 hover:text-slate-800 hover:underline cursor-pointer"
+                          title="Gunakan password standar 'guru'"
+                        >
+                          Standar
+                        </button>
+                        <span className="text-slate-300">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setTeacherPassword(generateTeacherPassword())}
+                          className="text-[10px] font-bold text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-0.5 cursor-pointer"
+                          title="Generate password acak kuat & bersahabat"
+                        >
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          <span>Acak</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showTeacherPassword ? 'text' : 'password'}
+                        required
+                        placeholder="Password akun"
+                        value={teacherPassword}
+                        onChange={(e) => setTeacherPassword(e.target.value)}
+                        className="w-full text-xs pl-2.5 pr-8 py-2 rounded-xl border border-purple-200 bg-white font-mono font-bold text-slate-800 focus:ring-2 focus:ring-purple-400 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowTeacherPassword(!showTeacherPassword)}
+                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showTeacherPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Password resmi untuk Ustadz</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* No. WhatsApp & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     No. WhatsApp / HP <span className="text-rose-500">*</span>
@@ -2446,6 +2788,24 @@ export const AdminPortal: React.FC = () => {
                     onChange={(e) => setTeacherPhone(e.target.value)}
                     className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none"
                   />
+                  <span className="text-[10px] text-slate-400">Untuk kirim kredensial via WA</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Email Login Guru <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    disabled={!!editingTeacher}
+                    placeholder="guru@ojolmengaji.id"
+                    value={teacherEmail}
+                    onChange={(e) => setTeacherEmail(e.target.value)}
+                    className={`w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-400 outline-none ${
+                      editingTeacher ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
+                    }`}
+                  />
+                  <span className="text-[10px] text-slate-400">Email alternatif login</span>
                 </div>
               </div>
 
@@ -2551,19 +2911,145 @@ export const AdminPortal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowTeacherModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-700 text-white hover:bg-purple-800 shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>{editingTeacher ? 'Simpan Perubahan' : 'Daftarkan Guru'}</span>
+                  <Key className="w-4 h-4" />
+                  <span>{editingTeacher ? 'Simpan Perubahan & Kredensial' : 'Daftarkan & Generate Akun Guru'}</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREDENTIAL SHARING & WHATSAPP READY */}
+      {showCredentialModal && credentialModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-purple-100 space-y-5">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-700 to-slate-900 text-white shadow-lg ring-4 ring-purple-100">
+                <CheckCircle2 className="w-8 h-8 text-emerald-300" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">
+                {credentialModalData.isNew ? 'Akun Guru Berhasil Digenerate!' : 'Kredensial Akun Guru Mengaji'}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Kredensial resmi Ustadz siap dibagikan ke yang bersangkutan untuk login ke Portal Guru Mengaji.
+              </p>
+            </div>
+
+            {/* Credential Card Display */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white shadow-md space-y-3 border border-purple-800/40">
+              <div className="flex items-center justify-between border-b border-purple-800/50 pb-2.5">
+                <div>
+                  <span className="text-[10px] text-purple-300 uppercase tracking-wider font-bold block">Nama Ustadz / Pembimbing</span>
+                  <h4 className="font-bold text-sm text-white">{credentialModalData.name}</h4>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Dewan Guru
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-white/10 p-2.5 rounded-xl border border-white/10">
+                  <span className="text-[10px] text-purple-300 block font-semibold mb-0.5">👤 Username Login</span>
+                  <span className="font-mono font-bold text-amber-300 text-sm">@{credentialModalData.username}</span>
+                </div>
+                <div className="bg-white/10 p-2.5 rounded-xl border border-white/10">
+                  <span className="text-[10px] text-purple-300 block font-semibold mb-0.5">🔑 Kata Sandi</span>
+                  <span className="font-mono font-bold text-emerald-300 text-sm">{credentialModalData.password || 'guru'}</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-purple-200/90 pt-1 border-t border-purple-800/40 space-y-1">
+                <div>
+                  <span className="text-purple-400">Shelter Binaan: </span>
+                  <span className="font-medium">{credentialModalData.shelters.join(', ') || 'Belum ditugaskan'}</span>
+                </div>
+                <div>
+                  <span className="text-purple-400">Tautan Login: </span>
+                  <span className="font-mono text-purple-200 underline">https://ojolmengaji.id/guru</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions: Copy & Send to WA */}
+            <div className="space-y-2 pt-1">
+              {copiedCredentialToast && (
+                <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs text-center font-bold animate-fadeIn">
+                  ✓ Format pesan berhasil disalin ke clipboard! Siap dipaste ke WhatsApp.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const message = `Assalamu'alaikum Warahmatullahi Wabarakatuh,
+Yth. ${credentialModalData.name}
+
+Berikut akun resmi Ustadz / Pembimbing di Platform Ojol Mengaji:
+
+🌐 Link Login: https://ojolmengaji.id/guru
+👤 Username: ${credentialModalData.username}
+🔑 Password: ${credentialModalData.password || 'guru'}
+
+📍 Penugasan Shelter: ${credentialModalData.shelters.join(', ') || 'Shelter Ditunjuk Admin'}
+
+Silakan login untuk memantau presensi halaqah mitra driver binaan dan mengisi rubrik penilaian tilawah tahsin 6 aspek.
+
+Jazakallahu Khairan Katsiran,
+Administrator Pusat Ojol Mengaji`;
+
+                    navigator.clipboard.writeText(message);
+                    setCopiedCredentialToast(true);
+                    setTimeout(() => setCopiedCredentialToast(false), 3000);
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Copy className="w-4 h-4 text-purple-700" />
+                  <span>Salin Format Pesan</span>
+                </button>
+
+                <a
+                  href={`https://wa.me/${(credentialModalData.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Assalamu'alaikum Warahmatullahi Wabarakatuh,
+Yth. ${credentialModalData.name}
+
+Berikut akun resmi Ustadz / Pembimbing di Platform Ojol Mengaji:
+
+🌐 Link Login: https://ojolmengaji.id/guru
+👤 Username: ${credentialModalData.username}
+🔑 Password: ${credentialModalData.password || 'guru'}
+
+📍 Penugasan Shelter: ${credentialModalData.shelters.join(', ') || 'Shelter Ditunjuk Admin'}
+
+Silakan login untuk memantau presensi halaqah mitra driver binaan dan mengisi rubrik penilaian tilawah tahsin 6 aspek.
+
+Jazakallahu Khairan Katsiran,
+Administrator Pusat Ojol Mengaji`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition flex items-center justify-center gap-1.5"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Kirim via WhatsApp</span>
+                </a>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCredentialModal(false)}
+                className="w-full py-2 rounded-xl font-semibold text-xs text-slate-500 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Tutup Jendela
+              </button>
+            </div>
           </div>
         </div>
       )}
