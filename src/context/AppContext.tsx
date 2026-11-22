@@ -176,12 +176,13 @@ const autoHealOjol = (
     );
 
     const bestAvatar = u.avatar || foundPart?.selfiePhoto || foundPart?.avatar;
+    const unifiedName = (foundPart?.name?.trim() || u.name?.trim() || '').trim();
 
     if (foundPart) {
       const updatedPart: Participant = {
         ...foundPart,
         userId: u.id,
-        name: u.name || foundPart.name,
+        name: unifiedName || foundPart.name,
         phone: u.phone || foundPart.phone,
         email: u.email || foundPart.email,
         avatar: bestAvatar || foundPart.avatar,
@@ -189,9 +190,13 @@ const autoHealOjol = (
       };
       participantsMap.set(foundPart.id, updatedPart);
 
-      if (bestAvatar && u.avatar !== bestAvatar) {
-        usersMap.set(u.id, { ...u, avatar: bestAvatar });
-      }
+      usersMap.set(u.id, { 
+        ...u, 
+        name: unifiedName || u.name,
+        avatar: bestAvatar || u.avatar,
+        phone: u.phone || foundPart.phone,
+        email: u.email || foundPart.email,
+      });
     } else {
       // Auto-create missing participant for this ojol user
       const newPartId = 'part-' + (u.id.replace('user-ojol-', '') || Date.now());
@@ -227,14 +232,21 @@ const autoHealOjol = (
     );
 
     const bestAvatar = p.selfiePhoto || p.avatar || foundUser?.avatar;
+    const unifiedName = (p.name?.trim() || foundUser?.name?.trim() || '').trim();
 
     if (foundUser) {
       if (foundUser.id !== p.userId) {
-        participantsMap.set(p.id, { ...p, userId: foundUser.id });
+        participantsMap.set(p.id, { ...p, userId: foundUser.id, name: unifiedName });
+      } else {
+        participantsMap.set(p.id, { ...p, name: unifiedName });
       }
-      if (bestAvatar && foundUser.avatar !== bestAvatar) {
-        usersMap.set(foundUser.id, { ...foundUser, avatar: bestAvatar, name: p.name });
-      }
+      usersMap.set(foundUser.id, { 
+        ...foundUser, 
+        name: unifiedName, 
+        avatar: bestAvatar || foundUser.avatar,
+        phone: p.phone || foundUser.phone,
+        email: p.email || foundUser.email,
+      });
     } else {
       const newUserId = p.userId || ('user-ojol-' + Date.now());
       const newUser: User = {
@@ -383,6 +395,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setParticipants(healedParticipants);
         setShelters(loadedShelters);
         setTeachers(loadedTeachers);
+
+        // Selaraskan sesi driver di localStorage dengan data yang sudah di-heal agar nama selalu sama persis
+        if (savedDriver) {
+          try {
+            const parsedDriver = JSON.parse(savedDriver);
+            const matchedUser = healedUsers.find(u => u.id === parsedDriver.id || (parsedDriver.phone && normalizePhone(u.phone) === normalizePhone(parsedDriver.phone)));
+            const matchedPart = healedParticipants.find(p => p.userId === parsedDriver.id || (parsedDriver.phone && normalizePhone(p.phone) === normalizePhone(parsedDriver.phone)));
+            const exactName = (matchedPart?.name || matchedUser?.name || parsedDriver.name || '').trim();
+            const exactAvatar = matchedPart?.selfiePhoto || matchedPart?.avatar || matchedUser?.avatar || parsedDriver.avatar;
+            const syncedDriver: User = {
+              ...parsedDriver,
+              ...(matchedUser || {}),
+              name: exactName || parsedDriver.name,
+              avatar: exactAvatar,
+            };
+            setDriverUser(syncedDriver);
+            localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(syncedDriver));
+          } catch {}
+        }
 
         if (parsed.schedules) setSchedules(parsed.schedules);
         if (parsed.attendance) setAttendance(parsed.attendance);
@@ -566,13 +597,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanId = identifier.trim().toLowerCase();
     const cleanPhone = normalizePhone(identifier);
 
-    const found = users.find(u => 
+    // 1. Cari data peserta di participants
+    let matchingPart = participants.find(p => 
+      (p.email && p.email.toLowerCase() === cleanId) ||
+      (cleanPhone && p.phone && normalizePhone(p.phone) === cleanPhone) ||
+      (p.name && p.name.toLowerCase() === cleanId)
+    );
+
+    // 2. Cari data akun di users
+    let found = users.find(u => 
       u.role === 'ojol' && (
+        (matchingPart && u.id === matchingPart.userId) ||
         u.email.toLowerCase() === cleanId ||
         (cleanPhone && normalizePhone(u.phone) === cleanPhone) ||
         u.name.toLowerCase() === cleanId
       )
     );
+
+    // 3. Jika ditemukan di peserta tetapi belum ada di users, sinkronkan otomatis
+    if (!found && matchingPart) {
+      const newUserId = matchingPart.userId || ('user-ojol-' + Date.now());
+      found = {
+        id: newUserId,
+        name: matchingPart.name,
+        email: matchingPart.email || `${matchingPart.phone || Date.now()}@ojolmengaji.id`,
+        phone: matchingPart.phone,
+        role: 'ojol',
+        avatar: matchingPart.selfiePhoto || matchingPart.avatar,
+        password: '123',
+        isActive: matchingPart.isActive !== false,
+        nik: matchingPart.nik || matchingPart.vehiclePlate,
+      };
+      setUsers(prev => [...prev.filter(u => u.id !== found!.id), found!]);
+    }
 
     if (!found) {
       return {
@@ -595,14 +652,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    setDriverUser(found);
-    setRawCurrentUser(found);
-    localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(found));
-    addAudit('LOGIN_DRIVER', 'users', found.id, `Driver ${found.name} berhasil masuk ke dashboard`);
+    // 4. Pastikan nama akun user dan nama peserta dijamin 100% SAMA PERSIS
+    const exactName = (matchingPart?.name || found.name).trim();
+    const exactAvatar = matchingPart?.selfiePhoto || matchingPart?.avatar || found.avatar;
+    const syncedFound: User = {
+      ...found,
+      name: exactName,
+      avatar: exactAvatar,
+      phone: matchingPart?.phone || found.phone,
+      email: matchingPart?.email || found.email,
+    };
+
+    if (matchingPart) {
+      const updatedPart = { 
+        ...matchingPart, 
+        name: exactName, 
+        userId: syncedFound.id,
+        avatar: exactAvatar || matchingPart.avatar,
+        selfiePhoto: exactAvatar || matchingPart.selfiePhoto
+      };
+      setParticipants(prev => prev.map(p => p.id === matchingPart!.id ? updatedPart : p));
+    }
+
+    setUsers(prev => prev.map(u => u.id === syncedFound.id ? syncedFound : u));
+    setDriverUser(syncedFound);
+    setRawCurrentUser(syncedFound);
+    localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(syncedFound));
+    addAudit('LOGIN_DRIVER', 'users', syncedFound.id, `Driver ${syncedFound.name} berhasil masuk ke dashboard`);
     return {
       success: true,
-      message: `Alhamdulillah! Selamat datang kembali, ${found.name}.`,
-      user: found
+      message: `Alhamdulillah! Selamat datang kembali, ${syncedFound.name}.`,
+      user: syncedFound
     };
   };
 

@@ -120,6 +120,7 @@ export const INITIAL_USERS: User[] = [
 export const INITIAL_SHELTERS: Shelter[] = [
   {
     id: 'shelter-1',
+    code: '01',
     name: 'Shelter Tebet Barat (Stasiun Tebet)',
     address: 'Jl. Tebet Raya No. 45, Tebet Timur, Jakarta Selatan',
     latitude: -6.2268,
@@ -130,6 +131,7 @@ export const INITIAL_SHELTERS: Shelter[] = [
   },
   {
     id: 'shelter-2',
+    code: '02',
     name: 'Shelter Blok M Square',
     address: 'Jl. Melawai Raya, Area Parkir Belakang Blok M Square, Jakarta Selatan',
     latitude: -6.2435,
@@ -140,6 +142,7 @@ export const INITIAL_SHELTERS: Shelter[] = [
   },
   {
     id: 'shelter-3',
+    code: '03',
     name: 'Shelter Palmerah Sentral',
     address: 'Jl. Palmerah Barat No. 12, Gelora, Jakarta Pusat',
     latitude: -6.2081,
@@ -150,6 +153,7 @@ export const INITIAL_SHELTERS: Shelter[] = [
   },
   {
     id: 'shelter-4',
+    code: '04',
     name: 'Shelter Harmoni Hayam Wuruk',
     address: 'Jl. Hayam Wuruk No. 88, Gambir, Jakarta Pusat',
     latitude: -6.1664,
@@ -160,6 +164,7 @@ export const INITIAL_SHELTERS: Shelter[] = [
   },
   {
     id: 'shelter-5',
+    code: '05',
     name: 'Shelter Poltangan (baru)',
     address: 'Jl. Poltangan Raya No. 25, Tanjung Barat, Jagakarsa, Jakarta Selatan',
     latitude: -6.2995,

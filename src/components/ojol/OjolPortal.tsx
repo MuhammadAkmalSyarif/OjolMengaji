@@ -461,7 +461,16 @@ export const OjolPortal: React.FC = () => {
                     Kartu Tanda Anggota Ojol Mengaji
                   </h3>
                   <p className="text-[11px] text-slate-300">
-                    No. Urut: {memberCode.split('-')[0]} • No. Shelter: {memberCode.split('-')[1]} • Bergabung: {participant.joinedDate || '-'}
+                    {(() => {
+                      const parts = memberCode.split('-');
+                      if (parts.length === 4) {
+                        return `No. Urut: ${parts[0]} • Kode Shelter: ${parts[1]} • Periode: ${parts[2]}/${parts[3]}`;
+                      }
+                      if (parts.length === 3) {
+                        return `No. Urut: ${parts[0]} • Periode: ${parts[1]}/${parts[2]}`;
+                      }
+                      return `No. Anggota: ${memberCode}`;
+                    })()}
                   </p>
                 </div>
               </div>

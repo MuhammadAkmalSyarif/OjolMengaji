@@ -120,7 +120,7 @@ export const Navbar: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="text-right hidden sm:block">
                     <div className="text-xs sm:text-sm font-semibold text-slate-800 leading-tight">
-                      {currentUser.name}
+                      {activeParticipant?.name || currentUser.name}
                     </div>
                     <div className="mt-0.5 flex items-center justify-end gap-1 text-[10px] sm:text-[11px] text-emerald-700 font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -131,7 +131,7 @@ export const Navbar: React.FC = () => {
                   <div className="relative">
                     <img
                       src={displayAvatar}
-                      alt={currentUser.name}
+                      alt={activeParticipant?.name || currentUser.name}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-emerald-500 object-cover shadow-xs ring-2 ring-emerald-100"
                     />
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />

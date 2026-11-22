@@ -69,15 +69,15 @@ function drawRoundedRect(
 
 /**
  * Generate official member ID code formatted as:
- * XXXX-XX-XX-XX
- * (No. Urut - No. Shelter - Bulan Bergabung - Tahun Bergabung)
+ * Urutan pendaftaran - kode shelter (kalau ada) - bulan daftar - tahun daftar
+ * Contoh: 0001-01-08-2026 atau tanpa shelter: 0001-08-2026
  */
 export function getMemberCode(
   participant: Partial<Participant>,
   shelter?: Shelter | null,
   allShelters?: Shelter[]
 ): string {
-  // 1. No. Urut (XXXX - 4 digit nomor urut peserta)
+  // 1. Urutan pendaftaran (XXXX - 4 digit nomor urut pendaftaran peserta)
   let seq = 1;
   if (typeof participant.memberNumber === 'number' && participant.memberNumber > 0) {
     seq = participant.memberNumber;
@@ -93,22 +93,51 @@ export function getMemberCode(
   }
   const noUrut = String(seq).padStart(4, '0');
 
-  // 2. No. Shelter (XX - 2 digit nomor shelter binaan)
-  let shelterNum = 1;
+  // 2. Kode shelter (kalau ada)
+  let shelterCode = '';
   const targetShelterId = shelter?.id || participant.shelterId || '';
-  if (targetShelterId) {
+  const resolvedShelter = shelter || (allShelters && targetShelterId ? allShelters.find(s => s.id === targetShelterId) : null);
+
+  if (resolvedShelter?.code) {
+    shelterCode = resolvedShelter.code.trim();
+  } else if (targetShelterId) {
     const digits = targetShelterId.replace(/\D/g, '');
-    if (digits) {
-      shelterNum = parseInt(digits, 10) || 1;
+    if (digits && digits.length <= 4) {
+      shelterCode = String(parseInt(digits, 10)).padStart(2, '0');
     } else if (allShelters && allShelters.length > 0) {
       const idx = allShelters.findIndex(s => s.id === targetShelterId);
-      if (idx !== -1) shelterNum = idx + 1;
+      if (idx !== -1) {
+        shelterCode = String(idx + 1).padStart(2, '0');
+      }
+    } else {
+      shelterCode = '01';
     }
   }
-  const noShelter = String(shelterNum).padStart(2, '0');
 
-  // Penomoran anggota bagian setelah nomor urut dipersingkat: XXXX-XX
-  return `${noUrut}-${noShelter}`;
+  // 3. Bulan daftar (2 digit: 01 - 12) & 4. Tahun daftar (4 digit: misal 2026)
+  let monthStr = '';
+  let yearStr = '';
+  const dateVal = participant.joinedDate || '';
+
+  if (dateVal && dateVal.includes('-')) {
+    const parts = dateVal.split('T')[0].split('-');
+    if (parts.length >= 3) {
+      yearStr = parts[0];
+      monthStr = parts[1].padStart(2, '0');
+    }
+  }
+
+  if (!monthStr || !yearStr) {
+    const now = new Date();
+    monthStr = String(now.getMonth() + 1).padStart(2, '0');
+    yearStr = String(now.getFullYear());
+  }
+
+  // Format: Urutan pendaftaran - kode shelter(kalau ada) - bulan daftar - tahun daftar
+  if (shelterCode) {
+    return `${noUrut}-${shelterCode}-${monthStr}-${yearStr}`;
+  }
+  return `${noUrut}-${monthStr}-${yearStr}`;
 }
 
 /**

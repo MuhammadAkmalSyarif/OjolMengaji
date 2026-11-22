@@ -81,7 +81,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     ojolPlatform: 'Gojek',
     nik: '',
     vehiclePlate: '',
-    shelterId: shelters[0]?.id || '',
+    shelterId: '', // Wajib dipilih manual oleh peserta, tidak otomatis pre-select
     currentLevel: 'Belum Dinilai',
     accountType: undefined,
     bankName: '',
@@ -190,13 +190,13 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
     }
   };
 
-  // Pastikan shelterId selalu valid & tersinkronisasi saat shelters dimuat / bertambah dari Admin
+  // Verifikasi jika shelter yang dipilih sebelumnya masih ada di daftar shelters aktif
   React.useEffect(() => {
-    if (shelters.length > 0) {
-      if (!regForm.shelterId || !shelters.some(s => s.id === regForm.shelterId)) {
+    if (shelters.length > 0 && regForm.shelterId) {
+      if (!shelters.some(s => s.id === regForm.shelterId)) {
         setRegForm(prev => ({
           ...prev,
-          shelterId: shelters[0].id
+          shelterId: ''
         }));
       }
     }
@@ -277,10 +277,10 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       errList.push(`NIK KTP: Harus tepat 16 digit angka (saat ini ${cleanNik.length}/16 digit)`);
     }
 
-    // 5. Shelter Pilihan
-    if (!regForm.shelterId) {
-      errs.shelterId = 'Silakan pilih shelter pembinaan mengaji terdekat.';
-      errList.push('Shelter Binaan: Wajib memilih shelter mengaji terdekat');
+    // 5. Shelter Pilihan (Wajib dipilih terlebih dahulu)
+    if (!regForm.shelterId || !regForm.shelterId.trim()) {
+      errs.shelterId = 'Peringatan: Peserta yang daftar wajib memilih shelter terlebih dahulu. Pendaftaran tidak dapat dilanjutkan sebelum memilih lokasi shelter mengaji.';
+      errList.push('Shelter Binaan: Wajib memilih shelter pembinaan mengaji terdekat terlebih dahulu');
     }
 
     // 6. Akun Pencairan (Opsional, tapi jika dipilih harus lengkap)
@@ -380,6 +380,9 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       const res = loginDriver(loginIdentifier, loginPassword);
       setIsSubmitting(false);
       if (res.success) {
+        if (res.user) {
+          setCurrentUser(res.user);
+        }
         setSuccessMsg(res.message);
         if (onSuccess) onSuccess();
       } else {
@@ -410,11 +413,11 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                   }}
                 />
               </div>
-              <div className="h-12 px-2.5 rounded-xl bg-white flex items-center justify-center shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm">
                 <img
                   src="/logo-dpw.png"
-                  alt="Logo DPW Hidayatullah DKI Jakarta"
-                  className="h-8 w-auto max-w-[130px] sm:max-w-[155px] object-contain"
+                  alt="Logo Resmi Hidayatullah"
+                  className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/logo-dpw.jpg';
                   }}
@@ -937,7 +940,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                             {regForm.nik ? `NIK: ${regForm.nik}` : 'NIK: 317XXXXXXXXXXXXX'}
                           </div>
                           <div className="text-[9px] text-emerald-300 truncate mt-0.5">
-                            {shelters.find(s => s.id === regForm.shelterId)?.name || 'Shelter Binaan'}
+                            {shelters.find(s => s.id === regForm.shelterId)?.name || 'Pilih Shelter Dahulu (Wajib)'}
                           </div>
                         </div>
                         <div className="shrink-0 text-right">
@@ -1034,9 +1037,44 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 </div>
 
                 <div id="reg-field-shelterId">
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Shelter Binaan Terdekat <span className="text-rose-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Shelter Binaan Terdekat <span className="text-rose-500">* (Wajib Pilih)</span>
+                    </label>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      Wajib Sebelum Daftar
+                    </span>
+                  </div>
+
+                  {/* Notice Box Pengingat Shelter Wajib Dipilih */}
+                  <div className={`p-3 rounded-xl mb-2 text-xs flex items-start gap-2.5 transition-all ${
+                    fieldErrors.shelterId 
+                      ? 'bg-rose-50 border-2 border-rose-300 text-rose-900 ring-2 ring-rose-200' 
+                      : !regForm.shelterId 
+                        ? 'bg-amber-50 border border-amber-300 text-amber-900' 
+                        : 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                  }`}>
+                    {fieldErrors.shelterId ? (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    ) : !regForm.shelterId ? (
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    )}
+                    <div className="leading-relaxed">
+                      <div className="font-bold flex items-center gap-1">
+                        <span>Pemberitahuan Wajib Pilih Shelter:</span>
+                      </div>
+                      <p className="text-[11px] mt-0.5 opacity-90">
+                        {regForm.shelterId ? (
+                          <>Shelter binaan aktif terpilih: <strong>{shelters.find(s => s.id === regForm.shelterId)?.name}</strong>. Jadwal bimbingan &amp; presensi Anda akan mengacu pada shelter ini.</>
+                        ) : (
+                          <>Peserta yang mendaftar <strong>wajib memilih shelter terlebih dahulu</strong>. Pendaftaran tidak dapat dilanjutkan sebelum memilih lokasi shelter mengaji terdekat.</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="relative">
                     <button
                       type="button"
@@ -1047,16 +1085,18 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                       className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border transition shadow-2xs font-semibold text-left flex items-center justify-between bg-white ${
                         fieldErrors.shelterId
                           ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20 text-slate-900'
-                          : isShelterDropdownOpen
-                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                            : 'border-slate-300 hover:border-slate-400 text-slate-800'
+                          : !regForm.shelterId
+                            ? 'border-amber-400 bg-amber-50/20 text-slate-700 hover:border-amber-500'
+                            : isShelterDropdownOpen
+                              ? 'border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                              : 'border-slate-300 hover:border-slate-400 text-slate-800'
                       }`}
                     >
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
                         <MapPin className="w-4 h-4" />
                       </div>
-                      <span className="truncate pr-2">
-                        {shelters.find(s => s.id === regForm.shelterId)?.name || 'Pilih Shelter'}
+                      <span className={`truncate pr-2 ${!regForm.shelterId ? 'text-amber-800 font-bold' : 'text-slate-900'}`}>
+                        {shelters.find(s => s.id === regForm.shelterId)?.name || '-- Silakan Pilih Shelter Binaan Dahulu (Wajib) --'}
                       </span>
                       <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isShelterDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
                     </button>

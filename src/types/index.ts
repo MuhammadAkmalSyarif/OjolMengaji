@@ -80,6 +80,7 @@ export interface RegisterDriverData {
 
 export interface Shelter {
   id: string;
+  code?: string; // Kode unik shelter untuk penomoran kartu anggota (misal: '01', '02', 'TB', dll)
   name: string;
   address: string;
   latitude: number;
