@@ -350,11 +350,33 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       const res = registerDriver(regForm);
       setIsSubmitting(false);
       if (res.success) {
+        // Setelah daftar, tidak langsung login, melainkan langsung beralih ke tab 'login' (Masuk Akun) di sebelahnya
+        setActiveTab('login');
+        setLoginIdentifier(regForm.phone || regForm.email);
+        setLoginPassword('');
         setSuccessMsg(res.message);
-        // Otomatis login akun baru driver agar langsung masuk dashboard
-        if (res.user) {
-          setCurrentUser(res.user);
-          if (onSuccess) onSuccess();
+
+        // Reset form pendaftaran
+        setRegForm({
+          name: '',
+          phone: '',
+          email: '',
+          password: '',
+          ojolPlatform: 'Gojek',
+          nik: '',
+          vehiclePlate: '',
+          shelterId: '',
+          currentLevel: 'Belum Dinilai',
+          accountType: undefined,
+          bankName: '',
+          bankAccount: '',
+          selfiePhoto: '',
+        });
+        setConfirmPassword('');
+
+        // Scroll ke atas agar pengguna melihat pesan sukses dan formulir Masuk Akun
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       } else {
         setErrorMsg(res.message);
@@ -585,10 +607,17 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               <div className="flex-1">
                 <p className="font-bold text-emerald-900">Alhamdulillah Berhasil!</p>
                 <p className="mt-0.5 text-emerald-800 leading-relaxed">{successMsg}</p>
-                <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Mengalihkan ke dashboard akun driver Anda...
-                </p>
+                {isSubmitting ? (
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Mengalihkan ke dashboard akun driver Anda...
+                  </p>
+                ) : activeTab === 'login' ? (
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Silakan masukkan kata sandi Anda di bawah untuk masuk ke akun.
+                  </p>
+                ) : null}
               </div>
               <button 
                 type="button" 

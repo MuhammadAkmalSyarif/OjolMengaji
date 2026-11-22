@@ -883,9 +883,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUsers(nextUsers);
     setParticipants(nextParts);
-    setDriverUser(newUser);
-    setRawCurrentUser(newUser);
-    localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(newUser));
+    // Tidak langsung login otomatis agar diarahkan ke halaman/tab Masuk Akun terlebih dahulu
 
     notifySync({ users: nextUsers, participants: nextParts });
 
@@ -896,7 +894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       success: true,
-      message: `Alhamdulillah! Pendaftaran akun berhasil. Selamat datang di Ojol Mengaji, Akhina ${data.name}. Anda telah otomatis masuk ke dashboard driver.`,
+      message: `Alhamdulillah! Pendaftaran akun berhasil. Selamat bergabung, ${data.name}. Silakan masuk menggunakan nomor WhatsApp/email dan kata sandi Anda.`,
       user: newUser
     };
   };
