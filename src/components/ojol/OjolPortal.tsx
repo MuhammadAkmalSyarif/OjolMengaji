@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import React, { useState, useEffect, useRef } from 'react';
+import { useApp, normalizePhone } from '@/context/AppContext';
 import { 
   Bike, 
   MapPin, 
@@ -30,11 +30,16 @@ import {
   Loader2,
   Share2,
   Clock,
-  Info
+  Info,
+  Edit,
+  User,
+  Phone,
+  Trash2
 } from 'lucide-react';
 import { MemberCardModal } from './MemberCardModal';
 import { compressImage } from '@/utils/imageUtils';
 import { downloadCardImage, getMemberCode } from '@/utils/cardGenerator';
+import { BANK_OPTIONS, PaymentAccountType, Participant } from '@/types';
 
 export const OjolPortal: React.FC = () => {
   const { 
@@ -53,11 +58,61 @@ export const OjolPortal: React.FC = () => {
     cancelShelterTransferRequest
   } = useApp();
 
-  // Find participant profile corresponding to current logged in user
-  const participant = participants.find(p => p.userId === currentUser?.id) || participants[0];
+  // Find participant profile corresponding strictly to current logged in driver.
+  // Never falls back to Rian Hidayat if another driver is logged in!
+  const participant: Participant = React.useMemo(() => {
+    if (!currentUser) return participants[0];
+
+    // 1. Match by userId
+    let found = participants.find(p => p.userId === currentUser.id);
+    if (found) return found;
+
+    // 2. Match by normalized phone
+    if (currentUser.phone) {
+      const cleanPhone = normalizePhone(currentUser.phone);
+      found = participants.find(p => p.phone && normalizePhone(p.phone) === cleanPhone);
+      if (found) return found;
+    }
+
+    // 3. Match by email
+    if (currentUser.email) {
+      const cleanEmail = currentUser.email.trim().toLowerCase();
+      found = participants.find(p => p.email && p.email.trim().toLowerCase() === cleanEmail);
+      if (found) return found;
+    }
+
+    // 4. Match by exact name
+    if (currentUser.name) {
+      const cleanName = currentUser.name.trim().toLowerCase();
+      found = participants.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
+      if (found) return found;
+    }
+
+    // 5. Fallback constructed from currentUser
+    const defaultSh = shelters[0] || { id: 'shelter-1', name: 'Shelter Tebet Barat' };
+    const avatarVal = currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.name)}`;
+    return {
+      id: 'part-' + (currentUser.id.replace('user-ojol-', '') || Date.now()),
+      userId: currentUser.id,
+      name: currentUser.name,
+      phone: currentUser.phone || '',
+      email: currentUser.email || '',
+      avatar: avatarVal,
+      selfiePhoto: avatarVal,
+      ojolPlatform: 'Gojek' as const,
+      nik: currentUser.nik || '',
+      vehiclePlate: currentUser.nik || '-',
+      shelterId: defaultSh.id,
+      currentLevel: 'Belum Dinilai' as const,
+      joinedDate: new Date().toISOString().split('T')[0],
+      isActive: true,
+      memberNumber: participants.length + 1,
+    };
+  }, [currentUser, participants, shelters]);
+
   const shelter = shelters.find(s => s.id === participant.shelterId) || shelters[0];
   const participantSchedules = schedules.filter(s => s.shelterId === shelter.id);
-  const memberCode = getMemberCode(participant, shelter);
+  const memberCode = getMemberCode(participant, shelter, shelters);
   const pendingShelter = shelters.find(s => s.id === participant.pendingShelterId);
 
   // States
@@ -67,8 +122,7 @@ export const OjolPortal: React.FC = () => {
   const [shelterTransferFeedback, setShelterTransferFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [showKtaModal, setShowKtaModal] = useState(false);
   const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
-  const portalFileInputRef = React.useRef<HTMLInputElement>(null);
-  const portalCameraInputRef = React.useRef<HTMLInputElement>(null);
+  const portalFileInputRef = useRef<HTMLInputElement>(null);
   
   // Interactive GPS & Presensi State
   const [gpsSimulatedDistance, setGpsSimulatedDistance] = useState<number>(18);
@@ -78,6 +132,32 @@ export const OjolPortal: React.FC = () => {
   // KTA Download State & Feedback
   const [downloadingKta, setDownloadingKta] = useState<string | null>(null);
   const [ktaDownloadAlert, setKtaDownloadAlert] = useState<string | null>(null);
+
+  // Edit Profile Modal States
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editName, setEditName] = useState(participant.name);
+  const [editPhone, setEditPhone] = useState(participant.phone);
+  const [editPlatform, setEditPlatform] = useState(participant.ojolPlatform);
+  const [editNik, setEditNik] = useState(participant.nik || participant.vehiclePlate || '');
+  const [editPhoto, setEditPhoto] = useState(participant.selfiePhoto || participant.avatar || '');
+  const [editAccountType, setEditAccountType] = useState<PaymentAccountType | undefined>(participant.accountType);
+  const [editBankName, setEditBankName] = useState(participant.bankName || '');
+  const [editBankAccount, setEditBankAccount] = useState(participant.bankAccount || '');
+  const [editFeedback, setEditFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync edit form state when participant updates
+  useEffect(() => {
+    setEditName(participant.name);
+    setEditPhone(participant.phone);
+    setEditPlatform(participant.ojolPlatform);
+    setEditNik(participant.nik || participant.vehiclePlate || '');
+    setEditPhoto(participant.selfiePhoto || participant.avatar || '');
+    setEditAccountType(participant.accountType);
+    setEditBankName(participant.bankName || '');
+    setEditBankAccount(participant.bankAccount || '');
+  }, [participant]);
 
   const handleDownloadKtaDirect = async (side: 'front' | 'both' = 'front') => {
     try {
@@ -106,6 +186,8 @@ export const OjolPortal: React.FC = () => {
         avatar: compressed,
         selfiePhoto: compressed,
       });
+      setKtaDownloadAlert('✓ Foto selfie driver berhasil diperbarui dan tersinkronisasi ke Admin & Guru!');
+      setTimeout(() => setKtaDownloadAlert(null), 4000);
     } catch (err) {
       console.error(err);
       alert('Gagal memproses foto baru.');
@@ -113,6 +195,40 @@ export const OjolPortal: React.FC = () => {
       setIsUpdatingPhoto(false);
       e.target.value = '';
     }
+  };
+
+  const handleSaveEditProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      alert('Nama lengkap tidak boleh kosong.');
+      return;
+    }
+    setIsSavingProfile(true);
+
+    const bestPhoto = editPhoto || participant.selfiePhoto || participant.avatar;
+    const cleanNik = editNik.trim();
+
+    updateParticipant({
+      ...participant,
+      name: editName.trim(),
+      phone: editPhone.trim(),
+      ojolPlatform: editPlatform,
+      nik: cleanNik,
+      vehiclePlate: cleanNik || participant.vehiclePlate,
+      avatar: bestPhoto,
+      selfiePhoto: bestPhoto,
+      accountType: editAccountType,
+      bankName: editAccountType === 'Bank' ? editBankName.trim() : (editAccountType || undefined),
+      bankAccount: editBankAccount.trim() || undefined,
+    });
+
+    setIsSavingProfile(false);
+    setShowEditProfileModal(false);
+    setEditFeedback({
+      success: true,
+      message: 'Alhamdulillah! Profil driver berhasil diperbarui. Data langsung tersinkronisasi ke Admin & Guru.',
+    });
+    setTimeout(() => setEditFeedback(null), 6000);
   };
 
   // Filtered data for this participant
@@ -130,7 +246,6 @@ export const OjolPortal: React.FC = () => {
 
     setTimeout(() => {
       setIsSimulatingGps(false);
-      // If within radius
       if (gpsSimulatedDistance <= shelter.radiusMeters) {
         const result = recordAttendance(
           participant.id, 
@@ -144,7 +259,7 @@ export const OjolPortal: React.FC = () => {
       } else {
         setPresensiFeedback({
           success: false,
-          message: `Gagal: Posisi Anda (${gpsSimulatedDistance}m) di luar batas radius shelter (${shelter.radiusMeters}m). Harap mendekat ke shelter atau gunakan bantuan ustadz.`
+          message: `Gagal: Posisi Anda (${gpsSimulatedDistance}m) di luar batas radius shelter (${shelter.radiusMeters}m). Harap mendekat ke shelter atau hubungi ustadz.`
         });
       }
     }, 900);
@@ -181,9 +296,12 @@ export const OjolPortal: React.FC = () => {
     );
   };
 
+  const displayAvatar = participant.selfiePhoto || participant.avatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+  const displayName = participant.name || currentUser?.name || 'Driver Ojol';
+
   return (
     <div className="max-w-md mx-auto sm:max-w-4xl pb-24">
-      {/* Mobile Driver Profile Card */}
+      {/* Mobile Driver Profile Hero Card */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-5 sm:p-6 text-white shadow-xl mb-6 relative overflow-hidden">
         {/* Subtle decorative circles */}
         <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-emerald-600/30 blur-xl pointer-events-none" />
@@ -194,8 +312,8 @@ export const OjolPortal: React.FC = () => {
         <div className="flex items-center gap-4 relative z-10">
           <div className="relative">
             <img
-              src={participant.avatar}
-              alt={participant.name}
+              src={displayAvatar}
+              alt={displayName}
               className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white/60 shadow-md ring-4 ring-emerald-600/40"
             />
             <span className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs">
@@ -210,7 +328,7 @@ export const OjolPortal: React.FC = () => {
               <span className="text-emerald-400">•</span>
               <span>{participant.currentLevel === 'Belum Dinilai' ? 'Level: Menunggu Penilaian Guru' : participant.currentLevel}</span>
             </div>
-            <h1 className="text-lg sm:text-2xl font-bold tracking-tight">{participant.name}</h1>
+            <h1 className="text-lg sm:text-2xl font-bold tracking-tight">{displayName}</h1>
             <p className="text-xs sm:text-sm text-emerald-100 flex items-center gap-1 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span className="truncate">{shelter.name}</span>
@@ -238,6 +356,18 @@ export const OjolPortal: React.FC = () => {
                 )}
                 <span>Download Kartu Member</span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditFeedback(null);
+                  setShowEditProfileModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/70 hover:bg-emerald-600 border border-emerald-400/50 text-white text-xs font-bold transition active:scale-95"
+                title="Edit Nama, Foto, &amp; Data Driver"
+              >
+                <Edit className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Edit Profil</span>
+              </button>
             </div>
           </div>
         </div>
@@ -260,16 +390,19 @@ export const OjolPortal: React.FC = () => {
         </div>
       </div>
 
-      {/* Global KTA Download Alert Banner */}
-      {ktaDownloadAlert && (
+      {/* Global KTA Download / Update Alert Banner */}
+      {(ktaDownloadAlert || editFeedback) && (
         <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-sm animate-fadeIn">
           <div className="flex items-center gap-2.5">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>{ktaDownloadAlert}</span>
+            <span>{ktaDownloadAlert || editFeedback?.message}</span>
           </div>
           <button
             type="button"
-            onClick={() => setKtaDownloadAlert(null)}
+            onClick={() => {
+              setKtaDownloadAlert(null);
+              setEditFeedback(null);
+            }}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-emerald-100 transition"
           >
             <X className="w-4 h-4" />
@@ -310,8 +443,8 @@ export const OjolPortal: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="w-12 h-15 rounded-xl overflow-hidden border-2 border-amber-400 bg-slate-900 shrink-0 shadow-md ring-2 ring-emerald-500/40">
                   <img
-                    src={participant.selfiePhoto || participant.avatar}
-                    alt={participant.name}
+                    src={displayAvatar}
+                    alt={displayName}
                     className="w-full h-full object-cover object-top"
                   />
                 </div>
@@ -798,7 +931,7 @@ export const OjolPortal: React.FC = () => {
                     <span className="text-[11px] text-slate-400">{ann.createdAt}</span>
                   </div>
                   <h4 className="font-bold text-sm text-slate-900 mb-1">{ann.title}</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">{ann.content}</p>
                 </div>
               ))}
             </div>
@@ -835,8 +968,8 @@ export const OjolPortal: React.FC = () => {
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div className="w-14 h-16 rounded-xl overflow-hidden border-2 border-amber-400 shadow-md bg-slate-800 shrink-0 ring-2 ring-emerald-500/40">
                   <img
-                    src={participant.selfiePhoto || participant.avatar}
-                    alt={participant.name}
+                    src={displayAvatar}
+                    alt={displayName}
                     className="w-full h-full object-cover object-top"
                   />
                 </div>
@@ -845,7 +978,7 @@ export const OjolPortal: React.FC = () => {
                     Foto Selfie KTA Terverifikasi
                   </span>
                   <span className="text-xs font-bold text-white block">
-                    {participant.name}
+                    {displayName}
                   </span>
                   <span className="text-[10px] text-emerald-300">
                     {participant.ojolPlatform} • {shelter.name}
@@ -899,12 +1032,25 @@ export const OjolPortal: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Profil Driver Peserta</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-800">Profil Driver Peserta</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditFeedback(null);
+                  setShowEditProfileModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition"
+              >
+                <Edit className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Edit Data Profil</span>
+              </button>
+            </div>
             
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Nama Lengkap</span>
-                <span className="font-bold text-slate-800">{participant.name}</span>
+                <span className="font-bold text-slate-800">{displayName}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-slate-500">Mitra Ojek Online</span>
@@ -989,6 +1135,232 @@ export const OjolPortal: React.FC = () => {
         </div>
       )}
 
+      {/* MODAL: EDIT PROFIL DRIVER */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-800 to-teal-800 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Edit className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Edit Profil &amp; Foto Driver</h3>
+                  <p className="text-[11px] text-emerald-200">Sesuaikan nama, foto, dan data Anda. Terhubung ke Admin &amp; Guru.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditProfileModal(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEditProfile} className="p-5 overflow-y-auto space-y-4 text-xs">
+              {/* Foto Profil Preview & Ganti */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Foto Profil &amp; Kartu Anggota (KTA)
+                </label>
+                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200">
+                  <div className="w-16 h-18 rounded-xl overflow-hidden border-2 border-emerald-500 shadow-md bg-slate-800 shrink-0">
+                    <img
+                      src={editPhoto || displayAvatar}
+                      alt="Foto Driver"
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </div>
+                  <div className="space-y-1.5 flex-1">
+                    <p className="text-[11px] text-slate-600">
+                      Foto selfie tampak depan yang terpasang pada akun Anda dan Kartu Anggota (KTA).
+                    </p>
+                    <input
+                      type="file"
+                      ref={editFileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const compressed = await compressImage(file, 480, 480, 0.82);
+                            setEditPhoto(compressed);
+                          } catch (err) {
+                            alert('Gagal memproses gambar foto.');
+                          }
+                        }
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => editFileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 font-bold text-slate-700 shadow-2xs"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Pilih Foto Baru</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nama Lengkap */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Lengkap Driver <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Nama lengkap sesuai KTP / aplikasi"
+                    className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* No WhatsApp / HP */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nomor WhatsApp / HP Aktif <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="tel"
+                    required
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="Contoh: 081234567890"
+                    className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Aplikasi Mitra Ojol */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Aplikasi Mitra Ojek Online
+                </label>
+                <select
+                  value={editPlatform}
+                  onChange={(e) => setEditPlatform(e.target.value as any)}
+                  className="w-full py-2 px-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                >
+                  <option value="Gojek">Gojek</option>
+                  <option value="Grab">Grab</option>
+                  <option value="Maxim">Maxim</option>
+                  <option value="InDrive">InDrive</option>
+                  <option value="ShopeeFood">ShopeeFood</option>
+                </select>
+              </div>
+
+              {/* NIK KTP / Plat Kendaraan */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  NIK (16 Digit) / Nomor Plat Kendaraan
+                </label>
+                <input
+                  type="text"
+                  value={editNik}
+                  onChange={(e) => setEditNik(e.target.value)}
+                  placeholder="NIK KTP atau plat nomor motor"
+                  className="w-full py-2 px-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono font-medium"
+                />
+              </div>
+
+              {/* Rekening Insentif (Opsional) */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-800 block">Akun Penyaluran Insentif / Operasional (Opsional)</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] text-slate-600 mb-1">Tipe Rekening</label>
+                    <select
+                      value={editAccountType || ''}
+                      onChange={(e) => setEditAccountType(e.target.value ? e.target.value as PaymentAccountType : undefined)}
+                      className="w-full py-1.5 px-2 rounded-lg border border-slate-300 text-xs"
+                    >
+                      <option value="">-- Pilih Tipe --</option>
+                      <option value="Bank">Transfer Bank</option>
+                      <option value="Gojek">Gojek / GoPay</option>
+                      <option value="Ovo">OVO</option>
+                      <option value="Dana">DANA</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-600 mb-1">Nama Bank / E-Wallet</label>
+                    {editAccountType === 'Bank' ? (
+                      <select
+                        value={editBankName}
+                        onChange={(e) => setEditBankName(e.target.value)}
+                        className="w-full py-1.5 px-2 rounded-lg border border-slate-300 text-xs"
+                      >
+                        <option value="">Pilih Bank...</option>
+                        {BANK_OPTIONS.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={editAccountType || '-'}
+                        className="w-full py-1.5 px-2 rounded-lg border border-slate-200 bg-slate-100 text-xs"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1">Nomor Rekening / Nomor HP E-Wallet</label>
+                  <input
+                    type="text"
+                    value={editBankAccount}
+                    onChange={(e) => setEditBankAccount(e.target.value)}
+                    placeholder="Nomor rekening bank atau nomor HP akun e-wallet"
+                    className="w-full py-1.5 px-3 rounded-lg border border-slate-300 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfileModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isSavingProfile ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal Pilih / Ganti Shelter Binaan */}
       {showChangeShelterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
@@ -1048,84 +1420,72 @@ export const OjolPortal: React.FC = () => {
                 if (filtered.length === 0) {
                   return (
                     <div className="p-6 text-center text-xs text-slate-500">
-                      Shelter &quot;{shelterModalSearch}&quot; tidak ditemukan.
+                      Shelter tidak ditemukan dengan kata kunci &quot;{shelterModalSearch}&quot;.
                     </div>
                   );
                 }
 
-                return filtered.map((s) => {
-                  const isCurrent = participant.shelterId === s.id;
-                  const isPendingThis = participant.pendingShelterId === s.id && participant.shelterTransferStatus === 'pending';
-                  const isPoltanganOrNew = s.name.toLowerCase().includes('poltangan') || s.name.toLowerCase().includes('baru');
+                return filtered.map((sh) => {
+                  const isCurrent = sh.id === participant.shelterId;
+                  const isPending = sh.id === participant.pendingShelterId;
 
                   return (
                     <div
-                      key={s.id}
-                      className={`p-3.5 rounded-2xl transition flex items-center justify-between gap-3 ${
-                        isCurrent 
-                          ? 'bg-emerald-50 border border-emerald-300 shadow-2xs' 
-                          : isPendingThis
-                          ? 'bg-amber-50 border border-amber-300 shadow-2xs'
-                          : 'hover:bg-slate-50 border border-transparent'
+                      key={sh.id}
+                      className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 transition-colors ${
+                        isCurrent ? 'bg-emerald-50/70 border border-emerald-300' : isPending ? 'bg-amber-50/70 border border-amber-300' : 'hover:bg-slate-50'
                       }`}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-bold text-sm text-slate-900">{s.name}</h4>
-                          {isPoltanganOrNew && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-300">
-                              Baru
-                            </span>
-                          )}
-                          <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
-                            Radius {s.radiusMeters}m
-                          </span>
+                      <div className="flex items-start gap-2.5">
+                        <MapPin className={`w-4 h-4 shrink-0 mt-0.5 ${isCurrent ? 'text-emerald-700' : isPending ? 'text-amber-700' : 'text-slate-400'}`} />
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-extrabold text-xs text-slate-900">{sh.name}</span>
+                            {isCurrent && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-200 text-emerald-900">
+                                Shelter Aktif Anda
+                              </span>
+                            )}
+                            {isPending && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-950 flex items-center gap-0.5">
+                                <Clock className="w-2.5 h-2.5 text-amber-800" />
+                                Menunggu Verifikasi
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">{sh.address}</p>
+                          <span className="text-[10px] text-slate-400 font-medium">Radius presensi: {sh.radiusMeters} meter</span>
                         </div>
-                        <p className="text-xs text-slate-600 mt-1 flex items-start gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                          <span>{s.address}</span>
-                        </p>
-                        {s.notes && (
-                          <p className="text-[11px] text-slate-500 mt-0.5 pl-4.5">{s.notes}</p>
-                        )}
                       </div>
 
-                      <div className="shrink-0">
+                      <div>
                         {isCurrent ? (
-                          <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Aktif</span>
-                          </div>
-                        ) : isPendingThis ? (
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
-                              <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Menunggu Verifikasi</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                cancelShelterTransferRequest(participant.id);
-                                setShelterTransferFeedback({ success: true, message: 'Pengajuan pindah shelter dibatalkan.' });
-                              }}
-                              className="text-[10px] text-rose-600 hover:text-rose-800 hover:underline"
-                            >
-                              Batalkan
-                            </button>
-                          </div>
+                          <span className="text-[10px] font-bold text-emerald-800 px-2.5 py-1 rounded-xl bg-emerald-100 block">
+                            Aktif
+                          </span>
+                        ) : isPending ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              cancelShelterTransferRequest(participant.id);
+                              setShowChangeShelterModal(false);
+                              setShelterTransferFeedback({ success: true, message: 'Pengajuan pindah shelter berhasil dibatalkan.' });
+                            }}
+                            className="px-2.5 py-1 rounded-xl text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 transition"
+                          >
+                            Batal
+                          </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => {
-                              const res = requestShelterTransfer(participant.id, s.id, 'Pindah lokasi shelter');
-                              setShelterTransferFeedback(res);
+                              const res = requestShelterTransfer(participant.id, sh.id, 'Permohonan perpindahan shelter oleh driver');
                               setShowChangeShelterModal(false);
+                              setShelterTransferFeedback(res);
                             }}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition shadow-2xs flex flex-col items-center"
-                            title="Ajukan pindah shelter untuk diverifikasi Admin Pusat"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition active:scale-95 shadow-xs"
                           >
-                            <span>Ajukan Pindah</span>
-                            <span className="text-[9px] font-normal text-amber-700">(Verifikasi Admin)</span>
+                            Pilih Pindah
                           </button>
                         )}
                       </div>
@@ -1134,30 +1494,19 @@ export const OjolPortal: React.FC = () => {
                 });
               })()}
             </div>
-
-            {/* Footer */}
-            <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>{shelters.filter(s => s.isActive !== false).length} Shelter Tersedia</span>
-              <button
-                type="button"
-                onClick={() => setShowChangeShelterModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition shadow-2xs"
-              >
-                Tutup
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Official Kartu Tanda Anggota (KTA) Modal */}
-      <MemberCardModal
-        isOpen={showKtaModal}
-        onClose={() => setShowKtaModal(false)}
-        participant={participant}
-        shelter={shelter}
-      />
+      {/* MODAL KARTU MEMBER (KTA) DIGITAL RESMI */}
+      {showKtaModal && (
+        <MemberCardModal
+          isOpen={showKtaModal}
+          participant={participant}
+          shelter={shelter}
+          onClose={() => setShowKtaModal(false)}
+        />
+      )}
     </div>
   );
 };
-

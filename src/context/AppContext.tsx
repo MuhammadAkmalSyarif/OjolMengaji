@@ -37,6 +37,9 @@ import {
 
 interface AppContextType {
   currentUser: User | null;
+  driverUser?: User | null;
+  adminUser?: User | null;
+  guruUser?: User | null;
   users: User[];
   shelters: Shelter[];
   teachers: Teacher[];
@@ -131,14 +134,140 @@ export const normalizePhone = (phone?: string): string => {
   return cleaned;
 };
 
+// Helper merge array of objects by unique id
+const mergeById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
+  const map = new Map<string, T>();
+  current.forEach(item => {
+    if (item && item.id) map.set(item.id, item);
+  });
+  incoming.forEach(item => {
+    if (item && item.id) {
+      const existing = map.get(item.id);
+      map.set(item.id, existing ? { ...existing, ...item } : item);
+    }
+  });
+  return Array.from(map.values());
+};
+
+// Two-way auto-heal between users (role 'ojol') and participants
+const autoHealOjol = (
+  rawUsers: User[], 
+  rawParticipants: Participant[], 
+  activeShelters: Shelter[]
+): { healedUsers: User[], healedParticipants: Participant[] } => {
+  const defaultShelterId = activeShelters[0]?.id || 'shelter-1';
+  const participantsMap = new Map<string, Participant>();
+  rawParticipants.forEach(p => {
+    if (p && p.id) participantsMap.set(p.id, p);
+  });
+
+  const usersMap = new Map<string, User>();
+  rawUsers.forEach(u => {
+    if (u && u.id) usersMap.set(u.id, u);
+  });
+
+  // 1. Every ojol user in users must have a corresponding Participant in participants
+  rawUsers.filter(u => u && u.role === 'ojol').forEach(u => {
+    let foundPart = Array.from(participantsMap.values()).find(p => 
+      p.userId === u.id || 
+      (u.phone && normalizePhone(p.phone) === normalizePhone(u.phone)) ||
+      (u.email && p.email?.toLowerCase().trim() === u.email.toLowerCase().trim()) ||
+      (u.name && p.name?.toLowerCase().trim() === u.name.toLowerCase().trim())
+    );
+
+    const bestAvatar = u.avatar || foundPart?.selfiePhoto || foundPart?.avatar;
+
+    if (foundPart) {
+      const updatedPart: Participant = {
+        ...foundPart,
+        userId: u.id,
+        name: u.name || foundPart.name,
+        phone: u.phone || foundPart.phone,
+        email: u.email || foundPart.email,
+        avatar: bestAvatar || foundPart.avatar,
+        selfiePhoto: foundPart.selfiePhoto || bestAvatar,
+      };
+      participantsMap.set(foundPart.id, updatedPart);
+
+      if (bestAvatar && u.avatar !== bestAvatar) {
+        usersMap.set(u.id, { ...u, avatar: bestAvatar });
+      }
+    } else {
+      // Auto-create missing participant for this ojol user
+      const newPartId = 'part-' + (u.id.replace('user-ojol-', '') || Date.now());
+      const avatarVal = bestAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`;
+      const newPart: Participant = {
+        id: newPartId,
+        userId: u.id,
+        name: u.name,
+        phone: u.phone,
+        email: u.email,
+        avatar: avatarVal,
+        selfiePhoto: avatarVal,
+        ojolPlatform: 'Gojek',
+        nik: u.nik || '',
+        vehiclePlate: u.nik || '-',
+        shelterId: defaultShelterId,
+        currentLevel: 'Belum Dinilai',
+        joinedDate: new Date().toISOString().split('T')[0],
+        isActive: u.isActive !== false,
+        memberNumber: participantsMap.size + 1,
+      };
+      participantsMap.set(newPartId, newPart);
+    }
+  });
+
+  // 2. Every participant in participants must have a corresponding User in users
+  Array.from(participantsMap.values()).forEach(p => {
+    let foundUser = Array.from(usersMap.values()).find(u => 
+      u.id === p.userId ||
+      (p.phone && normalizePhone(u.phone) === normalizePhone(p.phone)) ||
+      (p.email && u.email?.toLowerCase().trim() === p.email.toLowerCase().trim()) ||
+      (p.name && u.name?.toLowerCase().trim() === p.name.toLowerCase().trim())
+    );
+
+    const bestAvatar = p.selfiePhoto || p.avatar || foundUser?.avatar;
+
+    if (foundUser) {
+      if (foundUser.id !== p.userId) {
+        participantsMap.set(p.id, { ...p, userId: foundUser.id });
+      }
+      if (bestAvatar && foundUser.avatar !== bestAvatar) {
+        usersMap.set(foundUser.id, { ...foundUser, avatar: bestAvatar, name: p.name });
+      }
+    } else {
+      const newUserId = p.userId || ('user-ojol-' + Date.now());
+      const newUser: User = {
+        id: newUserId,
+        name: p.name,
+        email: p.email || `${p.phone || Date.now()}@ojolmengaji.id`,
+        phone: p.phone,
+        role: 'ojol',
+        avatar: bestAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.name)}`,
+        password: '123',
+        isActive: p.isActive !== false,
+        nik: p.nik || p.vehiclePlate,
+      };
+      usersMap.set(newUserId, newUser);
+      participantsMap.set(p.id, { ...p, userId: newUserId });
+    }
+  });
+
+  return {
+    healedUsers: Array.from(usersMap.values()),
+    healedParticipants: Array.from(participantsMap.values()),
+  };
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'ojol_mengaji_state_v1';
+const DRIVER_SESSION_KEY = 'ojol_session_driver';
+const ADMIN_SESSION_KEY = 'ojol_session_admin';
+const GURU_SESSION_KEY = 'ojol_session_guru';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  // Default currentUser to null so users start with the Driver Registration & Login screen
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [shelters, setShelters] = useState<Shelter[]>(INITIAL_SHELTERS);
   const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
   const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
@@ -149,105 +278,112 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(INITIAL_SUBMISSIONS);
   const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  
+  // Independent multi-portal sessions so Driver (/user), Admin (/admin), and Guru (/guru)
+  // never conflict or overwrite each other when open in simultaneous tabs!
+  const [driverUser, setDriverUser] = useState<User | null>(null);
+  const [adminUser, setAdminUser] = useState<User | null>(null);
+  const [guruUser, setGuruUser] = useState<User | null>(null);
+  const [rawCurrentUser, setRawCurrentUser] = useState<User | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from LocalStorage
   useEffect(() => {
     try {
+      // 1. Load Role-specific sessions
+      const savedDriver = localStorage.getItem(DRIVER_SESSION_KEY);
+      if (savedDriver) {
+        try { setDriverUser(JSON.parse(savedDriver)); } catch {}
+      }
+      const savedAdmin = localStorage.getItem(ADMIN_SESSION_KEY);
+      if (savedAdmin) {
+        try { setAdminUser(JSON.parse(savedAdmin)); } catch {}
+      }
+      const savedGuru = localStorage.getItem(GURU_SESSION_KEY);
+      if (savedGuru) {
+        try { setGuruUser(JSON.parse(savedGuru)); } catch {}
+      }
+
+      // 2. Load Main Database State
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.users) {
-          // Synchronize admin credentials to guarantee admin@ojolmengaji.id and OjolMengaji_Admin123
-          const updatedUsers = parsed.users.map((u: User) => {
-            if (u.role === 'admin' || u.id === 'user-admin-1') {
-              return {
-                ...u,
-                email: 'admin@ojolmengaji.id',
-                password: 'OjolMengaji_Admin123',
-                isActive: true
-              };
-            }
-            if (u.id === 'user-guru-1') {
-              return {
-                ...u,
-                username: u.username || 'ust.ahmad',
-                password: u.password || 'guru',
-              };
-            }
-            if (u.id === 'user-guru-2') {
-              return {
-                ...u,
-                username: u.username || 'ust.ridwan',
-                password: u.password || 'guru',
-              };
-            }
-            if (u.role === 'guru' && !u.username) {
-              return {
-                ...u,
-                username: 'ust.' + (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10),
-                password: u.password || 'guru',
-              };
-            }
-            return u;
-          });
-          setUsers(updatedUsers);
-        }
-        if (parsed.currentUser !== undefined) {
-          if (parsed.currentUser && (parsed.currentUser.role === 'admin' || parsed.currentUser.id === 'user-admin-1')) {
-            setCurrentUser({
-              ...parsed.currentUser,
+        
+        let loadedUsers: User[] = parsed.users ? parsed.users.map((u: User) => {
+          if (u.role === 'admin' || u.id === 'user-admin-1') {
+            return {
+              ...u,
               email: 'admin@ojolmengaji.id',
               password: 'OjolMengaji_Admin123',
               isActive: true
-            });
-          } else {
-            setCurrentUser(parsed.currentUser);
+            };
           }
-        }
+          if (u.id === 'user-guru-1') {
+            return {
+              ...u,
+              username: u.username || 'ust.ahmad',
+              password: u.password || 'guru',
+            };
+          }
+          if (u.id === 'user-guru-2') {
+            return {
+              ...u,
+              username: u.username || 'ust.ridwan',
+              password: u.password || 'guru',
+            };
+          }
+          if (u.role === 'guru' && !u.username) {
+            return {
+              ...u,
+              username: 'ust.' + (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10),
+              password: u.password || 'guru',
+            };
+          }
+          return u;
+        }) : INITIAL_USERS;
+
+        let loadedShelters: Shelter[] = INITIAL_SHELTERS;
         if (parsed.shelters && Array.isArray(parsed.shelters)) {
-          // Normalize and merge: ensure INITIAL_SHELTERS (including Shelter Poltangan (baru)) are included
           const existingNames = new Set(parsed.shelters.map((s: Shelter) => s.name.trim().toLowerCase()));
           const existingIds = new Set(parsed.shelters.map((s: Shelter) => s.id));
-          
           const missingInitial = INITIAL_SHELTERS.filter(
             (initS: Shelter) => !existingIds.has(initS.id) && !existingNames.has(initS.name.trim().toLowerCase())
           );
-          
-          setShelters([...parsed.shelters, ...missingInitial]);
-        } else {
-          setShelters(INITIAL_SHELTERS);
+          loadedShelters = [...parsed.shelters, ...missingInitial];
         }
-        if (parsed.teachers) {
-          const hydratedTeachers = parsed.teachers.map((t: Teacher) => {
-            const initMatch = INITIAL_TEACHERS.find(it => it.id === t.id);
-            const userMatch = (parsed.users as User[] | undefined)?.find(u => u.id === t.userId);
-            return {
-              ...t,
-              username: t.username || initMatch?.username || userMatch?.username || ('ust.' + (t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)),
-              generatedPassword: t.generatedPassword || initMatch?.generatedPassword || userMatch?.password || 'guru',
-              nik: t.nik || initMatch?.nik || '',
-              bankName: t.bankName || initMatch?.bankName || '',
-              bankAccount: t.bankAccount || initMatch?.bankAccount || '',
-              // Pastikan penugasan shelter guru sesuai ketetapan Admin
-              shelterIds: (t.shelterIds && t.shelterIds.length === 1) ? t.shelterIds : (initMatch?.shelterIds || t.shelterIds || ['shelter-1']),
-            };
-          });
-          setTeachers(hydratedTeachers);
-        }
-        if (parsed.participants) {
-          const hydratedParts = parsed.participants.map((p: Participant, idx: number) => {
-            const initMatch = INITIAL_PARTICIPANTS.find(ip => ip.id === p.id);
-            return {
-              ...p,
-              memberNumber: p.memberNumber || initMatch?.memberNumber || (idx + 1),
-              accountType: p.accountType || initMatch?.accountType || (p.bankName?.toLowerCase().includes('gojek') ? 'Gojek' : p.bankName?.toLowerCase().includes('ovo') ? 'Ovo' : p.bankName?.toLowerCase().includes('dana') ? 'Dana' : p.bankAccount ? 'Bank' : undefined),
-              bankName: p.bankName || initMatch?.bankName || undefined,
-              bankAccount: p.bankAccount || initMatch?.bankAccount || undefined,
-            };
-          });
-          setParticipants(hydratedParts);
-        }
+
+        let loadedTeachers: Teacher[] = parsed.teachers ? parsed.teachers.map((t: Teacher) => {
+          const initMatch = INITIAL_TEACHERS.find(it => it.id === t.id);
+          const userMatch = (loadedUsers as User[] | undefined)?.find(u => u.id === t.userId);
+          return {
+            ...t,
+            username: t.username || initMatch?.username || userMatch?.username || ('ust.' + (t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)),
+            generatedPassword: t.generatedPassword || initMatch?.generatedPassword || userMatch?.password || 'guru',
+            nik: t.nik || initMatch?.nik || '',
+            bankName: t.bankName || initMatch?.bankName || '',
+            bankAccount: t.bankAccount || initMatch?.bankAccount || '',
+            shelterIds: (t.shelterIds && t.shelterIds.length === 1) ? t.shelterIds : (initMatch?.shelterIds || t.shelterIds || ['shelter-1']),
+          };
+        }) : INITIAL_TEACHERS;
+
+        let loadedParts: Participant[] = parsed.participants ? parsed.participants.map((p: Participant, idx: number) => {
+          const initMatch = INITIAL_PARTICIPANTS.find(ip => ip.id === p.id);
+          return {
+            ...p,
+            memberNumber: p.memberNumber || initMatch?.memberNumber || (idx + 1),
+            accountType: p.accountType || initMatch?.accountType || (p.bankName?.toLowerCase().includes('gojek') ? 'Gojek' : p.bankName?.toLowerCase().includes('ovo') ? 'Ovo' : p.bankName?.toLowerCase().includes('dana') ? 'Dana' : p.bankAccount ? 'Bank' : undefined),
+            bankName: p.bankName || initMatch?.bankName || undefined,
+            bankAccount: p.bankAccount || initMatch?.bankAccount || undefined,
+          };
+        }) : INITIAL_PARTICIPANTS;
+
+        // Auto-heal drivers: ensure every ojol user has a participant and vice-versa
+        const { healedUsers, healedParticipants } = autoHealOjol(loadedUsers, loadedParts, loadedShelters);
+        setUsers(healedUsers);
+        setParticipants(healedParticipants);
+        setShelters(loadedShelters);
+        setTeachers(loadedTeachers);
+
         if (parsed.schedules) setSchedules(parsed.schedules);
         if (parsed.attendance) setAttendance(parsed.attendance);
         if (parsed.assessments) setAssessments(parsed.assessments);
@@ -255,6 +391,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (parsed.submissions) setSubmissions(parsed.submissions);
         if (parsed.announcements) setAnnouncements(parsed.announcements);
         if (parsed.auditLogs) setAuditLogs(parsed.auditLogs);
+
+        if (parsed.currentUser !== undefined && parsed.currentUser !== null) {
+          setRawCurrentUser(parsed.currentUser);
+        }
+      } else {
+        // Initial auto-heal
+        const { healedUsers, healedParticipants } = autoHealOjol(INITIAL_USERS, INITIAL_PARTICIPANTS, INITIAL_SHELTERS);
+        setUsers(healedUsers);
+        setParticipants(healedParticipants);
       }
     } catch (e) {
       console.warn('Could not read saved data from localStorage', e);
@@ -262,13 +407,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoaded(true);
   }, []);
 
-  // Save to LocalStorage
+  // Save database state to LocalStorage
   useEffect(() => {
     if (!isLoaded) return;
     try {
       const stateToSave = {
         users,
-        currentUser,
         shelters,
         teachers,
         participants,
@@ -287,7 +431,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [
     isLoaded,
     users,
-    currentUser,
     shelters,
     teachers,
     participants,
@@ -306,18 +449,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (e.key === STORAGE_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          if (parsed.shelters) setShelters(parsed.shelters);
-          if (parsed.users) setUsers(parsed.users);
-          if (parsed.teachers) setTeachers(parsed.teachers);
-          if (parsed.participants) setParticipants(parsed.participants);
+          if (parsed.shelters) setShelters(prev => mergeById(prev, parsed.shelters));
+          if (parsed.users) setUsers(prev => mergeById(prev, parsed.users));
+          if (parsed.teachers) setTeachers(prev => mergeById(prev, parsed.teachers));
+          if (parsed.participants) setParticipants(prev => mergeById(prev, parsed.participants));
           if (parsed.schedules) setSchedules(parsed.schedules);
-          if (parsed.attendance) setAttendance(parsed.attendance);
-          if (parsed.assessments) setAssessments(parsed.assessments);
+          if (parsed.attendance) setAttendance(prev => mergeById(prev, parsed.attendance));
+          if (parsed.assessments) setAssessments(prev => mergeById(prev, parsed.assessments));
           if (parsed.announcements) setAnnouncements(parsed.announcements);
           if (parsed.auditLogs) setAuditLogs(parsed.auditLogs);
         } catch (err) {
           console.warn('Storage sync error:', err);
         }
+      }
+      if (e.key === DRIVER_SESSION_KEY) {
+        try { setDriverUser(e.newValue ? JSON.parse(e.newValue) : null); } catch {}
+      }
+      if (e.key === ADMIN_SESSION_KEY) {
+        try { setAdminUser(e.newValue ? JSON.parse(e.newValue) : null); } catch {}
+      }
+      if (e.key === GURU_SESSION_KEY) {
+        try { setGuruUser(e.newValue ? JSON.parse(e.newValue) : null); } catch {}
       }
     };
 
@@ -327,42 +479,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bc.onmessage = (event) => {
         if (event.data?.payload) {
           const p = event.data.payload;
-          if (p.shelters) setShelters(p.shelters);
-          if (p.users) setUsers(p.users);
-          if (p.teachers) setTeachers(p.teachers);
-          if (p.participants) setParticipants(p.participants);
+          if (p.shelters) setShelters(prev => mergeById(prev, p.shelters));
+          if (p.users) setUsers(prev => mergeById(prev, p.users));
+          if (p.teachers) setTeachers(prev => mergeById(prev, p.teachers));
+          if (p.participants) setParticipants(prev => mergeById(prev, p.participants));
           if (p.schedules) setSchedules(p.schedules);
-          if (p.attendance) setAttendance(p.attendance);
-          if (p.assessments) setAssessments(p.assessments);
+          if (p.attendance) setAttendance(prev => mergeById(prev, p.attendance));
+          if (p.assessments) setAssessments(prev => mergeById(prev, p.assessments));
           if (p.announcements) setAnnouncements(p.announcements);
         }
       };
     }
 
-    const handleCustomSync = (e: any) => {
-      if (e.detail?.shelters) setShelters(e.detail.shelters);
-      if (e.detail?.participants) setParticipants(e.detail.participants);
-    };
-
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('ojol_state_sync', handleCustomSync);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('ojol_state_sync', handleCustomSync);
       if (bc) bc.close();
     };
   }, []);
 
   const notifySync = (payload: Partial<any>) => {
     try {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('ojol_state_sync', { detail: payload }));
-        if ('BroadcastChannel' in window) {
-          const bc = new BroadcastChannel('ojol_mengaji_channel');
-          bc.postMessage({ type: 'STATE_UPDATED', payload });
-          bc.close();
-        }
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('ojol_mengaji_channel');
+        bc.postMessage({ type: 'STATE_UPDATED', payload });
+        setTimeout(() => bc.close(), 1000);
       }
     } catch {
       // ignore
@@ -381,6 +523,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
     setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  // Resolve currentUser intelligently based on current active role / route:
+  // If viewing /admin, prefers adminUser
+  // If viewing /guru, prefers guruUser
+  // If viewing /user, prefers driverUser
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const currentUser: User | null = React.useMemo(() => {
+    if (currentPath.startsWith('/admin')) {
+      return adminUser || (rawCurrentUser?.role === 'admin' ? rawCurrentUser : null);
+    }
+    if (currentPath.startsWith('/guru')) {
+      return guruUser || (rawCurrentUser?.role === 'guru' ? rawCurrentUser : null) || (adminUser ? adminUser : null);
+    }
+    if (currentPath.startsWith('/user')) {
+      return driverUser || (rawCurrentUser?.role === 'ojol' ? rawCurrentUser : null);
+    }
+    return rawCurrentUser || driverUser || adminUser || guruUser;
+  }, [currentPath, driverUser, adminUser, guruUser, rawCurrentUser]);
+
+  const setCurrentUser: React.Dispatch<React.SetStateAction<User | null>> = (valOrFn) => {
+    setRawCurrentUser(prev => {
+      const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
+      if (next) {
+        if (next.role === 'ojol') {
+          setDriverUser(next);
+          localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(next));
+        } else if (next.role === 'admin') {
+          setAdminUser(next);
+          localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(next));
+        } else if (next.role === 'guru') {
+          setGuruUser(next);
+          localStorage.setItem(GURU_SESSION_KEY, JSON.stringify(next));
+        }
+      }
+      return next;
+    });
   };
 
   const loginDriver = (identifier: string, password?: string): { success: boolean; message: string; user?: User } => {
@@ -416,7 +595,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    setCurrentUser(found);
+    setDriverUser(found);
+    setRawCurrentUser(found);
+    localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(found));
     addAudit('LOGIN_DRIVER', 'users', found.id, `Driver ${found.name} berhasil masuk ke dashboard`);
     return {
       success: true,
@@ -429,19 +610,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanId = identifier.trim().toLowerCase();
     const cleanPhone = identifier.replace(/[\s-]/g, '');
 
-    // Ketentuan Akun Administrator:
-    // Email: admin@ojolmengaji.id
-    // Password: OjolMengaji_Admin123
-    // Selain email dan password ini, TIDAK BISA login sebagai admin.
     const isAdminEmail = cleanId === 'admin@ojolmengaji.id';
+    const adminUserObj = users.find(u => u.role === 'admin' || u.id === 'user-admin-1');
 
-    // Cari akun admin dalam data users
-    const adminUser = users.find(u => u.role === 'admin' || u.id === 'user-admin-1');
-
-    // Jika pengguna mencoba masuk dengan nomor HP atau nama admin (bukan email admin@ojolmengaji.id)
-    const isOtherAdminIdentifier = adminUser && (
-      adminUser.phone.replace(/[\s-]/g, '') === cleanPhone ||
-      adminUser.name.toLowerCase() === cleanId
+    const isOtherAdminIdentifier = adminUserObj && (
+      adminUserObj.phone.replace(/[\s-]/g, '') === cleanPhone ||
+      adminUserObj.name.toLowerCase() === cleanId
     );
 
     if (isOtherAdminIdentifier && !isAdminEmail) {
@@ -451,16 +625,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Jika mencoba login menggunakan email admin
     if (isAdminEmail) {
-      if (!adminUser) {
+      if (!adminUserObj) {
         return {
           success: false,
           message: 'Akun Administrator tidak ditemukan.'
         };
       }
 
-      if (!adminUser.isActive) {
+      if (!adminUserObj.isActive) {
         return {
           success: false,
           message: 'Status akun Administrator sedang tidak aktif.'
@@ -474,16 +647,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       }
 
-      setCurrentUser(adminUser);
-      addAudit('LOGIN_STAFF', 'users', adminUser.id, `Administrator ${adminUser.name} berhasil masuk ke portal manajemen`);
+      setAdminUser(adminUserObj);
+      setRawCurrentUser(adminUserObj);
+      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminUserObj));
+      addAudit('LOGIN_STAFF', 'users', adminUserObj.id, `Administrator ${adminUserObj.name} berhasil masuk ke portal manajemen`);
       return {
         success: true,
-        message: `Alhamdulillah! Selamat datang, ${adminUser.name} (Administrator Pusat).`,
-        user: adminUser
+        message: `Alhamdulillah! Selamat datang, ${adminUserObj.name} (Administrator Pusat).`,
+        user: adminUserObj
       };
     }
 
-    // Pastikan tidak ada akun selain admin@ojolmengaji.id yang bisa login sebagai admin
     const isAttemptingOtherAdmin = users.some(u => 
       u.role === 'admin' && (
         u.email.toLowerCase() === cleanId ||
@@ -498,8 +672,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Verifikasi untuk akun Dewan Guru (Ustadz)
-    // Cocokkan berdasarkan username, email, nomor HP, atau nama
     const foundGuru = users.find(u => 
       u.role === 'guru' && (
         (u.username && u.username.toLowerCase() === cleanId) ||
@@ -510,7 +682,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (!foundGuru) {
-      // Check if an ojol account was entered
       const isOjol = users.find(u => 
         u.role === 'ojol' && (
           (u.username && u.username.toLowerCase() === cleanId) ||
@@ -547,10 +718,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    setCurrentUser(foundGuru);
+    setGuruUser(foundGuru);
+    setRawCurrentUser(foundGuru);
+    localStorage.setItem(GURU_SESSION_KEY, JSON.stringify(foundGuru));
     const roleTitle = 'Guru Mengaji (Ustadz)';
     addAudit('LOGIN_STAFF', 'users', foundGuru.id, `${roleTitle} @${foundGuru.username || foundGuru.name} (${foundGuru.name}) berhasil masuk ke portal bimbingan guru`);
-    addAudit('LOGIN_STAFF', 'users', foundGuru.id, `${roleTitle} ${foundGuru.name} berhasil masuk ke portal manajemen`);
     return {
       success: true,
       message: `Alhamdulillah! Selamat datang, ${foundGuru.name} (${roleTitle}).`,
@@ -564,8 +736,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Check if phone or email already registered
     const exists = users.find(u => 
-      (cleanEmail && u.email.toLowerCase() === cleanEmail) ||
-      (cleanPhone && normalizePhone(u.phone) === cleanPhone)
+      u.role === 'ojol' && (
+        (cleanEmail && u.email.toLowerCase() === cleanEmail) ||
+        (cleanPhone && normalizePhone(u.phone) === cleanPhone)
+      )
     );
 
     if (exists) {
@@ -595,6 +769,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       avatar: avatarUrl,
       password: data.password || '123',
       isActive: true,
+      nik: data.nik?.trim() || data.vehiclePlate?.trim(),
     };
 
     const nikVal = data.nik?.trim() || data.vehiclePlate?.trim() || '';
@@ -609,7 +784,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: data.phone.trim(),
       email: cleanEmail || `${cleanPhone || Date.now()}@ojolmengaji.id`,
       avatar: avatarUrl,
-      selfiePhoto: data.selfiePhoto,
+      selfiePhoto: data.selfiePhoto || avatarUrl,
       ojolPlatform: data.ojolPlatform,
       nik: nikVal,
       vehiclePlate: data.vehiclePlate?.trim().toUpperCase() || nikVal || '-',
@@ -623,18 +798,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bankAccount: data.bankAccount?.trim() || undefined,
     };
 
-    setUsers(prev => {
-      const next = [...prev, newUser];
-      notifySync({ users: next });
-      return next;
-    });
-    setParticipants(prev => {
-      const next = [...prev, newParticipant];
-      notifySync({ participants: next });
-      return next;
-    });
-    // Otomatis login akun baru driver agar langsung masuk dashboard
-    setCurrentUser(newUser);
+    const nextUsers = [...users.filter(u => u.id !== newUser.id), newUser];
+    const nextParts = [...participants.filter(p => p.id !== newParticipant.id), newParticipant];
+
+    setUsers(nextUsers);
+    setParticipants(nextParts);
+    setDriverUser(newUser);
+    setRawCurrentUser(newUser);
+    localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(newUser));
+
+    notifySync({ users: nextUsers, participants: nextParts });
 
     const shelterName = shelters.find(s => s.id === data.shelterId)?.name || 'Shelter Mengaji';
     const idInfo = nikVal ? `NIK: ${nikVal}` : (data.vehiclePlate || '-');
@@ -649,17 +822,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
-    if (currentUser) {
-      const roleTitle = currentUser.role === 'admin' ? 'Administrator' : currentUser.role === 'guru' ? 'Guru' : 'Driver';
-      addAudit('LOGOUT', 'users', currentUser.id, `${roleTitle} ${currentUser.name} keluar dari akun`);
+    const isUserPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/user');
+    const isAdminPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    const isGuruPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/guru');
+
+    if (isUserPortal) {
+      if (driverUser) addAudit('LOGOUT', 'users', driverUser.id, `Driver ${driverUser.name} keluar dari akun`);
+      setDriverUser(null);
+      localStorage.removeItem(DRIVER_SESSION_KEY);
+      if (rawCurrentUser?.role === 'ojol') setRawCurrentUser(null);
+    } else if (isAdminPortal) {
+      if (adminUser) addAudit('LOGOUT', 'users', adminUser.id, `Administrator ${adminUser.name} keluar dari akun`);
+      setAdminUser(null);
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      if (rawCurrentUser?.role === 'admin') setRawCurrentUser(null);
+    } else if (isGuruPortal) {
+      if (guruUser) addAudit('LOGOUT', 'users', guruUser.id, `Guru ${guruUser.name} keluar dari akun`);
+      setGuruUser(null);
+      localStorage.removeItem(GURU_SESSION_KEY);
+      if (rawCurrentUser?.role === 'guru') setRawCurrentUser(null);
+    } else {
+      if (currentUser) {
+        const roleTitle = currentUser.role === 'admin' ? 'Administrator' : currentUser.role === 'guru' ? 'Guru' : 'Driver';
+        addAudit('LOGOUT', 'users', currentUser.id, `${roleTitle} ${currentUser.name} keluar dari akun`);
+      }
+      setDriverUser(null);
+      setAdminUser(null);
+      setGuruUser(null);
+      setRawCurrentUser(null);
+      localStorage.removeItem(DRIVER_SESSION_KEY);
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      localStorage.removeItem(GURU_SESSION_KEY);
     }
-    setCurrentUser(null);
   };
 
   const switchUser = (userId: string) => {
     const user = users.find(u => u.id === userId);
     if (user) {
-      // Prevent unauthorized bypass to admin role
       if (user.role === 'admin' && currentUser?.role !== 'admin') {
         return;
       }
@@ -669,7 +868,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const quickSwitchRole = (role: UserRole) => {
     if (role === 'admin') {
-      return; // Admin role cannot be assumed without credentials
+      return;
     }
     const firstUserWithRole = users.find(u => u.role === role);
     if (firstUserWithRole) {
@@ -717,32 +916,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addShelter = (newShelterData: Omit<Shelter, 'id'>) => {
     const id = 'shelter-' + Date.now();
     const shelter: Shelter = { ...newShelterData, id };
-    setShelters(prev => {
-      // Prevent duplicate if same exact name exists (case-insensitive)
-      const filtered = prev.filter(s => s.id !== id && s.name.toLowerCase().trim() !== shelter.name.toLowerCase().trim());
-      const next = [...filtered, shelter];
-      notifySync({ shelters: next });
-      return next;
-    });
+    const filtered = shelters.filter(s => s.id !== id && s.name.toLowerCase().trim() !== shelter.name.toLowerCase().trim());
+    const next = [...filtered, shelter];
+    setShelters(next);
+    notifySync({ shelters: next });
     addAudit('CREATE_SHELTER', 'shelters', id, `Menambahkan shelter baru "${shelter.name}"`);
   };
 
   const updateShelter = (updated: Shelter) => {
-    setShelters(prev => {
-      const next = prev.map(s => s.id === updated.id ? updated : s);
-      notifySync({ shelters: next });
-      return next;
-    });
+    const next = shelters.map(s => s.id === updated.id ? updated : s);
+    setShelters(next);
+    notifySync({ shelters: next });
     addAudit('UPDATE_SHELTER', 'shelters', updated.id, `Memperbarui data shelter "${updated.name}"`);
   };
 
   const deleteShelter = (id: string) => {
     const name = shelters.find(s => s.id === id)?.name || id;
-    setShelters(prev => {
-      const next = prev.filter(s => s.id !== id);
-      notifySync({ shelters: next });
-      return next;
-    });
+    const next = shelters.filter(s => s.id !== id);
+    setShelters(next);
+    notifySync({ shelters: next });
     addAudit('DELETE_SHELTER', 'shelters', id, `Menghapus shelter "${name}"`);
   };
 
@@ -764,7 +956,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const passwordVal = data.password?.trim() || 'guru';
 
-    // Periksa apakah username sudah terdaftar
     const usernameTaken = users.some(u => u.username && u.username.toLowerCase() === cleanUsername);
     if (usernameTaken) {
       return {
@@ -799,72 +990,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       generatedPassword: passwordVal,
     };
 
-    setUsers(prev => {
-      const next = [...prev, newUser];
-      notifySync({ users: next });
-      return next;
-    });
+    const nextUsers = [...users, newUser];
+    const nextTeachers = [...teachers, newTeacher];
+    setUsers(nextUsers);
+    setTeachers(nextTeachers);
+    notifySync({ users: nextUsers, teachers: nextTeachers });
 
-    setTeachers(prev => {
-      const next = [...prev, newTeacher];
-      notifySync({ teachers: next });
-      return next;
-    });
+    const shelterNames = shelters
+      .filter(s => (newTeacher.shelterIds || []).includes(s.id))
+      .map(s => s.name)
+      .join(', ') || 'Belum Ditugaskan';
 
-    const nikInfo = data.nik ? ` [NIK: ${data.nik}]` : '';
-    const bankInfo = data.bankAccount ? ` [Rek: ${data.bankName ? data.bankName + ' ' : ''}${data.bankAccount}]` : '';
     addAudit(
-      'CREATE_TEACHER',
-      'teachers',
-      teacherId,
-      `Admin men-generate akun Guru "${data.name}" [Username: @${cleanUsername}] [Password: ${passwordVal}]${nikInfo}${bankInfo}`
+      'CREATE_TEACHER', 
+      'teachers', 
+      teacherId, 
+      `Admin mendaftarkan Dewan Guru "${data.name}" [Username: @${cleanUsername}] di ${shelterNames}`
     );
 
     return {
       success: true,
-      message: `Akun Guru "${data.name}" berhasil digenerate dengan Username @${cleanUsername}!`,
+      message: `Alhamdulillah! Akun Guru "${data.name}" berhasil dibuat dengan username @${cleanUsername}.`,
       teacher: newTeacher,
       user: newUser
     };
   };
 
   const updateTeacher = (updated: Teacher & { password?: string }) => {
-    const cleanUsername = updated.username
-      ? updated.username.trim().toLowerCase().replace(/^@/, '').replace(/\s+/g, '_')
-      : undefined;
+    const nextTeachers = teachers.map(t => t.id === updated.id ? updated : t);
+    setTeachers(nextTeachers);
 
-    setTeachers(prev => {
-      const next = prev.map(t => {
-        if (t.id === updated.id) {
-          return {
-            ...updated,
-            username: cleanUsername || t.username,
-            generatedPassword: updated.password || updated.generatedPassword || t.generatedPassword
-          };
-        }
-        return t;
-      });
-      notifySync({ teachers: next });
-      return next;
+    const nextUsers = users.map(u => {
+      if (u.id === updated.userId) {
+        return {
+          ...u,
+          name: updated.name,
+          username: updated.username || u.username,
+          email: updated.email || u.email,
+          phone: updated.phone || u.phone,
+          avatar: updated.avatar || u.avatar,
+          nik: updated.nik || u.nik,
+          ...(updated.password ? { password: updated.password } : {})
+        };
+      }
+      return u;
     });
-
-    setUsers(prev => {
-      const next = prev.map(u => {
-        if (u.id === updated.userId) {
-          return {
-            ...u,
-            name: updated.name,
-            username: cleanUsername || u.username,
-            phone: updated.phone,
-            nik: updated.nik,
-            ...(updated.password ? { password: updated.password } : {})
-          };
-        }
-        return u;
-      });
-      notifySync({ users: next });
-      return next;
-    });
+    setUsers(nextUsers);
+    notifySync({ teachers: nextTeachers, users: nextUsers });
 
     addAudit('UPDATE_TEACHER', 'teachers', updated.id, `Memperbarui data dan kredensial guru "${updated.name}"`);
   };
@@ -873,15 +1045,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addParticipant = (data: Omit<Participant, 'id' | 'userId' | 'email'>, email: string) => {
     const userId = 'user-ojol-' + Date.now();
     const partId = 'part-' + Date.now();
+    const bestAvatar = data.avatar || data.selfiePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`;
 
     const newUser: User = {
       id: userId,
       name: data.name,
       email: email,
       role: 'ojol',
-      avatar: data.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      avatar: bestAvatar,
       phone: data.phone,
       isActive: true,
+      nik: data.nik || data.vehiclePlate,
+      password: '123',
     };
 
     const nextMemberNumber = data.memberNumber || (participants.length > 0
@@ -893,47 +1068,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: partId,
       userId,
       email,
+      avatar: bestAvatar,
+      selfiePhoto: data.selfiePhoto || bestAvatar,
       memberNumber: nextMemberNumber,
     };
 
-    setUsers(prev => [...prev, newUser]);
-    setParticipants(prev => [...prev, newPart]);
+    const nextUsers = [...users, newUser];
+    const nextParts = [...participants, newPart];
+    setUsers(nextUsers);
+    setParticipants(nextParts);
+    notifySync({ users: nextUsers, participants: nextParts });
     addAudit('CREATE_PARTICIPANT', 'participants', partId, `Mendaftarkan peserta ojol "${data.name}" (${data.ojolPlatform})`);
   };
 
   const updateParticipant = (updated: Participant) => {
-    setParticipants(prev => {
-      const next = prev.map(p => p.id === updated.id ? updated : p);
-      notifySync({ participants: next });
-      return next;
-    });
-    setUsers(prev => prev.map(u => u.id === updated.userId ? { 
-      ...u, 
-      name: updated.name, 
-      phone: updated.phone,
-      avatar: updated.avatar || updated.selfiePhoto || u.avatar
-    } : u));
-    setCurrentUser(prev => {
-      if (prev && prev.id === updated.userId) {
-        return {
-          ...prev,
-          name: updated.name,
+    const bestAvatar = updated.selfiePhoto || updated.avatar;
+    const normalizedPart: Participant = {
+      ...updated,
+      avatar: bestAvatar || updated.avatar,
+      selfiePhoto: bestAvatar || updated.selfiePhoto,
+    };
+
+    const nextParts = participants.map(p => p.id === updated.id ? normalizedPart : p);
+    setParticipants(nextParts);
+
+    const nextUsers = users.map(u => {
+      if (u.id === updated.userId || normalizePhone(u.phone) === normalizePhone(updated.phone)) {
+        return { 
+          ...u, 
+          name: updated.name, 
           phone: updated.phone,
-          avatar: updated.avatar || updated.selfiePhoto || prev.avatar
+          avatar: bestAvatar || u.avatar,
+          nik: updated.nik || updated.vehiclePlate || u.nik,
         };
       }
-      return prev;
+      return u;
     });
+    setUsers(nextUsers);
+
+    // Update active driver session if matching
+    if (driverUser && (driverUser.id === updated.userId || normalizePhone(driverUser.phone) === normalizePhone(updated.phone))) {
+      const updatedDriverUser = {
+        ...driverUser,
+        name: updated.name,
+        phone: updated.phone,
+        avatar: bestAvatar || driverUser.avatar,
+        nik: updated.nik || updated.vehiclePlate,
+      };
+      setDriverUser(updatedDriverUser);
+      localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(updatedDriverUser));
+    }
+
+    if (rawCurrentUser && (rawCurrentUser.id === updated.userId || normalizePhone(rawCurrentUser.phone) === normalizePhone(updated.phone))) {
+      const updatedCurrUser = {
+        ...rawCurrentUser,
+        name: updated.name,
+        phone: updated.phone,
+        avatar: bestAvatar || rawCurrentUser.avatar,
+        nik: updated.nik || updated.vehiclePlate,
+      };
+      setRawCurrentUser(updatedCurrUser);
+    }
+
+    notifySync({ participants: nextParts, users: nextUsers });
     addAudit('UPDATE_PARTICIPANT', 'participants', updated.id, `Memperbarui data peserta ojol "${updated.name}"`);
   };
 
   const updateParticipantLevel = (participantId: string, newLevel: ParticipantLevel, notes?: string) => {
-    setParticipants(prev => prev.map(p => {
+    const nextParts = participants.map(p => {
       if (p.id === participantId) {
         return { ...p, currentLevel: newLevel };
       }
       return p;
-    }));
+    });
+    setParticipants(nextParts);
+    notifySync({ participants: nextParts });
+
     const target = participants.find(p => p.id === participantId);
     const teacherName = currentUser?.name || 'Ustadz Pembimbing';
     addAudit(
@@ -948,151 +1158,146 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const part = participants.find(p => p.id === participantId);
     const targetSh = shelters.find(s => s.id === targetShelterId);
     if (!part || !targetSh) {
-      return { success: false, message: 'Data peserta atau shelter tujuan tidak ditemukan.' };
+      return { success: false, message: 'Data peserta atau shelter tidak ditemukan.' };
     }
-    const currentSh = shelters.find(s => s.id === part.shelterId);
+    if (part.shelterId === targetShelterId) {
+      return { success: false, message: 'Anda sudah terdaftar di shelter ini.' };
+    }
 
-    setParticipants(prev => {
-      const next = prev.map(p => {
-        if (p.id === participantId) {
-          return {
-            ...p,
-            pendingShelterId: targetShelterId,
-            shelterTransferStatus: 'pending' as const,
-            shelterTransferRequestedAt: new Date().toISOString(),
-            shelterTransferReason: reason || 'Permohonan mandiri mitra driver'
-          };
-        }
-        return p;
-      });
-      notifySync({ participants: next });
-      return next;
+    const now = new Date().toISOString();
+    const nextParts = participants.map(p => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          pendingShelterId: targetShelterId,
+          shelterTransferStatus: 'pending' as const,
+          shelterTransferRequestedAt: now,
+          shelterTransferReason: reason || 'Permohonan perpindahan shelter oleh driver',
+        };
+      }
+      return p;
     });
+    setParticipants(nextParts);
+    notifySync({ participants: nextParts });
 
     addAudit(
       'REQUEST_SHELTER_TRANSFER',
       'participants',
       participantId,
-      `Peserta "${part.name}" mengajukan pindah shelter dari "${currentSh?.name || '-'}" ke "${targetSh.name}" (Wajib diverifikasi Admin)`
+      `Driver ${part.name} mengajukan pindah ke ${targetSh.name}. Menunggu verifikasi Admin Pusat.`
     );
 
     return {
       success: true,
-      message: `Permohonan pindah ke ${targetSh.name} berhasil diajukan! Menunggu verifikasi dari Admin Pusat.`
+      message: `Pengajuan pindah ke ${targetSh.name} berhasil dikirim! Menunggu persetujuan Admin Pusat.`,
     };
   };
 
   const approveShelterTransfer = (participantId: string) => {
     const part = participants.find(p => p.id === participantId);
     if (!part || !part.pendingShelterId) {
-      return { success: false, message: 'Tidak ada permohonan pindah shelter yang menunggu verifikasi.' };
+      return { success: false, message: 'Permohonan pindah shelter tidak ditemukan.' };
     }
     const targetSh = shelters.find(s => s.id === part.pendingShelterId);
-    const currentSh = shelters.find(s => s.id === part.shelterId);
+    const newShelterName = targetSh?.name || 'Shelter Baru';
 
-    setParticipants(prev => {
-      const next = prev.map(p => {
-        if (p.id === participantId) {
-          return {
-            ...p,
-            shelterId: p.pendingShelterId!,
-            pendingShelterId: undefined,
-            shelterTransferStatus: undefined,
-            shelterTransferReason: undefined,
-            shelterTransferRequestedAt: undefined
-          };
-        }
-        return p;
-      });
-      notifySync({ participants: next });
-      return next;
+    const nextParts = participants.map(p => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          shelterId: p.pendingShelterId!,
+          pendingShelterId: undefined,
+          shelterTransferStatus: 'approved' as const,
+        };
+      }
+      return p;
     });
+    setParticipants(nextParts);
+    notifySync({ participants: nextParts });
 
     addAudit(
       'APPROVE_SHELTER_TRANSFER',
       'participants',
       participantId,
-      `Admin menyetujui kepindahan shelter peserta "${part.name}" dari "${currentSh?.name || '-'}" ke "${targetSh?.name || '-'}"`
+      `Admin menyetujui kepindahan driver ${part.name} ke ${newShelterName}`
     );
 
     return {
       success: true,
-      message: `Kepindahan shelter peserta "${part.name}" ke ${targetSh?.name || 'shelter baru'} berhasil disetujui!`
+      message: `Kepindahan driver ${part.name} ke ${newShelterName} berhasil disetujui!`,
     };
   };
 
   const rejectShelterTransfer = (participantId: string, reason?: string) => {
     const part = participants.find(p => p.id === participantId);
     if (!part) return { success: false, message: 'Peserta tidak ditemukan.' };
-    const targetSh = shelters.find(s => s.id === part.pendingShelterId);
 
-    setParticipants(prev => {
-      const next = prev.map(p => {
-        if (p.id === participantId) {
-          return {
-            ...p,
-            pendingShelterId: undefined,
-            shelterTransferStatus: 'rejected' as const,
-            shelterTransferReason: reason || 'Permohonan ditolak oleh Admin Pusat'
-          };
-        }
-        return p;
-      });
-      notifySync({ participants: next });
-      return next;
+    const nextParts = participants.map(p => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          pendingShelterId: undefined,
+          shelterTransferStatus: 'rejected' as const,
+        };
+      }
+      return p;
     });
+    setParticipants(nextParts);
+    notifySync({ participants: nextParts });
 
     addAudit(
       'REJECT_SHELTER_TRANSFER',
       'participants',
       participantId,
-      `Admin menolak pengajuan kepindahan shelter peserta "${part.name}" ke "${targetSh?.name || '-'}"`
+      `Admin menolak kepindahan driver ${part.name}${reason ? `: ${reason}` : ''}`
     );
 
     return {
       success: true,
-      message: `Pengajuan pindah shelter peserta "${part.name}" telah ditolak.`
+      message: `Permohonan pindah driver ${part.name} telah ditolak.`,
     };
   };
 
   const cancelShelterTransferRequest = (participantId: string) => {
-    setParticipants(prev => {
-      const next = prev.map(p => {
-        if (p.id === participantId) {
-          return {
-            ...p,
-            pendingShelterId: undefined,
-            shelterTransferStatus: undefined,
-            shelterTransferReason: undefined,
-            shelterTransferRequestedAt: undefined
-          };
-        }
-        return p;
-      });
-      notifySync({ participants: next });
-      return next;
+    const nextParts = participants.map(p => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          pendingShelterId: undefined,
+          shelterTransferStatus: undefined,
+          shelterTransferRequestedAt: undefined,
+          shelterTransferReason: undefined,
+        };
+      }
+      return p;
     });
-
-    addAudit('CANCEL_SHELTER_TRANSFER', 'participants', participantId, `Peserta membatalkan pengajuan pindah shelter`);
-    return { success: true, message: 'Pengajuan pindah shelter berhasil dibatalkan.' };
+    setParticipants(nextParts);
+    notifySync({ participants: nextParts });
+    return { success: true, message: 'Pengajuan pindah shelter dibatalkan.' };
   };
 
   // Schedules
   const addSchedule = (data: Omit<Schedule, 'id'>) => {
     const id = 'sched-' + Date.now();
     const newSchedule: Schedule = { ...data, id };
-    setSchedules(prev => [...prev, newSchedule]);
-    addAudit('CREATE_SCHEDULE', 'schedules', id, `Menambahkan jadwal mengaji di hari ${data.dayName}`);
+    const next = [...schedules, newSchedule];
+    setSchedules(next);
+    notifySync({ schedules: next });
+    addAudit('CREATE_SCHEDULE', 'schedules', id, `Membuat jadwal baru hari ${data.dayName}`);
   };
 
   const updateSchedule = (updated: Schedule) => {
-    setSchedules(prev => prev.map(s => s.id === updated.id ? updated : s));
-    addAudit('UPDATE_SCHEDULE', 'schedules', updated.id, `Memperbarui jadwal mengaji "${updated.topic}"`);
+    const next = schedules.map(s => s.id === updated.id ? updated : s);
+    setSchedules(next);
+    notifySync({ schedules: next });
+    addAudit('UPDATE_SCHEDULE', 'schedules', updated.id, `Memperbarui jadwal hari ${updated.dayName}`);
   };
 
   const deleteSchedule = (id: string) => {
-    setSchedules(prev => prev.filter(s => s.id !== id));
-    addAudit('DELETE_SCHEDULE', 'schedules', id, `Menghapus jadwal mengaji`);
+    const next = schedules.filter(s => s.id !== id);
+    setSchedules(next);
+    notifySync({ schedules: next });
+    addAudit('DELETE_SCHEDULE', 'schedules', id, 'Menghapus jadwal sesi mengaji');
   };
 
   // Attendance
@@ -1105,7 +1310,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes?: string
   ) => {
     const today = new Date().toISOString().substring(0, 10);
-    // Check if participant already has attendance today for this shelter
     const existing = attendance.find(a => a.participantId === participantId && a.sessionDate === today);
     if (existing) {
       return { 
@@ -1127,14 +1331,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notes: notes || `Presensi berhasil via ${method.toUpperCase()} (${distanceMeters}m dari pusat shelter)`
     };
 
-    setAttendance(prev => [newRecord, ...prev]);
+    const nextAttendance = [newRecord, ...attendance];
+    setAttendance(nextAttendance);
+    notifySync({ attendance: nextAttendance });
+
     const part = participants.find(p => p.id === participantId);
     addAudit('RECORD_ATTENDANCE', 'attendance_records', newRecord.id, `Presensi ${part?.name || participantId} status ${status} via ${method}`);
     return { success: true, message: 'Presensi berhasil dicatat!' };
   };
 
   const correctAttendance = (recordId: string, newStatus: AttendanceStatus, reason: string) => {
-    setAttendance(prev => prev.map(a => {
+    const next = attendance.map(a => {
       if (a.id === recordId) {
         return {
           ...a,
@@ -1143,7 +1350,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       }
       return a;
-    }));
+    });
+    setAttendance(next);
+    notifySync({ attendance: next });
     addAudit('CORRECT_ATTENDANCE', 'attendance_records', recordId, `Koreksi presensi menjadi "${newStatus}". Alasan: ${reason}`);
   };
 
@@ -1151,10 +1360,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addAssessment = (data: Omit<ReadingAssessment, 'id'>) => {
     const id = 'eval-' + Date.now();
     const newAssessment: ReadingAssessment = { ...data, id };
-    setAssessments(prev => [newAssessment, ...prev]);
+    const nextAssessments = [newAssessment, ...assessments];
+    setAssessments(nextAssessments);
+
+    let nextParts = participants;
     if (data.assessedLevel) {
-      setParticipants(prev => prev.map(p => p.id === data.participantId ? { ...p, currentLevel: data.assessedLevel! } : p));
+      nextParts = participants.map(p => p.id === data.participantId ? { ...p, currentLevel: data.assessedLevel! } : p);
+      setParticipants(nextParts);
     }
+
+    notifySync({ assessments: nextAssessments, participants: nextParts });
     const p = participants.find(part => part.id === data.participantId);
     addAudit('ADD_ASSESSMENT', 'reading_assessments', id, `Evaluasi membaca untuk ${p?.name || data.participantId} (${data.material}) - Level: ${data.assessedLevel || p?.currentLevel}`);
   };
@@ -1167,23 +1382,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id,
       createdDate: new Date().toISOString().substring(0, 10),
     };
-    setTasks(prev => [newTask, ...prev]);
+    const next = [newTask, ...tasks];
+    setTasks(next);
+    notifySync({ tasks: next });
     addAudit('CREATE_TASK', 'tasks', id, `Membuat tugas mengaji "${data.title}"`);
   };
 
   const submitTask = (taskId: string, participantId: string, notes: string, audioName?: string) => {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
     
-    // Check if submission exists
+    let nextSubmissions = submissions;
     const existing = submissions.find(s => s.taskId === taskId && s.participantId === participantId);
     if (existing) {
-      setSubmissions(prev => prev.map(s => s.id === existing.id ? {
+      nextSubmissions = submissions.map(s => s.id === existing.id ? {
         ...s,
         status: 'menunggu_pemeriksaan',
         submittedAt: now,
         submissionNotes: notes,
         audioFileName: audioName || s.audioFileName,
-      } : s));
+      } : s);
     } else {
       const newSub: TaskSubmission = {
         id: 'sub-' + Date.now(),
@@ -1193,10 +1410,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submittedAt: now,
         submissionNotes: notes,
         audioFileName: audioName,
-        audioDurationSeconds: 65,
       };
-      setSubmissions(prev => [newSub, ...prev]);
+      nextSubmissions = [newSub, ...submissions];
     }
+    setSubmissions(nextSubmissions);
+    notifySync({ submissions: nextSubmissions });
 
     const t = tasks.find(tk => tk.id === taskId);
     addAudit('SUBMIT_TASK', 'task_submissions', taskId, `Peserta mengirimkan tugas "${t?.title}"`);
@@ -1204,13 +1422,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const evaluateSubmission = (submissionId: string, status: TaskStatus, score: number, feedback: string) => {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    setSubmissions(prev => prev.map(s => s.id === submissionId ? {
+    const next = submissions.map(s => s.id === submissionId ? {
       ...s,
       status,
       score,
       teacherFeedback: feedback,
       evaluatedAt: now,
-    } : s));
+    } : s);
+    setSubmissions(next);
+    notifySync({ submissions: next });
     addAudit('EVALUATE_TASK', 'task_submissions', submissionId, `Penilaian tugas dengan status "${status}" dan nilai ${score}`);
   };
 
@@ -1223,22 +1443,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       authorName: currentUser?.name || 'Admin Pusat',
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
-    setAnnouncements(prev => [newAnn, ...prev]);
+    const next = [newAnn, ...announcements];
+    setAnnouncements(next);
+    notifySync({ announcements: next });
     addAudit('CREATE_ANNOUNCEMENT', 'announcements', id, `Mengirimkan pengumuman "${data.title}"`);
   };
 
   const deleteAnnouncement = (id: string) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
+    const next = announcements.filter(a => a.id !== id);
+    setAnnouncements(next);
+    notifySync({ announcements: next });
     addAudit('DELETE_ANNOUNCEMENT', 'announcements', id, 'Menghapus pengumuman');
   };
 
-  // Formula Requirement:
-  // Persentase kehadiran = (Jumlah sesi hadir / Jumlah sesi wajib yang telah berlangsung) * 100%
   const getParticipantAttendanceStats = (participantId: string) => {
     const partRecords = attendance.filter(a => a.participantId === participantId);
-    // Sesi wajib yang telah berlangsung untuk peserta ini
     const attendedSessions = partRecords.filter(a => a.status === 'hadir' || a.status === 'terlambat').length;
-    // Default total sesi terdaftar (minimal 8 sesi sebagai acuan periode atau actual records count)
     const totalSessions = Math.max(partRecords.length, 8);
     const rate = Math.round((attendedSessions / totalSessions) * 100);
     return {
@@ -1250,7 +1470,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetAllData = () => {
     setUsers(INITIAL_USERS);
-    setCurrentUser(null);
     setShelters(INITIAL_SHELTERS);
     setTeachers(INITIAL_TEACHERS);
     setParticipants(INITIAL_PARTICIPANTS);
@@ -1261,12 +1480,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSubmissions(INITIAL_SUBMISSIONS);
     setAnnouncements(INITIAL_ANNOUNCEMENTS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
+    setDriverUser(null);
+    setAdminUser(null);
+    setGuruUser(null);
+    setRawCurrentUser(null);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(DRIVER_SESSION_KEY);
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    localStorage.removeItem(GURU_SESSION_KEY);
   };
 
   return (
     <AppContext.Provider value={{
       currentUser,
+      driverUser,
+      adminUser,
+      guruUser,
       users,
       shelters,
       teachers,

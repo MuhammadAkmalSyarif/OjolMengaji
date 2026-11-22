@@ -1409,7 +1409,7 @@ export const AdminPortal: React.FC = () => {
                     return (
                       <div key={rp.id} className="py-3 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-3">
-                          <img src={rp.avatar} alt={rp.name} className="w-8 h-8 rounded-full object-cover" />
+                          <img src={rp.selfiePhoto || rp.avatar} alt={rp.name} className="w-8 h-8 rounded-full object-cover" />
                           <div>
                             <div className="font-bold text-slate-900">{rp.name} ({rp.ojolPlatform})</div>
                             <div className="text-slate-500 text-[11px]">{sh?.name} • {rp.phone}</div>
@@ -1829,7 +1829,7 @@ export const AdminPortal: React.FC = () => {
                     return (
                       <div key={p.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                         <div className="flex items-center gap-3">
-                          <img src={p.avatar} alt={p.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-amber-300" />
+                          <img src={p.selfiePhoto || p.avatar} alt={p.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-amber-300" />
                           <div>
                             <div className="font-extrabold text-slate-900 flex items-center gap-2">
                               <span>{p.name}</span>
@@ -1905,7 +1905,7 @@ export const AdminPortal: React.FC = () => {
                     <tr key={part.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <img src={part.avatar} alt={part.name} className="w-8 h-8 rounded-full object-cover" />
+                          <img src={part.selfiePhoto || part.avatar} alt={part.name} className="w-8 h-8 rounded-full object-cover" />
                           <div>
                             <div className="font-bold text-slate-900">{part.name}</div>
                             <div className="flex items-center gap-1.5 flex-wrap">

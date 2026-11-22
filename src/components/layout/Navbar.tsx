@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useApp } from '@/context/AppContext';
+import { useApp, normalizePhone } from '@/context/AppContext';
 import { 
   BookOpen, 
   Bike, 
@@ -14,13 +14,61 @@ import {
 export const Navbar: React.FC = () => {
   const { currentUser, logout, shelters, participants } = useApp();
 
-  const isDriverLoggedIn = currentUser && currentUser.role === 'ojol';
-  const activeParticipant = isDriverLoggedIn 
-    ? (participants.find(p => p.userId === currentUser.id) || participants[0])
-    : null;
+  const isDriverLoggedIn = Boolean(currentUser && currentUser.role === 'ojol');
+
+  const activeParticipant = React.useMemo(() => {
+    if (!isDriverLoggedIn || !currentUser) return null;
+
+    // 1. Match by userId
+    let found = participants.find(p => p.userId === currentUser.id);
+    if (found) return found;
+
+    // 2. Match by phone
+    if (currentUser.phone) {
+      const cleanPhone = normalizePhone(currentUser.phone);
+      found = participants.find(p => p.phone && normalizePhone(p.phone) === cleanPhone);
+      if (found) return found;
+    }
+
+    // 3. Match by email
+    if (currentUser.email) {
+      const cleanEmail = currentUser.email.trim().toLowerCase();
+      found = participants.find(p => p.email && p.email.trim().toLowerCase() === cleanEmail);
+      if (found) return found;
+    }
+
+    // 4. Match by name
+    if (currentUser.name) {
+      const cleanName = currentUser.name.trim().toLowerCase();
+      found = participants.find(p => p.name && p.name.trim().toLowerCase() === cleanName);
+      if (found) return found;
+    }
+
+    // 5. Fallback constructed from currentUser (never fall back to Rian Hidayat if another driver is logged in!)
+    return {
+      id: 'part-' + (currentUser.id.replace('user-ojol-', '') || Date.now()),
+      userId: currentUser.id,
+      name: currentUser.name,
+      phone: currentUser.phone || '',
+      email: currentUser.email || '',
+      avatar: currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.name)}`,
+      selfiePhoto: currentUser.avatar,
+      ojolPlatform: 'Gojek' as const,
+      nik: currentUser.nik || '',
+      vehiclePlate: currentUser.nik || '-',
+      shelterId: shelters[0]?.id || 'shelter-1',
+      currentLevel: 'Belum Dinilai' as const,
+      joinedDate: new Date().toISOString().split('T')[0],
+      isActive: true,
+      memberNumber: participants.length + 1,
+    };
+  }, [isDriverLoggedIn, currentUser, participants, shelters]);
+
   const activeShelter = activeParticipant 
-    ? shelters.find(s => s.id === activeParticipant.shelterId)
+    ? shelters.find(s => s.id === activeParticipant.shelterId) || shelters[0]
     : null;
+
+  const displayAvatar = activeParticipant?.selfiePhoto || activeParticipant?.avatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100';
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
@@ -82,7 +130,7 @@ export const Navbar: React.FC = () => {
 
                   <div className="relative">
                     <img
-                      src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
+                      src={displayAvatar}
                       alt={currentUser.name}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-emerald-500 object-cover shadow-xs ring-2 ring-emerald-100"
                     />

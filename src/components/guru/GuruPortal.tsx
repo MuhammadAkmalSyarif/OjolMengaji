@@ -50,12 +50,14 @@ export const GuruPortal: React.FC = () => {
   const currentGuru = teachers.find(t => t.userId === currentUser?.id);
   const teacher = currentGuru || (currentUser?.role === 'admin' ? teachers[0] : null);
 
-  // Filter shelters explicitly assigned to this teacher by Admin
-  const myShelterIds = teacher?.shelterIds || [];
+  // Filter shelters explicitly assigned to this teacher by Admin (or fallback to all shelters)
+  const myShelterIds = (teacher?.shelterIds && teacher.shelterIds.length > 0)
+    ? teacher.shelterIds
+    : shelters.map(s => s.id);
   const myShelters = shelters.filter(s => myShelterIds.includes(s.id));
   const assignedShelter = myShelters[0] || null;
 
-  // Participants belonging ONLY to this teacher's assigned shelter (strictly determined by Admin)
+  // Participants belonging to this teacher's assigned shelter
   const myParticipants = participants.filter(p => myShelterIds.includes(p.shelterId));
   const myParticipantIds = new Set(myParticipants.map(p => p.id));
   const mySchedules = schedules.filter(s => myShelterIds.includes(s.shelterId));
@@ -569,7 +571,7 @@ export const GuruPortal: React.FC = () => {
                     return (
                       <div key={part.id} className="py-3 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
-                          <img src={part.avatar} alt={part.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                          <img src={part.selfiePhoto || part.avatar} alt={part.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
                           <div>
                             <div className="font-bold text-xs text-slate-900">{part.name} ({part.ojolPlatform})</div>
                             <div className="text-[11px] flex items-center gap-1.5 mt-0.5">
@@ -674,7 +676,7 @@ export const GuruPortal: React.FC = () => {
                       <tr key={part.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <img src={part.avatar} alt={part.name} className="w-9 h-9 rounded-xl object-cover" />
+                            <img src={part.selfiePhoto || part.avatar} alt={part.name} className="w-9 h-9 rounded-xl object-cover" />
                             <div>
                               <div className="font-bold text-slate-900">{part.name}</div>
                               <div className="text-slate-500 text-[11px] flex items-center gap-1.5">
@@ -907,7 +909,7 @@ export const GuruPortal: React.FC = () => {
                   <div key={evalItem.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <img src={part?.avatar} alt={part?.name} className="w-8 h-8 rounded-full object-cover" />
+                        <img src={part?.selfiePhoto || part?.avatar} alt={part?.name} className="w-8 h-8 rounded-full object-cover" />
                         <div>
                           <h4 className="font-bold text-sm text-slate-900">{part?.name}</h4>
                           <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -1270,7 +1272,7 @@ export const GuruPortal: React.FC = () => {
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <img
-                      src={selectedParticipantForLevel.avatar}
+                      src={selectedParticipantForLevel.selfiePhoto || selectedParticipantForLevel.avatar}
                       alt={selectedParticipantForLevel.name}
                       className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/20"
                     />
