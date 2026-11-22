@@ -125,7 +125,7 @@ export const OjolPortal: React.FC = () => {
   const portalFileInputRef = useRef<HTMLInputElement>(null);
   
   // Interactive GPS & Presensi State
-  const [gpsSimulatedDistance, setGpsSimulatedDistance] = useState<number>(18);
+  const [gpsSimulatedDistance] = useState<number>(18);
   const [isSimulatingGps, setIsSimulatingGps] = useState(false);
   const [presensiFeedback, setPresensiFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -640,22 +640,6 @@ export const OjolPortal: React.FC = () => {
               )}
               <span>Presensi via GPS Sekarang</span>
             </button>
-
-            {/* GPS Distance Adjustment Slider for Demo Testing */}
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Simulasi Jarak Driver:</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="5"
-                  max="150"
-                  value={gpsSimulatedDistance}
-                  onChange={(e) => setGpsSimulatedDistance(Number(e.target.value))}
-                  className="w-28 accent-emerald-600 cursor-pointer"
-                />
-                <span className="w-12 text-right font-mono font-bold text-slate-700">{gpsSimulatedDistance}m</span>
-              </div>
-            </div>
           </div>
 
           {/* Latest Assessment Card */}
