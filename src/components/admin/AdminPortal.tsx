@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { useApp } from '@/context/AppContext';
 import { 
   Shield, 
@@ -306,14 +307,19 @@ export const AdminPortal: React.FC = () => {
   const [correctNewStatus, setCorrectNewStatus] = useState<AttendanceStatus>('hadir');
   const [correctReason, setCorrectReason] = useState('');
 
-  // Export CSV Modal State
+  // Export Modal State
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportReportType, setExportReportType] = useState<
     'peserta' | 'guru' | 'shelter' | 'kpi' | 'rekap' | 'presensi' | 'evaluasi'
   >('peserta');
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
   const [exportDelimiter, setExportDelimiter] = useState<';' | ','>(';');
   const [exportScope, setExportScope] = useState<'all' | 'filtered'>('all');
   const [showKpiPrintModal, setShowKpiPrintModal] = useState(false);
+
+  // Laporan Tab Search & Filter State
+  const [reportSearchQuery, setReportSearchQuery] = useState('');
+  const [reportSelectedShelter, setReportSelectedShelter] = useState('all');
 
   // Calculation Metrics
   const activeParticipants = participants.filter(p => p.isActive);
@@ -710,11 +716,9 @@ export const AdminPortal: React.FC = () => {
   const getExportColumnsList = (type: string): string[] => {
     switch (type) {
       case 'peserta':
+      case 'rekap':
         return [
-          'No', 'No. Kartu Member', 'NIK KTP', 'Nama Lengkap Driver', 'Mitra Ojol', 'Plat Nomor Kendaraan',
-          'No. WhatsApp / HP', 'Email Driver', 'Shelter Binaan', 'Tingkat Mengaji', 'Tipe Akun Insentif',
-          'Nama Bank / E-Wallet', 'Nomor Rekening / Akun', 'Tanggal Bergabung', 'Status Akun',
-          'Total Kehadiran Sesi', 'Total Sesi Wajib', 'Persentase Kehadiran', 'Kualifikasi Insentif (>=75%)'
+          'No', 'Nama Peserta', 'NIK', 'No. Telepon', 'Shelter', 'Progress Pembelajaran'
         ];
       case 'guru':
         return [
@@ -734,13 +738,6 @@ export const AdminPortal: React.FC = () => {
           'No', 'Kategori Analisis', 'Indikator Metrik KPI', 'Capaian / Nilai Sistem', 'Satuan / Standar Target',
           'Keterangan & Analisis Manajerial'
         ];
-      case 'rekap':
-        return [
-          'No', 'Nama Peserta', 'Mitra Ojol', 'Plat Nomor', 'No. WhatsApp/HP', 'Shelter Lokasi',
-          'Tingkat Saat Ini', 'Sesi Hadir', 'Total Sesi Wajib', 'Persentase Kehadiran',
-          'Status Kualifikasi (>=75%)', 'Materi Evaluasi Terakhir', 'Rata-rata Nilai Rubrik',
-          'Catatan / Rekomendasi Guru', 'Tanggal Bergabung', 'Status Akun'
-        ];
       case 'presensi':
         return [
           'No', 'Tanggal Sesi', 'Waktu Check-In', 'Nama Peserta', 'Mitra Ojol', 'Plat Nomor',
@@ -754,6 +751,28 @@ export const AdminPortal: React.FC = () => {
           'Makhraj', 'Kemandirian', 'Rata-rata Skor', 'Kekuatan', 'Perbaikan', 'Rekomendasi', 'Status Publikasi'
         ];
     }
+  };
+
+  const getParticipantProgressText = (p: Participant) => {
+    const pEvals = assessments
+      .filter(a => a.participantId === p.id)
+      .sort((a, b) => new Date(b.assessmentDate).getTime() - new Date(a.assessmentDate).getTime());
+    const latestEval = pEvals[0];
+
+    let progress = '';
+    const level = p.currentLevel && p.currentLevel !== 'Belum Dinilai' ? p.currentLevel : '';
+    const mat = latestEval?.material ? latestEval.material.trim() : '';
+
+    if (level && mat) {
+      progress = `${level} (${mat})`;
+    } else if (level) {
+      progress = level;
+    } else if (mat) {
+      progress = mat;
+    } else {
+      progress = 'Belum Dinilai';
+    }
+    return progress;
   };
 
   const formatCSVCell = (val: any) => {
@@ -778,6 +797,85 @@ export const AdminPortal: React.FC = () => {
     }, 200);
   };
 
+  const handleDownloadReportDirect = (format: 'xlsx' | 'csv' = 'xlsx') => {
+    const targetList = participants.filter(p => {
+      const matchesShelter = reportSelectedShelter === 'all' || p.shelterId === reportSelectedShelter;
+      if (!matchesShelter) return false;
+      if (!reportSearchQuery.trim()) return true;
+      const q = reportSearchQuery.toLowerCase().trim();
+      const sh = shelters.find(s => s.id === p.shelterId);
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.nik && p.nik.toLowerCase().includes(q)) ||
+        (p.phone && p.phone.toLowerCase().includes(q)) ||
+        (sh && sh.name.toLowerCase().includes(q)) ||
+        (p.currentLevel && p.currentLevel.toLowerCase().includes(q))
+      );
+    });
+
+    const dateToday = new Date().toISOString().substring(0, 10);
+    const filename = `report_peserta_ojol_mengaji_${dateToday}.${format}`;
+    const headers = ['No', 'Nama Peserta', 'NIK', 'No. Telepon', 'Shelter', 'Progress Pembelajaran'];
+
+    const rows = targetList.map((p, idx) => {
+      const sh = shelters.find(s => s.id === p.shelterId);
+      return [
+        String(idx + 1),
+        p.name || '-',
+        p.nik || '-',
+        p.phone || '-',
+        sh?.name || '-',
+        getParticipantProgressText(p)
+      ];
+    });
+
+    if (format === 'xlsx') {
+      const aoaData = [headers, ...rows];
+      const worksheet = XLSX.utils.aoa_to_sheet(aoaData);
+
+      worksheet['!cols'] = [
+        { wch: 6 },  // No
+        { wch: 28 }, // Nama Peserta
+        { wch: 24 }, // NIK
+        { wch: 20 }, // No. Telepon
+        { wch: 34 }, // Shelter
+        { wch: 45 }, // Progress Pembelajaran
+      ];
+
+      rows.forEach((r, idx) => {
+        const rowNum = idx + 2;
+        const nikRef = `C${rowNum}`;
+        const phoneRef = `D${rowNum}`;
+        if (worksheet[nikRef]) {
+          worksheet[nikRef].t = 's';
+          worksheet[nikRef].v = String(r[2] || '-');
+        }
+        if (worksheet[phoneRef]) {
+          worksheet[phoneRef].t = 's';
+          worksheet[phoneRef].v = String(r[3] || '-');
+        }
+      });
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Peserta');
+      XLSX.writeFile(workbook, filename);
+    } else {
+      const sep = exportDelimiter;
+      const headerLine = headers.map(h => formatCSVCell(h)).join(sep);
+      const rowLines = rows.map(r => r.map((c, colIdx) => {
+        const str = String(c || '').trim();
+        if (colIdx === 2 || colIdx === 3) {
+          if (/^\d{8,}$/.test(str) || /^0\d+/.test(str) || /^(\+?\d+[- ]?)+$/.test(str)) {
+            return `="` + str.replace(/"/g, '""') + `"`;
+          }
+        }
+        return formatCSVCell(c);
+      }).join(sep));
+      const csvContent = [headerLine, ...rowLines].join('\r\n');
+      downloadCSV(csvContent, filename);
+    }
+  };
+
   const handleOpenExportModal = (type: 'peserta' | 'guru' | 'shelter' | 'kpi' | 'rekap' | 'presensi' | 'evaluasi' = 'peserta') => {
     setExportReportType(type);
     setShowExportModal(true);
@@ -797,28 +895,16 @@ export const AdminPortal: React.FC = () => {
 
     const isFiltered = exportScope === 'filtered' && shelterFilter !== 'all';
 
-    if (exportReportType === 'peserta') {
-      filename = `database_peserta_ojol_mengaji_${dateToday}.csv`;
+    if (exportReportType === 'peserta' || exportReportType === 'rekap') {
+      const ext = exportFormat === 'xlsx' ? 'xlsx' : 'csv';
+      filename = `report_peserta_ojol_mengaji_${dateToday}.${ext}`;
       headers = [
         'No',
-        'No. Kartu Member',
-        'NIK KTP',
-        'Nama Lengkap Driver',
-        'Mitra Ojol',
-        'Plat Nomor Kendaraan',
-        'No. WhatsApp / HP',
-        'Email Driver',
-        'Shelter Binaan',
-        'Tingkat Mengaji',
-        'Tipe Akun Insentif',
-        'Nama Bank / E-Wallet',
-        'Nomor Rekening / Akun',
-        'Tanggal Bergabung',
-        'Status Akun',
-        'Total Kehadiran Sesi',
-        'Total Sesi Wajib',
-        'Persentase Kehadiran',
-        'Kualifikasi Insentif (>=75%)'
+        'Nama Peserta',
+        'NIK',
+        'No. Telepon',
+        'Shelter',
+        'Progress Pembelajaran'
       ];
 
       const targetParticipants = isFiltered
@@ -827,35 +913,17 @@ export const AdminPortal: React.FC = () => {
 
       rows = targetParticipants.map((p, idx) => {
         const sh = shelters.find(s => s.id === p.shelterId);
-        const { attendedSessions, totalSessions, rate } = getParticipantAttendanceStats(p.id);
-        const code = getMemberCode(p, sh, shelters);
-        const accType = p.accountType || (p.bankName ? 'Bank' : '-');
-        const kualifikasi = rate >= 75 ? 'Memenuhi Syarat (>=75%)' : 'Perlu Pendampingan (<75%)';
-
         return [
           String(idx + 1),
-          code,
+          p.name || '-',
           p.nik || '-',
-          p.name,
-          p.ojolPlatform,
-          p.vehiclePlate || '-',
           p.phone || '-',
-          p.email || '-',
           sh?.name || '-',
-          p.currentLevel || 'Belum Dinilai',
-          accType,
-          p.bankName || '-',
-          p.bankAccount || '-',
-          p.joinedDate || '-',
-          p.isActive ? 'Aktif' : 'Nonaktif',
-          String(attendedSessions),
-          String(totalSessions),
-          `${rate}%`,
-          kualifikasi
+          getParticipantProgressText(p)
         ];
       });
     } else if (exportReportType === 'guru') {
-      filename = `database_guru_mengaji_${dateToday}.csv`;
+      filename = `database_guru_mengaji_${dateToday}.${exportFormat === 'xlsx' ? 'xlsx' : 'csv'}`;
       headers = [
         'No',
         'ID Guru',
@@ -909,7 +977,7 @@ export const AdminPortal: React.FC = () => {
         ];
       });
     } else if (exportReportType === 'shelter') {
-      filename = `database_shelter_ojol_mengaji_${dateToday}.csv`;
+      filename = `database_shelter_ojol_mengaji_${dateToday}.${exportFormat === 'xlsx' ? 'xlsx' : 'csv'}`;
       headers = [
         'No',
         'ID Shelter',
@@ -957,7 +1025,7 @@ export const AdminPortal: React.FC = () => {
         ];
       });
     } else if (exportReportType === 'kpi') {
-      filename = `ringkasan_dan_kpi_program_ojol_mengaji_${dateToday}.csv`;
+      filename = `ringkasan_dan_kpi_program_ojol_mengaji_${dateToday}.${exportFormat === 'xlsx' ? 'xlsx' : 'csv'}`;
       headers = [
         'No',
         'Kategori Analisis',
@@ -1030,59 +1098,8 @@ export const AdminPortal: React.FC = () => {
         ['18', '5. Komposisi Aplikasi Mitra Ojol', 'Pengemudi Aplikasi Maxim', String(maximCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((maximCount / totalDrivers) * 100) : 0}% mitra Maxim`],
         ['19', '5. Komposisi Aplikasi Mitra Ojol', 'Pengemudi Aplikasi InDrive / ShopeeFood', String(otherOjolCount), 'Mitra Driver', `${totalDrivers > 0 ? Math.round((otherOjolCount / totalDrivers) * 100) : 0}% mitra lainnya`]
       ];
-    } else if (exportReportType === 'rekap') {
-      filename = `rekap_laporan_ojol_mengaji_${dateToday}.csv`;
-      headers = [
-        'No',
-        'Nama Peserta',
-        'Mitra Ojol',
-        'Plat Nomor',
-        'No. WhatsApp/HP',
-        'Shelter Lokasi',
-        'Tingkat Saat Ini',
-        'Sesi Hadir',
-        'Total Sesi Wajib',
-        'Persentase Kehadiran',
-        'Status Kualifikasi (>=75%)',
-        'Materi Evaluasi Terakhir',
-        'Rata-rata Nilai Rubrik',
-        'Catatan / Rekomendasi Guru',
-        'Tanggal Bergabung',
-        'Status Akun'
-      ];
-
-      const targetParticipants = isFiltered
-        ? participants.filter(p => p.shelterId === shelterFilter)
-        : participants;
-
-      rows = targetParticipants.map((p, idx) => {
-        const sh = shelters.find(s => s.id === p.shelterId);
-        const { attendedSessions, totalSessions, rate } = getParticipantAttendanceStats(p.id);
-        const ev = assessments.find(a => a.participantId === p.id);
-        const avgScore = ev ? getAverageRubricScore(ev.scores) : '-';
-        const qualification = rate >= 75 ? 'Memenuhi Syarat (>=75%)' : 'Perlu Pendampingan (<75%)';
-
-        return [
-          String(idx + 1),
-          p.name,
-          p.ojolPlatform,
-          p.vehiclePlate || '-',
-          p.phone || '-',
-          sh?.name || '-',
-          p.currentLevel || 'Belum Dinilai',
-          String(attendedSessions),
-          String(totalSessions),
-          `${rate}%`,
-          qualification,
-          ev?.material || 'Belum dievaluasi',
-          avgScore !== '-' ? `${avgScore} / 4.0` : '-',
-          ev?.recommendations || ev?.improvements || '-',
-          p.joinedDate || '-',
-          p.isActive ? 'Aktif' : 'Nonaktif'
-        ];
-      });
     } else if (exportReportType === 'presensi') {
-      filename = `log_presensi_ojol_mengaji_${dateToday}.csv`;
+      filename = `log_presensi_ojol_mengaji_${dateToday}.${exportFormat === 'xlsx' ? 'xlsx' : 'csv'}`;
       headers = [
         'No',
         'Tanggal Sesi',
@@ -1129,7 +1146,7 @@ export const AdminPortal: React.FC = () => {
         ];
       });
     } else if (exportReportType === 'evaluasi') {
-      filename = `evaluasi_alquran_ojol_mengaji_${dateToday}.csv`;
+      filename = `evaluasi_alquran_ojol_mengaji_${dateToday}.${exportFormat === 'xlsx' ? 'xlsx' : 'csv'}`;
       headers = [
         'No',
         'Tanggal Penilaian',
@@ -1187,11 +1204,51 @@ export const AdminPortal: React.FC = () => {
       });
     }
 
+    if (exportFormat === 'xlsx') {
+      const aoaData = [headers, ...rows];
+      const worksheet = XLSX.utils.aoa_to_sheet(aoaData);
+
+      if (exportReportType === 'peserta' || exportReportType === 'rekap') {
+        worksheet['!cols'] = [
+          { wch: 6 },
+          { wch: 28 },
+          { wch: 24 },
+          { wch: 20 },
+          { wch: 34 },
+          { wch: 45 },
+        ];
+        rows.forEach((r, idx) => {
+          const rowNum = idx + 2;
+          const nikRef = `C${rowNum}`;
+          const phoneRef = `D${rowNum}`;
+          if (worksheet[nikRef]) {
+            worksheet[nikRef].t = 's';
+            worksheet[nikRef].v = String(r[2] || '-');
+          }
+          if (worksheet[phoneRef]) {
+            worksheet[phoneRef].t = 's';
+            worksheet[phoneRef].v = String(r[3] || '-');
+          }
+        });
+      } else {
+        worksheet['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 4, 15) }));
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+      XLSX.writeFile(workbook, filename);
+      setShowExportModal(false);
+      return;
+    }
+
     const headerLine = headers.map(h => formatCSVCell(h)).join(sep);
-    const rowLines = rows.map(r => r.map(c => {
+    const rowLines = rows.map(r => r.map((c, colIdx) => {
       const str = String(c || '').trim();
-      // If it looks like a long number (e.g. 10+ digits NIK, bank account) or leading 0 phone, wrap with ="..." for Excel
-      if (/^\d{10,}$/.test(str) || /^0\d{8,}$/.test(str)) {
+      if ((exportReportType === 'peserta' || exportReportType === 'rekap') && (colIdx === 2 || colIdx === 3)) {
+        if (/^\d{8,}$/.test(str) || /^0\d+/.test(str) || /^(\+?\d+[- ]?)+$/.test(str)) {
+          return `="` + str.replace(/"/g, '""') + `"`;
+        }
+      } else if (/^\d{10,}$/.test(str) || /^0\d{8,}$/.test(str)) {
         return `="` + str.replace(/"/g, '""') + `"`;
       }
       return formatCSVCell(c);
@@ -1231,11 +1288,12 @@ export const AdminPortal: React.FC = () => {
               <span>Tambah Shelter Baru</span>
             </button>
             <button
-              onClick={handleExportCSV}
+              onClick={() => handleOpenExportModal('peserta')}
               className="px-4 py-2.5 rounded-xl font-bold text-xs bg-white text-slate-900 hover:bg-slate-100 shadow-md transition-all flex items-center gap-1.5"
+              title="Download Report Peserta & Progress Pembelajaran"
             >
-              <Download className="w-4 h-4 text-purple-600" />
-              <span>Ekspor CSV Laporan</span>
+              <Download className="w-4 h-4 text-emerald-600" />
+              <span>Download Report</span>
             </button>
           </div>
         </div>
@@ -1251,7 +1309,7 @@ export const AdminPortal: React.FC = () => {
           { id: 'presensi', label: 'Log Presensi Realtime', icon: CheckCircle2, count: attendance.length },
           { id: 'evaluasi', label: 'Monitoring Al-Qur\'an', icon: BookOpen, count: assessments.length },
           { id: 'pengumuman', label: 'Pengumuman', icon: Bell, count: announcements.length },
-          { id: 'laporan', label: 'Laporan Kehadiran', icon: FileText },
+          { id: 'laporan', label: 'Download Report', icon: FileSpreadsheet },
           { id: 'audit', label: 'Audit Log Sistem', icon: History, count: auditLogs.length },
         ].map(tab => {
           const Icon = tab.icon;
@@ -1764,9 +1822,10 @@ export const AdminPortal: React.FC = () => {
               <button
                 onClick={() => handleOpenExportModal('peserta')}
                 className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5"
+                title="Download Report Peserta & Progress Pembelajaran"
               >
-                <FileSpreadsheet className="w-4 h-4 text-purple-600" />
-                <span>Ekspor CSV Peserta Ojol</span>
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Download Report Peserta</span>
               </button>
               <button
                 onClick={() => setShowPartModal(true)}
@@ -2167,68 +2226,223 @@ export const AdminPortal: React.FC = () => {
         </div>
       )}
 
-      {/* TAB CONTENT: LAPORAN KEHADIRAN & EKSPOR */}
-      {activeTab === 'laporan' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Rekapitulasi Laporan Program</h2>
-              <p className="text-xs text-slate-500">
-                Formula PRD: Kehadiran (%) = (Jumlah sesi hadir ÷ Sesi wajib) × 100%
-              </p>
+      {/* TAB CONTENT: DOWNLOAD REPORT PESERTA & PROGRESS PEMBELAJARAN */}
+      {activeTab === 'laporan' && (() => {
+        const reportViewParticipants = participants.filter(p => {
+          const matchesShelter = reportSelectedShelter === 'all' || p.shelterId === reportSelectedShelter;
+          if (!matchesShelter) return false;
+          if (!reportSearchQuery.trim()) return true;
+          const q = reportSearchQuery.toLowerCase().trim();
+          const sh = shelters.find(s => s.id === p.shelterId);
+          return (
+            p.name.toLowerCase().includes(q) ||
+            (p.nik && p.nik.toLowerCase().includes(q)) ||
+            (p.phone && p.phone.toLowerCase().includes(q)) ||
+            (sh && sh.name.toLowerCase().includes(q)) ||
+            (p.currentLevel && p.currentLevel.toLowerCase().includes(q))
+          );
+        });
+
+        return (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6">
+            {/* Header Card with Download Buttons */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-2">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  Format Report Resmi: No, Nama Peserta, NIK, No. Telepon, Shelter, Progress Pembelajaran
+                </div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                  Download Report Peserta &amp; Progress Pembelajaran
+                </h2>
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+                  Unduh dan pantau data seluruh santri pengemudi ojol beserta NIK, nomor kontak, shelter binaan, dan capaian perkembangan pembelajaran tilawah/Iqro dalam format rapi dan terstandar.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReportDirect('xlsx')}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
+                  title="Download Report dalam format Microsoft Excel (.xlsx) yang rapi"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Report Excel (.xlsx)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReportDirect('csv')}
+                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Download Report dalam format CSV (.csv) dengan UTF-8 BOM"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+                  <span>Download CSV (.csv)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenExportModal('peserta')}
+                  className="px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1.5"
+                  title="Buka pengaturan dan filter ekspor lanjutan"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Opsi Lanjutan</span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={() => handleOpenExportModal('rekap')}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Unduh Rekap Spreadsheet (CSV)</span>
-            </button>
-          </div>
+            {/* Search & Shelter Filter Row */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={reportSearchQuery}
+                  onChange={(e) => setReportSearchQuery(e.target.value)}
+                  placeholder="Cari nama, NIK, no. telepon, shelter..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
+                />
+                {reportSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setReportSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-y border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Nama Peserta</th>
-                  <th className="py-3 px-4">Mitra / Plat</th>
-                  <th className="py-3 px-4">Shelter</th>
-                  <th className="py-3 px-4 text-center">Sesi Hadir</th>
-                  <th className="py-3 px-4 text-center">Sesi Wajib</th>
-                  <th className="py-3 px-4 text-center">Persentase</th>
-                  <th className="py-3 px-4 text-center">Evaluasi Al-Qur&apos;an</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {participants.map(part => {
-                  const sh = shelters.find(s => s.id === part.shelterId);
-                  const { attendedSessions, totalSessions, rate } = getParticipantAttendanceStats(part.id);
-                  const ev = assessments.find(a => a.participantId === part.id);
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-500 shrink-0">Shelter:</span>
+                <select
+                  value={reportSelectedShelter}
+                  onChange={(e) => setReportSelectedShelter(e.target.value)}
+                  className="w-full sm:w-auto text-xs p-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">Semua Shelter ({participants.length} Driver)</option>
+                  {shelters.map(s => {
+                    const cnt = participants.filter(p => p.shelterId === s.id).length;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({cnt} Driver)
+                      </option>
+                    );
+                  })}
+                </select>
 
-                  return (
-                    <tr key={part.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-4 font-bold text-slate-900">{part.name}</td>
-                      <td className="py-3 px-4 text-slate-600">{part.ojolPlatform} ({part.vehiclePlate})</td>
-                      <td className="py-3 px-4 text-slate-700">{sh?.name}</td>
-                      <td className="py-3 px-4 text-center font-bold text-emerald-700">{attendedSessions}</td>
-                      <td className="py-3 px-4 text-center text-slate-500">{totalSessions}</td>
-                      <td className="py-3 px-4 text-center font-black text-sm">
-                        <span className={rate >= 75 ? 'text-emerald-600' : 'text-rose-600'}>{rate}%</span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="text-[11px] font-semibold text-purple-700">
-                          {ev ? ev.material : 'Belum dievaluasi'}
-                        </span>
+                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 whitespace-nowrap">
+                  {reportViewParticipants.length} dari {participants.length} Driver
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Table with the Exact 6 Columns */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-800 text-slate-200 font-bold uppercase text-[11px]">
+                  <tr>
+                    <th className="py-3 px-3 text-center w-12">No</th>
+                    <th className="py-3 px-4">Nama Peserta</th>
+                    <th className="py-3 px-4">NIK</th>
+                    <th className="py-3 px-4">No. Telepon</th>
+                    <th className="py-3 px-4">Shelter</th>
+                    <th className="py-3 px-4">Progress Pembelajaran</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {reportViewParticipants.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                        Tidak ada data peserta yang cocok dengan filter pencarian.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : (
+                    reportViewParticipants.map((part, idx) => {
+                      const sh = shelters.find(s => s.id === part.shelterId);
+                      const progress = getParticipantProgressText(part);
+
+                      return (
+                        <tr key={part.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3 px-3 text-center font-bold text-slate-500">{idx + 1}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <img
+                                src={part.selfiePhoto || part.avatar}
+                                alt={part.name}
+                                className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                              />
+                              <div>
+                                <div className="font-bold text-slate-900">{part.name}</div>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  {part.ojolPlatform} {part.vehiclePlate ? `• ${part.vehiclePlate}` : ''}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-medium text-slate-700 whitespace-nowrap">
+                            {part.nik || '-'}
+                          </td>
+                          <td className="py-3 px-4 font-medium text-slate-700 whitespace-nowrap">
+                            <a 
+                              href={`https://wa.me/62${(part.phone || '').replace(/\D/g, '').replace(/^0/, '')}`}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="hover:text-emerald-700 hover:underline flex items-center gap-1"
+                            >
+                              {part.phone || '-'}
+                            </a>
+                          </td>
+                          <td className="py-3 px-4 text-slate-700">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                              <span className="font-medium">{sh?.name || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 text-purple-900 border border-purple-200">
+                              <BookOpen className="w-3 h-3 text-purple-600 shrink-0" />
+                              <span>{progress}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Quick Info Box */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Susunan kolom report terverifikasi: <strong>No, Nama Peserta, NIK, No. Telepon, Shelter, Progress Pembelajaran</strong>.</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] text-slate-500">Pilihan format unduh:</span>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReportDirect('xlsx')}
+                  className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                >
+                  <Download className="w-3 h-3" /> .xlsx (Excel)
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReportDirect('csv')}
+                  className="text-xs font-bold text-purple-700 hover:underline flex items-center gap-1"
+                >
+                  <Download className="w-3 h-3" /> .csv (Spreadsheet)
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* TAB CONTENT: AUDIT LOG */}
       {activeTab === 'audit' && (
@@ -3533,31 +3747,31 @@ Administrator Pusat Ojol Mengaji`)}`}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Database Peserta Ojol */}
+                  {/* Report Peserta Ojol */}
                   <button
                     type="button"
                     onClick={() => setExportReportType('peserta')}
                     className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between ${
                       exportReportType === 'peserta'
-                        ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-300 shadow-xs'
+                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-300 shadow-xs'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-purple-700" />
-                          <span>Database Peserta Ojol</span>
+                          <Users className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Report Peserta &amp; Progress</span>
                         </div>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           {participants.length} Driver
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 leading-snug">
-                        Master NIK, No. Member, WA, plat nomor, shelter, level, rekening/e-wallet insentif.
+                        Report resmi: No, Nama Peserta, NIK, No. Telepon, Shelter, Progress Pembelajaran.
                       </p>
                     </div>
-                    <div className="mt-2 text-[10px] font-bold text-purple-700">19 Kolom Lengkap</div>
+                    <div className="mt-2 text-[10px] font-bold text-emerald-700">6 Kolom Sesuai Format</div>
                   </button>
 
                   {/* Database Guru Mengaji */}
@@ -3658,31 +3872,31 @@ Administrator Pusat Ojol Mengaji`)}`}
                     <div className="mt-2 text-[10px] font-bold text-emerald-700">Analisis Manajerial</div>
                   </button>
 
-                  {/* Option: Rekap Akademik */}
+                  {/* Option: Rekap Progress Peserta */}
                   <button
                     type="button"
                     onClick={() => setExportReportType('rekap')}
                     className={`p-3 rounded-xl text-left border transition-all flex flex-col justify-between ${
                       exportReportType === 'rekap'
-                        ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-300 shadow-xs'
+                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-300 shadow-xs'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
-                          <FileText className="w-3.5 h-3.5 text-purple-700" />
-                          <span>Rekap Akademik</span>
+                          <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Report Progress Peserta</span>
                         </div>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800">
-                          16 Kolom
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                          6 Kolom
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-500 leading-snug">
-                        Persentase kehadiran driver, kualifikasi target, nilai rubrik &amp; catatan ustadz.
+                        No, Nama Peserta, NIK, No. Telepon, Shelter, Progress Pembelajaran.
                       </p>
                     </div>
-                    <div className="mt-2 text-[10px] font-bold text-purple-700">Performa Driver</div>
+                    <div className="mt-2 text-[10px] font-bold text-emerald-700">6 Kolom Sesuai Format</div>
                   </button>
 
                   {/* Option: Log Presensi */}
@@ -3742,74 +3956,117 @@ Administrator Pusat Ojol Mengaji`)}`}
               </div>
             </div>
 
-            {/* 2. Format Pemisah (Delimiter) Excel vs Google Sheets */}
+            {/* 2. Format File Unduhan (Excel vs CSV) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-2">
-                2. Format Pemisah Kolom (Delimiter CSV)
+                2. Format File Unduhan
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Semicolon - Rekomendasi Excel Indonesia */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                {/* Excel .xlsx */}
                 <label
                   className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
-                    exportDelimiter === ';'
-                      ? 'border-purple-600 bg-purple-50/70 ring-2 ring-purple-300'
+                    exportFormat === 'xlsx'
+                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-300'
                       : 'border-slate-200 bg-white hover:bg-slate-50'
                   }`}
                 >
                   <input
                     type="radio"
-                    name="exportDelimiter"
-                    value=";"
-                    checked={exportDelimiter === ';'}
-                    onChange={() => setExportDelimiter(';')}
-                    className="mt-1 text-purple-600 focus:ring-purple-500"
+                    name="exportFormat"
+                    value="xlsx"
+                    checked={exportFormat === 'xlsx'}
+                    onChange={() => setExportFormat('xlsx')}
+                    className="mt-1 text-emerald-600 focus:ring-emerald-500"
                   />
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-slate-900">
-                        Microsoft Excel Windows (Titik Koma &apos;;&apos;)
+                        Microsoft Excel (.xlsx)
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        Direkomendasikan
+                        Otomatis Rapi (Rekomendasi)
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-snug">
-                      Kolom otomatis langsung terbagi rapi saat file dibuka di Microsoft Excel di Indonesia (tidak menumpuk di Kolom A).
+                      Format dokumen Excel resmi. Kolom langsung tertata rapi, lebar proporsional, serta angka NIK dan nomor telepon tetap teks utuh tanpa notasi ilmiah.
                     </p>
                   </div>
                 </label>
 
-                {/* Comma - Standar Internasional / Google Sheets */}
+                {/* CSV Spreadsheet */}
                 <label
                   className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
-                    exportDelimiter === ','
+                    exportFormat === 'csv'
                       ? 'border-purple-600 bg-purple-50/70 ring-2 ring-purple-300'
                       : 'border-slate-200 bg-white hover:bg-slate-50'
                   }`}
                 >
                   <input
                     type="radio"
-                    name="exportDelimiter"
-                    value=","
-                    checked={exportDelimiter === ','}
-                    onChange={() => setExportDelimiter(',')}
+                    name="exportFormat"
+                    value="csv"
+                    checked={exportFormat === 'csv'}
+                    onChange={() => setExportFormat('csv')}
                     className="mt-1 text-purple-600 focus:ring-purple-500"
                   />
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-slate-900">
-                        Google Sheets &amp; Global (Koma &apos;,&apos;)
+                        CSV Spreadsheet (.csv)
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                        RFC-4180
+                        UTF-8 BOM
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-snug">
-                      Format standar koma untuk diimpor ke Google Spreadsheet, Apple Numbers, atau database analitik.
+                      Format CSV standar dengan encoding UTF-8 BOM untuk kompatibilitas lintas sistem atau impor data.
                     </p>
                   </div>
                 </label>
               </div>
+
+              {exportFormat === 'csv' && (
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-700">Pilihan Karakter Pemisah CSV (Delimiter):</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label
+                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center gap-2 text-xs ${
+                        exportDelimiter === ';'
+                          ? 'border-purple-500 bg-purple-50/80 text-purple-950 font-bold'
+                          : 'border-slate-200 bg-white text-slate-600'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="exportDelimiter"
+                        value=";"
+                        checked={exportDelimiter === ';'}
+                        onChange={() => setExportDelimiter(';')}
+                        className="text-purple-600"
+                      />
+                      <span>Titik Koma (&apos;;&apos;) — Standar Excel Indonesia</span>
+                    </label>
+
+                    <label
+                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center gap-2 text-xs ${
+                        exportDelimiter === ','
+                          ? 'border-purple-500 bg-purple-50/80 text-purple-950 font-bold'
+                          : 'border-slate-200 bg-white text-slate-600'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="exportDelimiter"
+                        value=","
+                        checked={exportDelimiter === ','}
+                        onChange={() => setExportDelimiter(',')}
+                        className="text-purple-600"
+                      />
+                      <span>Koma (&apos;,&apos;) — Standar RFC / Sheets</span>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 3. Cakupan Data & Filter */}
@@ -3911,10 +4168,10 @@ Administrator Pusat Ojol Mengaji`)}`}
               <button
                 type="button"
                 onClick={handleExecuteExport}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Unduh File CSV Rapi Sekarang</span>
+                <span>Unduh File {exportFormat === 'xlsx' ? 'Excel (.xlsx)' : 'CSV (.csv)'} Sekarang</span>
               </button>
             </div>
           </div>
