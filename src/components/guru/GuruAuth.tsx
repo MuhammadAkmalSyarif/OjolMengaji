@@ -15,8 +15,7 @@ import {
   BookOpen,
   UserCheck,
   ShieldCheck,
-  KeyRound,
-  Sparkles
+  KeyRound
 } from 'lucide-react';
 
 interface GuruAuthProps {
@@ -214,38 +213,6 @@ export const GuruAuth: React.FC<GuruAuthProps> = ({ onSuccess }) => {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Demo Credentials Pill */}
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-teal-600" />
-                Coba Akun Guru Demo (Hasil Generate Admin):
-              </span>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIdentifier('ust.ahmad');
-                    setPassword('guru');
-                  }}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white hover:bg-teal-50 text-teal-800 border border-teal-200 shadow-2xs transition flex items-center gap-1"
-                >
-                  <span className="font-bold">@ust.ahmad</span>
-                  <span className="text-[10px] text-slate-400">(pw: guru)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIdentifier('ust.ridwan');
-                    setPassword('guru');
-                  }}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white hover:bg-teal-50 text-teal-800 border border-teal-200 shadow-2xs transition flex items-center gap-1"
-                >
-                  <span className="font-bold">@ust.ridwan</span>
-                  <span className="text-[10px] text-slate-400">(pw: guru)</span>
                 </button>
               </div>
             </div>
