@@ -421,20 +421,26 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
           {/* Dual Brand Logos & Title */}
           <div className="flex flex-col sm:flex-row items-center gap-3.5">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-inner shrink-0">
-              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm overflow-hidden" style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px' }}>
                 <img
                   src="/logo-ojol-mengaji.png"
                   alt="Logo Ojol Mengaji"
+                  width={48}
+                  height={48}
+                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
                 />
               </div>
-              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm overflow-hidden" style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px' }}>
                 <img
                   src="/logo-dpw.png"
                   alt="Logo Resmi Hidayatullah"
+                  width={48}
+                  height={48}
+                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/logo-dpw.jpg';
@@ -934,8 +940,8 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     >
                       <div className="flex items-center justify-between pb-2 border-b border-emerald-500/30">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center">
-                            <img src="/logo-ojol-mengaji.png" alt="Logo" className="w-full h-full object-contain" />
+                          <div className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center overflow-hidden" style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}>
+                            <img src="/logo-ojol-mengaji.png" alt="Logo" width={20} height={20} style={{ width: '100%', height: '100%', objectFit: 'contain' }} className="w-full h-full object-contain" />
                           </div>
                           <span className="text-[10px] font-black uppercase text-amber-300">
                             KARTU MEMBER • OJOL MENGAJI
