@@ -40,6 +40,8 @@ import { MemberCardModal } from './MemberCardModal';
 import { compressImage } from '@/utils/imageUtils';
 import { downloadCardImage, getMemberCode } from '@/utils/cardGenerator';
 import { BANK_OPTIONS, PaymentAccountType, Participant } from '@/types';
+import { BankLogo } from '@/components/common/BankLogo';
+import { BankSelector } from '@/components/common/BankSelector';
 
 export const OjolPortal: React.FC = () => {
   const { 
@@ -1106,12 +1108,29 @@ export const OjolPortal: React.FC = () => {
                 <span className="text-slate-500">Tanggal Bergabung</span>
                 <span className="font-bold text-slate-800">{participant.joinedDate}</span>
               </div>
-              {participant.bankAccount && (
-                <div className="flex justify-between py-2 border-b border-slate-100">
+              {participant.bankAccount ? (
+                <div className="flex items-center justify-between py-2.5 border-b border-slate-100">
                   <span className="text-slate-500">Akun Penyaluran Insentif</span>
-                  <span className="font-mono font-bold text-emerald-800">
-                    {participant.accountType === 'Bank' ? (participant.bankName || 'Bank') : (participant.accountType || participant.bankName || 'E-Wallet')} - {participant.bankAccount}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <BankLogo bankName={participant.bankName || participant.accountType} size="xs" />
+                    <span className="font-mono font-bold text-emerald-800 text-xs">
+                      {participant.accountType === 'Bank' ? (participant.bankName || 'Bank') : (participant.accountType || participant.bankName || 'E-Wallet')} - {participant.bankAccount}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between py-2.5 border-b border-slate-100">
+                  <span className="text-slate-500">Akun Penyaluran Insentif</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditFeedback(null);
+                      setShowEditProfileModal(true);
+                    }}
+                    className="text-[11px] text-amber-700 font-bold bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-300 transition"
+                  >
+                    + Tambahkan Rekening
+                  </button>
                 </div>
               )}
             </div>
@@ -1281,54 +1300,33 @@ export const OjolPortal: React.FC = () => {
               </div>
 
               {/* Rekening Insentif (Opsional) */}
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="font-bold text-slate-800 block">Akun Penyaluran Insentif / Operasional (Opsional)</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] text-slate-600 mb-1">Tipe Rekening</label>
-                    <select
-                      value={editAccountType || ''}
-                      onChange={(e) => setEditAccountType(e.target.value ? e.target.value as PaymentAccountType : undefined)}
-                      className="w-full py-1.5 px-2 rounded-lg border border-slate-300 text-xs"
-                    >
-                      <option value="">-- Pilih Tipe --</option>
-                      <option value="Bank">Transfer Bank</option>
-                      <option value="Gojek">Gojek / GoPay</option>
-                      <option value="Ovo">OVO</option>
-                      <option value="Dana">DANA</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-slate-600 mb-1">Nama Bank / E-Wallet</label>
-                    {editAccountType === 'Bank' ? (
-                      <select
-                        value={editBankName}
-                        onChange={(e) => setEditBankName(e.target.value)}
-                        className="w-full py-1.5 px-2 rounded-lg border border-slate-300 text-xs"
-                      >
-                        <option value="">Pilih Bank...</option>
-                        {BANK_OPTIONS.map((b) => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        disabled
-                        value={editAccountType || '-'}
-                        className="w-full py-1.5 px-2 rounded-lg border border-slate-200 bg-slate-100 text-xs"
-                      />
-                    )}
-                  </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <span className="font-bold text-xs text-slate-800">Akun Penyaluran Insentif / Operasional Driver</span>
                 </div>
+
+                <BankSelector
+                  label="Pilih Nama Bank / E-Wallet Resmi (Lengkap dengan Logo)"
+                  value={editBankName}
+                  accountType={editAccountType}
+                  onChange={(bankName, resolvedType) => {
+                    setEditBankName(bankName);
+                    setEditAccountType(resolvedType || 'Bank');
+                  }}
+                />
+
                 <div>
-                  <label className="block text-[11px] text-slate-600 mb-1">Nomor Rekening / Nomor HP E-Wallet</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Nomor Rekening Bank / Nomor HP E-Wallet
+                  </label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={editBankAccount}
-                    onChange={(e) => setEditBankAccount(e.target.value)}
-                    placeholder="Nomor rekening bank atau nomor HP akun e-wallet"
-                    className="w-full py-1.5 px-3 rounded-lg border border-slate-300 text-xs font-mono"
+                    onChange={(e) => setEditBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
+                    placeholder="Contoh: 7234567890 (atau no. HP e-wallet)"
+                    className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>

@@ -869,6 +869,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const avatarUrl = data.selfiePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`;
 
     const cleanAddress = data.address?.trim() || '';
+    const resolvedBankName = data.accountType === 'Bank' ? (data.bankName?.trim() || undefined) : (data.accountType || undefined);
+    const resolvedBankAccount = data.bankAccount?.trim() || undefined;
 
     const newUser: User = {
       id: userId,
@@ -881,6 +883,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       password: data.password || '123',
       isActive: true,
       nik: data.nik?.trim() || data.vehiclePlate?.trim(),
+      accountType: data.accountType,
+      bankName: resolvedBankName,
+      bankAccount: resolvedBankAccount,
     };
 
     const nikVal = data.nik?.trim() || data.vehiclePlate?.trim() || '';
@@ -906,8 +911,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isActive: true,
       memberNumber: nextMemberNumber,
       accountType: data.accountType,
-      bankName: data.accountType === 'Bank' ? (data.bankName?.trim() || undefined) : (data.accountType || undefined),
-      bankAccount: data.bankAccount?.trim() || undefined,
+      bankName: resolvedBankName,
+      bankAccount: resolvedBankAccount,
     };
 
     const nextUsers = [...users.filter(u => u.id !== newUser.id), newUser];
@@ -1198,6 +1203,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isActive: true,
       nik: data.nik || data.vehiclePlate,
       password: '123',
+      accountType: data.accountType,
+      bankName: data.bankName,
+      bankAccount: data.bankAccount,
     };
 
     const nextMemberNumber = data.memberNumber || (participants.length > 0
@@ -1241,6 +1249,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           phone: updated.phone,
           avatar: bestAvatar || u.avatar,
           nik: updated.nik || updated.vehiclePlate || u.nik,
+          accountType: updated.accountType,
+          bankName: updated.bankName,
+          bankAccount: updated.bankAccount,
         };
       }
       return u;
@@ -1255,6 +1266,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: updated.phone,
         avatar: bestAvatar || driverUser.avatar,
         nik: updated.nik || updated.vehiclePlate,
+        accountType: updated.accountType,
+        bankName: updated.bankName,
+        bankAccount: updated.bankAccount,
       };
       setDriverUser(updatedDriverUser);
       localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(updatedDriverUser));
@@ -1267,6 +1281,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: updated.phone,
         avatar: bestAvatar || rawCurrentUser.avatar,
         nik: updated.nik || updated.vehiclePlate,
+        accountType: updated.accountType,
+        bankName: updated.bankName,
+        bankAccount: updated.bankAccount,
       };
       setRawCurrentUser(updatedCurrUser);
     }

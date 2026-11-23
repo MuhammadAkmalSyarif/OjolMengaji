@@ -54,6 +54,8 @@ import {
 import { Shelter, Teacher, Participant, Schedule, AttendanceStatus, RubricScores, PaymentAccountType, BANK_OPTIONS } from '@/types';
 import { MemberCardModal } from '../ojol/MemberCardModal';
 import { getMemberCode } from '@/utils/cardGenerator';
+import { BankLogo } from '@/components/common/BankLogo';
+import { BankSelector } from '@/components/common/BankSelector';
 
 // Preset titik-titik shelter strategis untuk pengisian otomatis 1-klik
 const PRESET_SHELTERS = [
@@ -718,7 +720,7 @@ export const AdminPortal: React.FC = () => {
       case 'peserta':
       case 'rekap':
         return [
-          'No', 'Nama Peserta', 'NIK', 'No. Telepon', 'Shelter', 'Progress Pembelajaran'
+          'No', 'Nama Peserta', 'NIK', 'No. Telepon', 'Shelter', 'Progress Pembelajaran', 'Nama Bank / E-Wallet', 'Nomor Rekening'
         ];
       case 'guru':
         return [
@@ -815,7 +817,7 @@ export const AdminPortal: React.FC = () => {
 
     const dateToday = new Date().toISOString().substring(0, 10);
     const filename = `report_peserta_ojol_mengaji_${dateToday}.${format}`;
-    const headers = ['No', 'Nama Peserta', 'NIK', 'No. Telepon', 'Shelter', 'Progress Pembelajaran'];
+    const headers = ['No', 'Nama Peserta', 'NIK', 'No. Telepon', 'Shelter', 'Progress Pembelajaran', 'Nama Bank / E-Wallet', 'Nomor Rekening'];
 
     const rows = targetList.map((p, idx) => {
       const sh = shelters.find(s => s.id === p.shelterId);
@@ -825,7 +827,9 @@ export const AdminPortal: React.FC = () => {
         p.nik || '-',
         p.phone || '-',
         sh?.name || '-',
-        getParticipantProgressText(p)
+        getParticipantProgressText(p),
+        p.bankName || p.accountType || '-',
+        p.bankAccount || '-'
       ];
     });
 
@@ -840,6 +844,8 @@ export const AdminPortal: React.FC = () => {
         { wch: 20 }, // No. Telepon
         { wch: 34 }, // Shelter
         { wch: 45 }, // Progress Pembelajaran
+        { wch: 26 }, // Nama Bank
+        { wch: 22 }, // Nomor Rekening
       ];
 
       rows.forEach((r, idx) => {
@@ -919,7 +925,9 @@ export const AdminPortal: React.FC = () => {
           p.nik || '-',
           p.phone || '-',
           sh?.name || '-',
-          getParticipantProgressText(p)
+          getParticipantProgressText(p),
+          p.bankName || p.accountType || '-',
+          p.bankAccount || '-'
         ];
       });
     } else if (exportReportType === 'guru') {
@@ -1957,6 +1965,7 @@ export const AdminPortal: React.FC = () => {
                   <th className="py-3 px-4">Plat Nomor</th>
                   <th className="py-3 px-4">Shelter Penempatan</th>
                   <th className="py-3 px-4">Tingkat Kemampuan</th>
+                  <th className="py-3 px-4">Bank &amp; No. Rekening</th>
                   <th className="py-3 px-4 text-center">Kehadiran (%)</th>
                   <th className="py-3 px-4 text-center">Bergabung</th>
                   <th className="py-3 px-4 text-center">Kartu KTA</th>
@@ -2009,6 +2018,26 @@ export const AdminPortal: React.FC = () => {
                         }`}>
                           {part.currentLevel}
                         </span>
+                      </td>
+
+                      <td className="py-3 px-4">
+                        {part.bankAccount ? (
+                          <div className="flex items-center gap-2.5">
+                            <BankLogo bankName={part.bankName || part.accountType} size="sm" className="shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-extrabold text-slate-900 block truncate text-xs">
+                                {part.bankName || part.accountType || 'Bank'}
+                              </span>
+                              <span className="font-mono font-bold text-emerald-800 text-[11px] block truncate">
+                                {part.bankAccount}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md font-medium">
+                            <span>Belum Diisi</span>
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3 px-4 text-center">
@@ -3083,29 +3112,20 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Nama Bank
-                    </label>
-                    <select
-                      value={teacherBankName}
-                      onChange={(e) => setTeacherBankName(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
-                    >
-                      <option value="">-- Pilih Bank --</option>
-                      {BANK_OPTIONS.map((bank) => (
-                        <option key={bank} value={bank}>{bank}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="space-y-3">
+                  <BankSelector
+                    label="Nama Bank Penyaluran Honorarium (Lengkap dengan Logo)"
+                    value={teacherBankName}
+                    onChange={(bankName) => setTeacherBankName(bankName)}
+                  />
 
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Nomor Rekening
+                      Nomor Rekening Bank
                     </label>
                     <input
                       type="text"
+                      inputMode="numeric"
                       placeholder="Contoh: 7123456789"
                       value={teacherBankAccount}
                       onChange={(e) => setTeacherBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
@@ -3413,22 +3433,16 @@ Administrator Pusat Ojol Mengaji`)}`}
                 </div>
 
                 {partAccountType === 'Bank' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Pilih Nama Bank
-                      </label>
-                      <select
-                        value={partBankName}
-                        onChange={(e) => setPartBankName(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
-                      >
-                        <option value="">-- Pilih Bank --</option>
-                        {BANK_OPTIONS.map((bank) => (
-                          <option key={bank} value={bank}>{bank}</option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="space-y-3">
+                    <BankSelector
+                      label="Pilih Nama Bank Resmi (Lengkap dengan Logo)"
+                      value={partBankName}
+                      accountType={partAccountType}
+                      onChange={(bankName, resolvedType) => {
+                        setPartBankName(bankName);
+                        if (resolvedType) setPartAccountType(resolvedType);
+                      }}
+                    />
 
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-700 mb-1">
@@ -3436,6 +3450,7 @@ Administrator Pusat Ojol Mengaji`)}`}
                       </label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         placeholder="Contoh: 1234567890"
                         value={partBankAccount}
                         onChange={(e) => setPartBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}

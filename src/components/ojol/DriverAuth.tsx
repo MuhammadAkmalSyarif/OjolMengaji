@@ -39,6 +39,8 @@ import { MemberCardModal } from './MemberCardModal';
 import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 import { compressImage } from '@/utils/imageUtils';
 import { getMemberCode } from '@/utils/cardGenerator';
+import { BankSelector } from '@/components/common/BankSelector';
+import { BankLogo } from '@/components/common/BankLogo';
 
 // Daftar opsi akun pencairan / insentif
 const ACCOUNT_TYPE_OPTIONS: { id: PaymentAccountType; label: string; badge: string; icon: string; desc: string }[] = [
@@ -46,6 +48,8 @@ const ACCOUNT_TYPE_OPTIONS: { id: PaymentAccountType; label: string; badge: stri
   { id: 'Gojek', label: 'Akun Gojek (GoPay)', badge: 'Gojek / GoPay', icon: '🟢', desc: 'Nomor HP akun Gojek' },
   { id: 'Ovo', label: 'Akun OVO', badge: 'E-Wallet OVO', icon: '🟣', desc: 'Nomor HP akun OVO' },
   { id: 'Dana', label: 'Akun DANA', badge: 'E-Wallet DANA', icon: '🔵', desc: 'Nomor HP akun DANA' },
+  { id: 'ShopeePay', label: 'ShopeePay', badge: 'E-Wallet Shopee', icon: '🟠', desc: 'Nomor HP akun ShopeePay' },
+  { id: 'LinkAja', label: 'LinkAja', badge: 'E-Wallet LinkAja', icon: '🔴', desc: 'Nomor HP akun LinkAja' },
 ];
 
 interface DriverAuthProps {
@@ -282,7 +286,16 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
       errList.push('Shelter Binaan: Wajib memilih shelter pembinaan mengaji terdekat terlebih dahulu');
     }
 
-    // 6. Kata Sandi
+    // 6. Rekening Bank & Nomor Rekening (Jika salah satu diisi, wajib keduanya lengkap)
+    if (regForm.bankName && !regForm.bankAccount?.trim()) {
+      errs.bankAccount = 'Nomor rekening wajib diisi karena Anda telah memilih nama bank / e-wallet.';
+      errList.push('Nomor Rekening: Wajib diisi');
+    } else if (regForm.bankAccount?.trim() && !regForm.bankName) {
+      errs.bankName = 'Nama bank wajib dipilih.';
+      errList.push('Nama Bank: Wajib dipilih');
+    }
+
+    // 7. Kata Sandi
     if (!regForm.password) {
       errs.password = 'Kata sandi wajib diisi (minimal 4 karakter).';
       errList.push('Kata Sandi: Wajib diisi minimal 4 karakter');
@@ -626,7 +639,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Identitas Pribadi Driver
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 1 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 1 dari 5</span>
               </div>
 
               {/* Nama Lengkap */}
@@ -758,7 +771,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                     Untuk Kartu Anggota (KTA)
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 2 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 2 dari 5</span>
               </div>
 
               {/* Informative description banner */}
@@ -978,7 +991,7 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Armada Ojol &amp; Shelter Pilihan
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 3 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 3 dari 5</span>
               </div>
 
               {/* Platform Ojol Visual Selector Buttons */}
@@ -1233,16 +1246,173 @@ export const DriverAuth: React.FC<DriverAuthProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* Section 4: Buat Kata Sandi */}
+            {/* Section 4: Rekening Bank / Insentif Driver */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
                   4
                 </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                    Rekening Bank &amp; Insentif Driver
+                  </h3>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    Lengkap dengan Logo Bank
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 4 dari 5</span>
+              </div>
+
+              {/* Informative Note Rekening */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 text-xs text-slate-700 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                  <CreditCard className="w-4 h-4 text-emerald-200" />
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-emerald-950 flex items-center gap-1.5 flex-wrap">
+                    <span>Penyaluran Insentif &amp; Bantuan Operasional Mitra Driver</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Digunakan untuk pencairan insentif kehadiran, bantuan dana operasional mengaji, atau santunan kebaikan dari program Ojol Mengaji. Silakan pilih <strong>rekening Bank</strong> (BSI, Mandiri, BCA, BRI, BNI, dll.) atau <strong>E-Wallet</strong> (GoPay, OVO, DANA, ShopeePay).
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Type Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Pilih Jenis Rekening Penyaluran
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {ACCOUNT_TYPE_OPTIONS.slice(0, 4).map((typeOpt) => {
+                    const isSelected = (regForm.accountType || 'Bank') === typeOpt.id;
+                    return (
+                      <button
+                        key={typeOpt.id}
+                        type="button"
+                        onClick={() => {
+                          setRegForm(prev => ({
+                            ...prev,
+                            accountType: typeOpt.id,
+                            bankName: typeOpt.id === 'Bank' 
+                              ? (prev.bankName || 'BSI (Bank Syariah Indonesia)') 
+                              : (typeOpt.id === 'Gojek' ? 'Gojek (GoPay)' : typeOpt.label)
+                          }));
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                          isSelected
+                            ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20 text-emerald-950 font-bold'
+                            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <span className="text-base">{typeOpt.icon}</span>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold block truncate">{typeOpt.label}</span>
+                          <span className="text-[9px] text-slate-400 block truncate">{typeOpt.badge}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bank Selector with Logos & Account Number Input */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div id="reg-field-bankName">
+                  <BankSelector
+                    label="Nama Bank / E-Wallet Resmi"
+                    value={regForm.bankName}
+                    accountType={regForm.accountType}
+                    onChange={(bankName, resolvedType) => {
+                      setRegForm(prev => ({
+                        ...prev,
+                        bankName,
+                        accountType: resolvedType || prev.accountType || 'Bank',
+                      }));
+                      if (fieldErrors.bankName) {
+                        setFieldErrors(prev => { const n = { ...prev }; delete n.bankName; return n; });
+                      }
+                    }}
+                    error={fieldErrors.bankName}
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Tersedia 50+ bank resmi (Syariah, BUMN, Swasta, Digital, BPD) &amp; E-Wallet
+                  </p>
+                </div>
+
+                <div id="reg-field-bankAccount">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    {(regForm.accountType || 'Bank') === 'Bank' 
+                      ? 'Nomor Rekening Bank' 
+                      : `Nomor Akun ${(regForm.accountType || 'E-Wallet') === 'Gojek' ? 'GoPay' : regForm.accountType}`}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder={(regForm.accountType || 'Bank') === 'Bank' ? 'Contoh: 7234567890' : 'Contoh: 081234567890'}
+                      value={regForm.bankAccount || ''}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9-]/g, '');
+                        setRegForm(prev => ({ ...prev, bankAccount: val }));
+                        if (fieldErrors.bankAccount) {
+                          setFieldErrors(prev => { const n = { ...prev }; delete n.bankAccount; return n; });
+                        }
+                      }}
+                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-white placeholder-slate-400 focus:outline-none transition shadow-2xs font-mono font-bold ${
+                        fieldErrors.bankAccount
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20'
+                          : 'border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                      }`}
+                    />
+                  </div>
+                  {fieldErrors.bankAccount ? (
+                    <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{fieldErrors.bankAccount}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Hanya angka tanpa spasi. Rekening atas nama Anda sendiri.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Realtime Bank & Account Preview Banner */}
+              {regForm.bankName && regForm.bankAccount && (
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+                  <div className="flex items-center gap-2.5">
+                    <BankLogo bankName={regForm.bankName} size="sm" />
+                    <div>
+                      <span className="font-bold text-slate-900 block">
+                        {regForm.bankName}
+                      </span>
+                      <span className="font-mono text-emerald-800 font-bold text-[11px]">
+                        No. Rekening: {regForm.bankAccount}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 shrink-0">
+                    Siap Tersimpan ✓
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Section 5: Buat Kata Sandi */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
+                  5
+                </div>
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                   Keamanan Akun &amp; Kata Sandi
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">Langkah 4 dari 4</span>
+                <span className="text-[11px] text-slate-400 ml-auto">Langkah 5 dari 5</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

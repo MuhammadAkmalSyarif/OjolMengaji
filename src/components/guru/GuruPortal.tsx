@@ -31,6 +31,7 @@ import {
   RubricScores, 
   AttendanceStatus 
 } from '@/types';
+import { BankLogo } from '@/components/common/BankLogo';
 
 export const GuruPortal: React.FC = () => {
   const { 
@@ -852,6 +853,7 @@ export const GuruPortal: React.FC = () => {
                     <th className="py-3 px-4">Driver Peserta</th>
                     <th className="py-3 px-4">Shelter Terdaftar</th>
                     <th className="py-3 px-4">Tingkat Kemampuan</th>
+                    <th className="py-3 px-4">Rekening Insentif</th>
                     <th className="py-3 px-4 text-center">Kehadiran (%)</th>
                     <th className="py-3 px-4 text-right">Aksi Tindakan</th>
                   </tr>
@@ -895,6 +897,24 @@ export const GuruPortal: React.FC = () => {
                             )}
                             <span>{part.currentLevel}</span>
                           </span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          {part.bankAccount ? (
+                            <div className="flex items-center gap-2">
+                              <BankLogo bankName={part.bankName || part.accountType} size="xs" className="shrink-0" />
+                              <div className="min-w-0">
+                                <span className="font-extrabold text-slate-800 text-[11px] block truncate">
+                                  {part.bankName || part.accountType || 'Bank'}
+                                </span>
+                                <span className="font-mono text-emerald-800 text-[10px] block truncate font-bold">
+                                  {part.bankAccount}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium">Belum diisi</span>
+                          )}
                         </td>
 
                         <td className="py-3 px-4 text-center">

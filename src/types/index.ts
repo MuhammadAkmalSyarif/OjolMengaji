@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'guru' | 'ojol';
 
-export type PaymentAccountType = 'Bank' | 'Gojek' | 'Ovo' | 'Dana';
+export type PaymentAccountType = 'Bank' | 'Gojek' | 'Ovo' | 'Dana' | 'ShopeePay' | 'LinkAja';
 
 export type ParticipantLevel = 
   | 'Belum Dinilai'
@@ -60,6 +60,9 @@ export interface User {
   password?: string;
   nik?: string;
   isActive: boolean;
+  accountType?: PaymentAccountType;
+  bankName?: string;
+  bankAccount?: string;
 }
 
 export interface RegisterDriverData {

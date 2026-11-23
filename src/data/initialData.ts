@@ -54,6 +54,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0857-1122-3344',
     password: '123',
     isActive: true,
+    accountType: 'Bank',
+    bankName: 'BSI (Bank Syariah Indonesia)',
+    bankAccount: '7234567890',
   },
   {
     id: 'user-ojol-2',
@@ -64,6 +67,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0878-9988-7766',
     password: '123',
     isActive: true,
+    accountType: 'Bank',
+    bankName: 'Bank Mandiri',
+    bankAccount: '1230009876543',
   },
   {
     id: 'user-ojol-3',
@@ -74,6 +80,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0821-3344-5566',
     password: '123',
     isActive: true,
+    accountType: 'Bank',
+    bankName: 'Bank BCA',
+    bankAccount: '8870123456',
   },
   {
     id: 'user-ojol-4',
@@ -84,6 +93,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0819-2233-4455',
     password: '123',
     isActive: true,
+    accountType: 'Gojek',
+    bankName: 'Gojek (GoPay)',
+    bankAccount: '081922334455',
   },
   {
     id: 'user-ojol-5',
@@ -94,6 +106,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0812-4455-6677',
     password: '123',
     isActive: true,
+    accountType: 'Dana',
+    bankName: 'DANA',
+    bankAccount: '081244556677',
   },
   {
     id: 'user-ojol-6',
@@ -104,6 +119,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0852-6677-8899',
     password: '123',
     isActive: true,
+    accountType: 'Ovo',
+    bankName: 'OVO',
+    bankAccount: '085266778899',
   },
   {
     id: 'user-ojol-7',
@@ -114,6 +132,9 @@ export const INITIAL_USERS: User[] = [
     phone: '0813-7788-9900',
     password: '123',
     isActive: true,
+    accountType: 'Bank',
+    bankName: 'Bank BRI',
+    bankAccount: '012345678901234',
   }
 ];
 
