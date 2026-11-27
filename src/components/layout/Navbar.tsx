@@ -5,10 +5,7 @@ import Link from 'next/link';
 import { useApp, normalizePhone } from '@/context/AppContext';
 import { 
   BookOpen, 
-  Bike, 
-  Sparkles, 
-  LogOut, 
-  UserCheck
+  LogOut 
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -101,10 +98,6 @@ export const Navbar: React.FC = () => {
                 <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
                   Ojol<span className="text-emerald-600">Mengaji</span>
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
-                  <Sparkles className="w-3 h-3 text-emerald-500" />
-                  Halaman User: Driver
-                </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
                 Platform Pembinaan Al-Qur&apos;an &amp; Presensi Berbasis Shelter
@@ -153,12 +146,7 @@ export const Navbar: React.FC = () => {
                   <span className="hidden sm:inline">Keluar</span>
                 </button>
               </div>
-            ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80">
-                <Bike className="w-4 h-4 text-emerald-600" />
-                <span>Halaman Driver</span>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
