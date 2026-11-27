@@ -304,9 +304,15 @@ export const OjolPortal: React.FC = () => {
   return (
     <div className="max-w-md mx-auto sm:max-w-4xl pb-24">
       {/* Mobile Driver Profile Hero Card */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-5 sm:p-6 text-white shadow-xl mb-6 relative overflow-hidden">
-        {/* Subtle decorative circles */}
-        <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-emerald-600/30 blur-xl pointer-events-none" />
+      <div className="rounded-3xl p-5 sm:p-6 text-white shadow-xl mb-6 relative overflow-hidden bg-emerald-950 border border-emerald-700/40">
+        {/* Latar Belakang Foto Masjid Nabawi */}
+        <div 
+          className="absolute inset-0 bg-cover bg-no-repeat bg-[center_65%] sm:bg-[right_60%] pointer-events-none"
+          style={{ backgroundImage: "url('/bg-masjid-nabawi.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-emerald-950/85 to-emerald-950/35 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/75 via-transparent to-emerald-950/30 pointer-events-none" />
+
         <div className="absolute right-6 top-6 text-emerald-400/20 pointer-events-none">
           <BookOpen className="w-24 h-24" />
         </div>
